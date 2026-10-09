@@ -1,6 +1,6 @@
 # Agentic TRPG — Module Contracts（MVP）
 
-> **版本：** v0.5 / Draft for Review
+> **版本：** v0.6 / Draft for Review
 >
 > **日期：** 2026-10-10
 >
@@ -8,7 +8,7 @@
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.9、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.3、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.7、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.7
+> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.10、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.4、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.8、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.7
 >
 > **历史代码核对基线（沿用 v0.1，本轮未重审 Engine）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -16,7 +16,7 @@
 
 ## 0. 用途与冻结策略
 
-本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
+本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
 
 **必须满足的不变量 `[DECIDED]`：**
 
@@ -52,7 +52,7 @@
 ### 2.1 规范标识 `[PROPOSED]`
 
 - `session_id`：Game Session 稳定 ID。
-- `command_id`：由调用方/可信 Host 生成、在 Session 内唯一的幂等键；同一键不可用于不同命令内容。
+- `command_id`：由调用方/可信 Host 生成；普通游戏命令在 Session 内唯一，创建前在可信 principal_id 内唯一（§10）；同一幂等键不可用于不同命令内容。
 - `actor_id`：游戏世界中的实际行动者，与 `principal_id`（发起调用的账户、Host、NPC Agent 身份）区分。
 - `world_version`：该 Session 权威状态版本；发生世界/机械状态变更的成功提交单调推进。仅事件或元数据提交的推进规则为 [OPEN]，不能直接等同 event_seq。
 - `component_versions`：可选的对象/Combat/Character 局部版本，用于低冲突的读写集校验；MVP 可以仅使用全局 `world_version` 进行保守 OCC。
@@ -60,11 +60,11 @@
 - `ruleset_binding`：Required ruleset_id / data_revision / evaluator_version，由 SM 从 Session 固定配置提供；data_revision 区分实际生效数据（含适用 Homebrew），Engine 验证匹配（§4.3）。
 - `schema_version`：明确的消息格式版本（例如 `module-contracts/0.2`）。
 
-所有对外 ID 与关系引用都必须遵守 Type/Namespace 校验，不能由 Agent 自选数据库路径或可信身份。所有命令以稳定规范化序列化（Canonical JSON）生成 `command_fingerprint`；建议包括 `command_type`、`actor_id`、动作 payload 及必要的授权/规则上下文绑定，排除纯传输重试头。具体 canonicalization 算法与版本应在实现前冻结。
+所有对外 ID 与关系引用都必须遵守 Type/Namespace 校验，不能由 Agent 自选数据库路径或可信身份。所有命令以稳定规范化序列化（Canonical JSON）生成 `command_fingerprint`；普通游戏命令建议包括 `command_type`、`actor_id`、动作 payload 及必要的授权/规则上下文绑定；创建请求包括批准 Package 身份/摘要与 players[] 等实际创建内容（§10），不套用尚不存在的 session_id / actor_id。排除纯传输重试头。具体 canonicalization 算法与版本应在实现前冻结。
 
 ### 2.2 幂等语义 `[DECIDED + PROPOSED]`
 
-按 `(session_id, command_id)` 在 State Machine 的**持久数据库**中去重：
+Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，创建结果见 §10。以下适用于普通游戏命令，按 `(session_id, command_id)` 在 State Machine 的**持久数据库**中去重：
 
 - **相同 Fingerprint、已提交：** 返回原 `CommandReceipt`，不重新掷骰、不重复扣资源、不重复发事件。
 - **相同 ID、不同 Fingerprint：** `idempotency_conflict`；不执行。
@@ -248,6 +248,7 @@ StateDelta.operations 必须是**封闭的 Typed Operation Union**，每个 kind
 | 资源 | resource.consume / resource.restore | 显式 owner_id / resource_id、数量与归属 |
 | 库存 | inventory.consume / inventory.transfer / inventory.item_update | 唯一物品/堆叠、来源和目标、装备/库存一致性 |
 | 位置 | actor.position_update | 场景/网格/占位与相关状态一致 |
+| 战斗初始化 | combat.create（候选，[PROPOSED; NOT IMPLEMENTED]） | 仅建立受限类型化 Combat 组件；使用相关 NonCombatSnapshot，完整字段/映射 [OPEN]，见 §10 |
 | 回合 / Action Economy | combat.turn_update、combat.action_budget_update | Round / Turn / Phase、行动/附赠/移动预算及当前 Actor |
 | Condition / Effect / Concentration | condition.update、effect.upsert / effect.expire、concentration.update | 类型化生命周期、来源、目标、引用完整性 |
 | Reaction / Limited Uses | combat.reaction_state_update、actor.limited_use_update | 反应资格/次数、Recharge、Legendary、特性/物品 Charges |
@@ -514,16 +515,32 @@ SM 持续不可用或持久化失败时，Session 停止权威推进，进入暂
 
 ## 10. Adventure Package → State Machine（P1）
 
-最小加载契约 `[PROPOSED]`：
+**[DECIDED]** Package 是静态、版本固定的数据定义，SM 独占加载后的 Session / Scene / Encounter 初始化、触发与运行时提交。统一逻辑入口及候选类型均 **[PROPOSED; NOT IMPLEMENTED]**，详细字段仅在 [Adventure Package §9.1 / §9.1a](./ADVENTURE_PACKAGE_SCHEMA.md#91-统一-package-loading--validationap-0104) 定义，避免另起一套协议：
 
 ```text
-validate_package(package, schema_version, ruleset_binding)
-  → ValidationReport（引用完整性、许可/公开边界、Ruleset 存在性、可用操作约束）
-initialize_session(validated_package_id, player_pc_config, session_id)
-  → SessionCreated（世界/场景/人物/Encounter 初始状态 + pinned package/ruleset revisions）
+load_adventure_package(package_source)
+  -> PackageLoadResult(valid | invalid, structured errors / warnings,
+                       approved identity / digest / effective RulesetBinding when valid)
+create_session(CreateSessionRequest)
+  -> Session ID + creation result + limited metadata
 ```
 
-Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回剧本文件。通用公开仓库只放原创合成 Fixture、Schema、代码、测试；未经授权的 *First Blush* 具体剧情/角色/遭遇与改编材料保留私有，不纳入本仓库的提交。
+加载内部完成安全解析、Schema、引用、规则绑定、声明式操作与必要元数据检查，不暴露半验证状态或独立验证服务。必要机制不支持、Schema/非法引用阻止批准；非核心可选限制可明确 warnings，不能运行时假装支持。valid 后固定 adventure_id / package_version / package_digest / 生效 RulesetBinding。静态验证不证明剧情可玩性/平衡，来源元数据不自动证明版权合法。
+
+CreateSessionRequest 使用 command_id、批准 Package 的身份/摘要和 **players[]**（每项 player_id / pc_template_id，MVP 严格一玩家一 PC）。PC Templates 是 Package 内完整且机械属性经规则验证的只读定义，不要求外部 pc_build_ref 或独立构建服务。principal_id 取自可信认证环境并验证 player/角色控制关系；创建前以 **(principal_id, command_id)** + Fingerprint 幂等，相同请求返回原 Session，不同内容冲突。session_id 由 SM 生成并返回，不新增创建请求/Receipt ID；普通游戏命令仍用 (session_id, command_id)。
+
+SM 在短事务核验固定内容与创建键，原子初始化 SessionRecord / WorldState / 当前必要 Actor/NPC Persistent State / 选定 CharacterState / 入口 Scene / RNG，并保存创建幂等结果；失败不留下半初始化有效 Session。返回有限元数据，不泄漏隐藏世界。Scene 按需初始化一次、NPC 为 Session 级唯一实体，重访不重置；EncounterDefinition 可选，SM 可动态启动具有可信规则数据的 Encounter。
+
+两个规则调用场景复用 §4–§6，不新增执行协议：
+
+| 场景 | 候选 operation_kind / 输入 | 处理边界 |
+|---|---|---|
+| SM 决定启动 Encounter | combat.start；当前相关 NonCombatSnapshot、固定 RulesetBinding、显式 RNGContext、强类型启动 payload | Engine 在 accepted 时返回 Typed Delta / ProposedEvents / RNGTransition，SM 原子建立权威 CombatState；候选 combat.create 的具体字段 [OPEN] |
+| SM 判定 Trap / Hazard / Mechanical Effect 触发 | rules.effect；适用 Snapshot、同一规则绑定/RNG 输入、强类型效果 payload | Engine 算豁免/伤害/Condition，SM 提交；无实际 Actor 的来源如何兼容必填 actor_id 为 [OPEN]，不取消 P0 必填约束 |
+
+上述操作/类型 **[PROPOSED; NOT IMPLEMENTED]**。同命令世界效果与机械结果可在提交前完整求值时统一原子提交；若来源 WorldEvent 已提交，再触发效果则可靠交接独立稳定命令，去重/恢复，不承诺跨两个已提交事务原子性，不重复已提交骰点/伤害/奖励。详细编排与复杂 Effect Schema 为 [OPEN]。
+
+EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEvent 由 SM 经受控命令提交；动态事件无需全部预定义。SM 按作用域管理触发历史与允许世界效果，规则计算交 Engine，不增加独立 Event Engine 服务或任意脚本。RuntimeState 不写回 Package；公开资料只用原创合成示例，First Blush 内容/派生资产仍留本地私有。
 
 ## 11. 必须统一的错误和状态（P0）
 
@@ -634,6 +651,7 @@ Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回
 | C-13 | Gate / 两种模式的模型、Prompt、阈值、预算与取消能力？ | Jev 仅候选；通过合成场景测定漏判/延迟/成本，不擅自固定技术选型或 SLO |
 | C-14 | NPCEvaluationResult / EvaluationReceipt 的字段类型、元素约束、版本与错误映射？ | 七字段概念结构及两模式兼容原则已确认；JSON Schema、可信运行环境绑定和持久任务编码待审阅，不把草案当成已实现 API |
 | C-15 | 完整 Effect / Reaction / 复杂组件 Delta 字段？ | [OPEN]；封闭 Typed Union、完整依赖与原子提交已确认，字段须对照现有生命周期与不变量盘点，禁止任意路径或 Snapshot 覆盖 |
+| C-16 | combat.start / combat.create、rules.effect 与触发后续命令？ | [OPEN]；原则见 §10，具体字段、无 Actor 来源与必填 actor_id 的兼容、可靠编排待设计，详见 Adventure Package §11；不扩张为独立服务 |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 

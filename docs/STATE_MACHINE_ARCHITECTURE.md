@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.7（依据 ADR-001 与 NPC Evaluation Mode 决策；具体消息 Schema 与实现仍待审阅）
+> **状态**：Draft v0.8（依据 ADR-001、NPC Evaluation 与 Adventure Package 接口决策；具体消息 Schema 与实现仍待审阅）
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.9；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.3；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.7；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.5 / Draft
+> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.10；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.4；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.7；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.6 / Draft
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -101,7 +101,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 | `session_id` | 稳定、唯一、与其他 Session 隔离 |
 | `adventure_id`, `package_version`, `package_digest` | 固定加载的冒险定义版本；重载时校验，禁止静默升级 |
 | `ruleset_binding` | 固定 ruleset_id / data_revision / evaluator_version；数据修订区分生效规则及适用 Homebrew，Engine 求值前验证匹配 |
-| `pc_actor_id` | 仅一名玩家可直接控制的 PC |
+| `players[]` / `pc_actor_id` | 可信认证主体核验的 player_id / pc_template_id / Actor 控制关联；MVP 严格一玩家一 PC，具体存储字段 [PROPOSED; NOT IMPLEMENTED] |
 | `current_scene_id`, `current_location_id` | 当前所在场景、地点 |
 | `phase` | `exploration` / `combat` / `challenge` / `completed` 等有限阶段（候选） |
 | `world_version` | 世界/机械状态变更提交时单调推进，与事件序号不同；仅事件/元数据提交的推进规则 [OPEN] |
@@ -131,7 +131,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 进入场景流程：
 
 1. 根据 `scene_id` 查询静态 Scene Definition，验证入口/出口及任何状态条件。
-2. 若本 Session **从未实例化该场景**，应用 `initial_state` 一次，生成对象实例和局部标记。
+2. 若本 Session **从未实例化该场景**，应用 `initial_state` 一次，生成对象实例和局部标记；NPC 按 Session 级身份查找，必要时首次创建，不能复制或覆盖已有位置、Memory、Belief、资源。
 3. 若已实例化，则保留现有实例状态；**绝不因为重访重放初始掉落、NPC 位置或机关状态**。
 4. 按权威状态记录 `scene.entered`，其触发的事件走统一事件审核与提交路径。
 
@@ -140,7 +140,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 ### 3.4 `ActorRuntime` / `NPCState`
 
 - 所有 Actor：稳定身份、当前世界位置、归属、世界层可见状态、可用控制策略。
-- 玩家 PC：角色身份与所属；**机械角色构建**由已审核的 Build/Rule Engine 获取，不得凭剧本文字凭空生成等级与 HP。
+- 玩家 PC：从 Package 内置的一个或多个完整、只读 PC Templates 中选择一名，经规则验证机械属性后初始化 CharacterState；HP、资源、成长等运行态由 SM 保存。无需独立构建服务或外部 pc_build_ref；未来外部导入 [OPEN]，不实现。
 - NPC：唯一 Persistent Identity、Personality、Memory、Belief（允许错误）、Relationship、Goal、Plan 和 Runtime State（Schedule / Current Activity 等）；私有知识、处理游标与控制权一并权威保存，观察收件箱与认知更新分开。
 - 敌人/普通怪物：与重要 NPC 一样有身份和状态，但是否调用 LLM 要由策略决定；不要求为每一个普通怪物常驻创建 Agent。
 
@@ -207,10 +207,10 @@ ObservationProcessingStatus 根据必要认知处理与可靠输出交接维护�
 
 ## 4. Session 生命周期与场景流程
 
-建议明确四个最小生命周期：
+以下为 [DECIDED] 职责与流程；接口/字段 [PROPOSED; NOT IMPLEMENTED]，不是新增运行时状态：
 
-- **Package Validation**：解析 YAML/JSON、安全字段、Schema 版本、引用完整性、规则绑定、内容来源；失败不创建 Session。
-- **Session Creation**：固定 `package_digest` / `ruleset`；创建一个 PC Slot、初始世界和 NPC 实例，初始化入口 Scene；同一创建请求不能生成两个会话。
+- **Package Loading / Validation**：统一 load_adventure_package 内部执行安全解析、Schema、引用、规则绑定、声明式操作与必要元数据检查，返回 valid / invalid 和结构化 errors / warnings；不暴露半验证包或独立验证服务。必要机制不支持、非法引用、Schema 错误阻止批准；可选非核心限制明确报告，不假装支持。静态验证不证明可玩性/平衡，来源元数据不证明版权合法。
+- **Session Creation**：CreateSessionRequest 使用 players[]（player_id / pc_template_id，MVP 严格一项），SM 从可信认证环境取得 principal_id 并验证控制关系，不接受 LLM 自报身份。创建前以 (principal_id, command_id) + Fingerprint 持久幂等，相同请求返回原 Session，不同内容拒绝。短事务原子初始化 SessionRecord、WorldState、当前必要 Actor/NPC Persistent State、选定 CharacterState、入口 Scene、RNG 及创建幂等结果，固定 adventure_id / package_version / package_digest / 生效 RulesetBinding；失败无半初始化有效 Session。session_id 由 SM 生成，返回 ID、创建结果与有限元数据，不泄漏隐藏世界，不新增创建请求/Receipt ID。普通命令仍用 (session_id, command_id)；详见 Adventure Package §9.1a。
 - **Session Interaction**：按当前 Phase 验证命令，读取所需世界视图，选择世界事务或规则执行；根据已提交结果推进世界与事件、计算 Observation；NPC 记忆解释独立于世界状态提交。
 - **Save / Resume / Complete**：持久化运行态与 NPC 观察/记忆；重启后恢复**非活跃战斗** Session；活跃战斗不可声称精确恢复，完成后保留最终事实和回执。
 
@@ -284,14 +284,14 @@ Load State Snapshot + version + RNG position
 
 本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
 
-### 5.5 事件驱动与链式触发
+### 5.5 声明式事件、作用域与链式效果
 
-- 只有**由 State Machine 最终提交的权威事件**能触发 `events.yaml` 条件。LLM 的自述、未接受的 NPC 决策或草稿对话不是 Event。
-- Event Condition 使用既定封闭表达式词汇（`all`、`any`、`not`、`flag_equals`、`actor_present`、`event_once`、`challenge_count_at_least` 等），禁止 `eval`。
-- 可执行的 World Effect 只使用 `ADVENTURE_PACKAGE_SCHEMA.md` 的允许列表；机械效果必须先经 Rule Engine 求值，随后由 State Machine 验证并提交完整 State Delta。
-- 为防止 Event A → Event B → Event A 的无限循环，按 `event_id + trigger_event_id + session_id` 去重，并设定每个外部命令的最大链式事件数。发现循环应**整体拒绝世界事务**或进入显式故障状态；具体限额待实现期确定。
-- 一次“获得宝物”“取消机关”“完成任务”的世界效果应具有持久事件身份，不能因重试或再次进入场景重复发奖。
-- 事件链完成提交后，向 Perception Projection 提供事件时证据；观察对各 NPC **分别投影**而非广播完整世界事件。下游 Agent 激活可以异步，但对应 Observation/Outbox 不能无记录地丢失。若投影依赖额外 Rule Check，则在事务外协调受控检定并持久化待定状态，不能持有数据库写锁等待检定。
+- Package 的 EventDefinition 只定义 Trigger / Condition / Effect / 重复政策，区别于 SM 生成的 CommittedWorldEvent。SM 加载并按 Session / Scene 等作用域管理定义，根据已提交事件与权威状态判断条件、执行允许世界效果、持久保存触发历史；不增加 Event Engine 服务，禁止 eval / 任意脚本或 LLM 文本直接写状态。
+- Event Condition 沿用封闭词汇（all / any / not / flag_equals / actor_present / event_once / challenge_count_at_least 等）；set_flag / set_object_state 等世界效果由 SM 处理，机械计算必须交 Rule Engine。实际事件可由受控动态命令产生，不要求全部预定义在 Package。
+- 同一命令提交前可完整求值的世界/机械效果，按 §5.3 原子提交全部 Delta / RNG / 正式事件 / CommandReceipt / 触发历史 / Outbox。未提交 ProposedEvents 不能冒充已提交触发来源。
+- 若 WorldEvent 已提交后才触发机械效果，保留先前事实，可靠保存触发历史和后续命令交接，使用独立稳定 command_id 求值与提交；触发消费标记与命令交接同事务，重复投递/崩溃重试不遗失或重复伤害/领奖/已提交骰点。不能声称两个已提交事务原子，也不能因后续失败回滚先前事实。
+- 按 event_definition_id、Session / Scene 作用域和重复政策去重，并关联 trigger_event_id / 后续命令键。发现循环可拒绝当前尚未提交命令或停止后续推进，不回滚已提交来源事件。具体索引、复杂 Effect 编排和循环预算仍 [OPEN]。
+- 已提交事件只按事件时证据对各 NPC 投影，Observation / Outbox 必须可靠；需要规则检定时在写事务外协调，不持有写锁等待模型或 Engine。
 
 ### 5.6 并发取物与竞争动作：提交顺序不是敏捷判定
 
@@ -379,17 +379,21 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 
 ## 7. 战斗：单一权威状态与规则求值
 
-### 7.1 战斗开始
+### 7.1 启动 Encounter
 
-1. State Machine 加载 Encounter 定义、角色资源、初始位置与固定 Ruleset，验证玩家与 NPC 的 Actor 归属、战斗许可与相关 WorldState。
-2. 通过 Rule Engine **计算**初始化（包括先攻 RNG、起始效果、回合顺序），得到初始 `CombatStateDelta + RuleEvents + next_rng_context`；Rule Engine 不注册一个独立的权威活跃战斗对象。
-3. State Machine 在短写事务中原子提交 `phase=combat`、Encounter/Combat State、Character State、RNG、事件、Receipt 和必要 Outbox；同时保留合法的战前安全 Checkpoint 及战斗入口元信息。
+**[DECIDED]** SM 决定启动，可以引用 Package 的可选 EncounterDefinition，也可基于当前权威状态动态组建 Encounter；动态参与者必须具可信、已通过规则验证的机械数据。Package 不提供启动执行 API，不因进入 Scene 自动新建或重置 NPC。
+
+1. SM 核验启动命令的可信主体/actor_id、参战实体/资源/位置、当前状态及 Session 固定 RulesetBinding；生成完整相关 NonCombatSnapshot 与独立 RNGContext。
+2. 复用 RuleEvaluationRequest / RuleEvaluationResult，候选 operation_kind=combat.start，强类型 payload 描述启动参数。Engine 计算先攻与机械初始化，在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；不注册独立权威战斗对象。
+3. SM 在短 SQLite 事务重验命令键/版本/权限/Delta，原子建立权威 CombatState 与 phase=combat，提交相关 Character/World 状态、RNG、正式事件、CommandReceipt、Outbox，保留合法战前安全点。
+
+combat.start / 候选 Typed Delta combat.create 均 **[PROPOSED; NOT IMPLEMENTED]**；完整字段/初始化映射 [OPEN]，不以整份权威 Snapshot 覆盖代替受限类型化操作。失败不留下部分有效 CombatState，不推进权威 RNG；重试遵守 (session_id, command_id)。
 
 ### 7.2 战斗期间
 
 - 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。Host 传输受控身份关联，State Machine 核验权限、获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
 - CombatState 包括回合顺序、行动预算、位置、Active Effects、Concentration、待处理 Reaction/Choice 等。State Machine **持有和持久化**这些字段但不自行计算规则；Rule Engine 不维护跨调用的私有战斗权威。
-- 战斗中打开门、拾取物品、喝药、触发机关等跨世界/规则动作必须经**同一最终事务域**提交完整副作用，不能在 Rule Engine 内偷偷提前扣费。
+- 战斗中打开门、拾取物品、喝药、触发机关等，若世界/机械效果能够在同一命令提交前完整求值，则同事务提交完整副作用，Engine 不提前扣费；已提交事件才触发的后续机械效果使用可靠、幂等的独立命令，不声称跨已提交事务原子（§5.5）。
 - 已提交的 Combat/World Events 经事件时 Perception 分发，可供 DM Narrator 叙述；未提交的规则求值或 LLM 提议不能被叙述为已发生。
 - `needs_choice`、Reaction、未完成效果生命周期及 RNG 语义必须有显式待续裁决契约，不能假设一步求值总可完成；具体协议在 `MODULE_CONTRACTS.md` 冻结。
 
@@ -412,7 +416,7 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 
 **SM-01 已确认的实现基线**：Python + SQLite 单进程 State Machine，启用 `PRAGMA journal_mode=WAL`、`PRAGMA foreign_keys=ON`，优先 `PRAGMA synchronous=FULL` 保障关键存档的断电持久性；合理配置 `busy_timeout`、连接生命周期与备份策略。WAL 并不消除单写者限制；不要在写事务中等待 LLM/Rule Engine。数据库文件放在本地支持可靠文件锁与同步的存储上，不假定可经共享网络盘安全多写。
 
-建议索引/约束（具体表结构待实现）：`UNIQUE(session_id, command_id)`、`UNIQUE(session_id, event_seq)`、`UNIQUE(session_id, observation_id)`、`UNIQUE(evaluation_id)`（在 SM 本地运行时唯一定位 Task）、每个 Evaluation 最多一个最终 Result 的唯一约束，以及按观察者/有序 Delivery Cursor 的索引和原子任务状态/认知版本检查；以实际键模型消除重复副作用。Session 的 Version Gate 与数据库写锁串行性分别负责语义一致性和持久化原子性。
+建议索引/约束（具体表结构待实现）：创建阶段 `UNIQUE(principal_id, command_id)` 与 Fingerprint / 原 Session 映射随初始化同事务保存；普通游戏命令 `UNIQUE(session_id, command_id)`、`UNIQUE(session_id, event_seq)`、`UNIQUE(session_id, observation_id)`、`UNIQUE(evaluation_id)`（在 SM 本地运行时唯一定位 Task）、每个 Evaluation 最多一个最终 Result 的唯一约束，以及按观察者/有序 Delivery Cursor 的索引和原子任务状态/认知版本检查；以实际键模型消除重复副作用。Session 的 Version Gate 与数据库写锁串行性分别负责语义一致性和持久化原子性。
 
 快照可用于快速读取/恢复，但权威一致性来自短事务内提交的 State Delta + Receipt + Event/Observation Outbox；MVP 不必构建完整 Event Sourcing 平台。4–5 名玩家、数百 NPC 的支持属于将来基于真实并发与延迟测试评估的扩展目标，**不是**当前单人 MVP 的功能承诺。
 
@@ -460,12 +464,12 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 ## 10. 最小公共接口（仅候选名称）
 
-新增接口/消息均 **Proposed / Not Implemented**，见 `MODULE_CONTRACTS.md` §7、§9。SM 发出 NPCEvaluationRequest，Host 执行模型；SM 不实现 Prompt / 主观推理 / KV Cache。内部操作不作为新增跨模块服务。
+新增接口/消息均 **[PROPOSED; NOT IMPLEMENTED]**，见 `MODULE_CONTRACTS.md` §7、§9、§10。声明式触发调度属于 SM 内部职责（§5.5），需要机械计算时复用候选 rules.effect，不增加独立 Event Engine。SM 发出 NPCEvaluationRequest，Host 执行模型；SM 不实现 Prompt / 主观推理 / KV Cache。内部操作不作为新增跨模块服务。
 
 | 接口 / 方向 | 输入 | 输出 |
 |---|---|---|
-| validate_package | Package | 完整性、Ruleset Binding 报告 |
-| create_session | 冒险版本、唯一 PC、命令 ID | Session / 初始 View / 回执 |
+| load_adventure_package | Package 来源 | valid / invalid、结构化 errors / warnings；valid 才固定 Package 身份/摘要及生效 RulesetBinding |
+| create_session | CreateSessionRequest：批准包身份/摘要、command_id、players[]；可信认证上下文 principal_id / 控制关系 | 原子创建的 Session ID / 创建结果 / 有限元数据；(principal_id, command_id) 幂等，不返回隐藏世界 |
 | get_scene_view | Session、可信 Viewer | 过滤场景事实 |
 | get_npc_view | Session/NPC、可信主体 | 完整授权 Profile / Episodic Memory / Belief History / Relationship / Goal / Plan 及 NPCStateVersion |
 | get_event_observations | Session/NPC、读取 Cursor / 范围 | 有序观察、投影水位；读取不完成工作 |
@@ -479,7 +483,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | tick_npc_schedule（内部） | 游戏时钟、日程、稳定 Trigger | 合法活动 / 取消 / 重评估任务 |
 | submit_world_command | 可信 Actor、稳定 command_id、版本、操作 | SM Commit / Rejection / Command Receipt |
 | submit_check_request | 合法参数、GM 来源、command_id | Rule Evaluation / 最终 CommandReceipt |
-| start_encounter | Encounter、Actors、Rule Binding、位置 | SM CombatState / 事件 / 拒绝 |
+| start_encounter | 可信命令、相关 Actors / 位置、可选 EncounterDefinition；SM 固定绑定和当前 NonCombatSnapshot / RNGContext | 经候选 combat.start 统一求值后 SM 原子建立 CombatState / 正式事件 / CommandReceipt；具体字段 [OPEN] |
 | submit_combat_intent | 可信 PC/NPC 绑定、Intent、command_id | 独立 Command Receipt / 已提交事件 |
 | evaluate_rule（内部适配器） | RuleEvaluationRequest：session_id / command_id / actor_id / operation_kind、强类型 payload、CombatSnapshot 或 NonCombatSnapshot、RulesetBinding、独立 RNGContext | 四种 RuleEvaluationResult；accepted 含完整 Typed Delta / ProposedEvents / RNGTransition |
 | query_action_availability（SM → Engine，只读） | 可信 Actor、operation_kind / 强类型 payload、完整 Snapshot / 固定 RulesetBinding | available / unavailable / unknown；SM 过滤原因后供 UI/Agent Planning 使用，无 RNG/Delta/事件/CommandReceipt，执行仍需重新验证 |
@@ -492,11 +496,11 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 建议先用**原创、可公开分发**的合成 Adventure Fixture 做最小可运行闭环；不要直接把未经授权的 *First Blush* 剧情/图片嵌入公开代码测试。
 
-### Batch SM-1：Package Validator + Session / Scene
+### Batch SM-1：统一 Package Loading / Validation + Session / Scene
 
 - 解析/审核固定包，验证悬空引用、ID、Schema/Ruleset 和初始 Scene。
 - 创建独立 Session；Scene 初始化一次，打开的门/移动的 NPC 在重访时保留。
-- 采用 Python + SQLite WAL + 短事务持久化非活跃战斗 Session；相同创建 `command_id` 不创建重复 Session。
+- 采用 Python + SQLite WAL + 短事务持久化非活跃战斗 Session；相同可信 (principal_id, command_id) / Fingerprint 不创建重复 Session，冲突拒绝、初始化失败无半有效 Session。
 - **完成证据**：至少两个互不污染的 Session，以及一套 create → enter → mutate → leave → revisit → save → restart → resume 测试。
 
 ### Batch SM-2：World Commands + Events / Challenges
@@ -525,7 +529,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 | ID | 行为 | 必须通过 |
 |---|---|---|
-| SM-A01 | 两个 Session 使用同一只读 Package | 世界数据、NPC 记忆相互隔离 |
+| SM-A01 | 不同创建键的两个 Session 使用同一只读 Package | 世界数据、NPC 记忆相互隔离；相同可信创建键重试只返回原 Session |
 | SM-A02 | 场景开门→离开→重访 | 门仍打开，不重新初始化 |
 | SM-A03 | NPC 从 A Scene 移到 B Scene | 重访 A 不会凭静态 `actor_ids` 复制 NPC |
 | SM-A04 | NPC 查询全局秘密 | 不应泄露 `dm_only` 或其他 NPC 的私密事实 |
@@ -619,9 +623,9 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
 | S05 | `world_version` 与实体版本粒度 | MVP 先 Session 级版本；更高并发时评估细化 | 建议 |
 | S06 | NPC/普通怪物是否默认用 LLM 战术 | **不得降低** `MVP_SCOPE.md` 已规定的至少一个敌方 NPC Sub-agent Typed Combat Intent 验收；普通怪物默认策略尚待明确 | 默认策略待决策 |
-| S07 | 外部 Hazard 与 NPC 显式战斗入口 | 先核实 Rule Engine 公共 API，缺失则列为 MVP 集成阻塞项 | 技术验证待做 |
+| S07 | combat.start / rules.effect 的适配与环境来源 | 复用统一协议；候选 combat.create 字段、复杂 Effect/编排与无 Actor 来源兼容必填 actor_id 尚待设计；不得当作现有支持 | [OPEN]；技术验证待做 |
 | S08 | 完整 Meta、Belief 历史与 Context 预算 | MVP 输入完整授权数据、追加 Belief 版本、增量复用 Context；不新增语义筛选/排名/智能压缩，超预算反馈策略待验证 | 细节待设计 |
-| S09 | 玩家 PC 构建来源 | 优先经审核的一名一级 PC；是否开放全部构建另定 | 待决策 |
+| S09 | 玩家 PC 模板与未来导入 | Package 内多个完整、机械属性经规则验证的静态模板供选择；MVP 一玩家一 PC，无外部构建服务前提 | [DECIDED]；未来外部导入 [OPEN] / 不实现 |
 | S10 | First Blush 许可与发布 | 未经许可，不公开上传受限制的原剧情与派生数据 | 已明确约束 |
 | S11 | 感知何时需要规则检定 | MVP 确定性同场景感知 + 个别经审查 Rule Check；复杂遮挡等后置 | 精确触发待设计 |
 | S12 | 同步争夺物品的游戏时序 | 禁止按网络先后来断言敏捷；SM 领域时序 / Engine 机械公式的契约待冻结 | 待设计 |
@@ -631,6 +635,10 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 ---
 
 ## 13. 文档治理与下一步
+
+### v0.8 修订摘要
+
+统一 Package 加载与可信创建幂等、内置 PC Templates 和 players[]；Scene / Encounter / 声明式触发由 SM 管理，combat.start / rules.effect 复用统一规则协议。区分单命令原子提交与已提交事件的可靠后续命令；候选字段和未决细节不视为现有实现。
 
 ### v0.7 修订摘要
 
@@ -650,6 +658,6 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
 - **文档优先级**：ADR-001 是权威架构决策；旧 MVP Scope 的双权威用语为历史遗留，已在 v0.5 修正。
 
-**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.7 与 `MODULE_CONTRACTS.md` v0.5 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
+**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.7 与 `MODULE_CONTRACTS.md` v0.6 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**

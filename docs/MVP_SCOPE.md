@@ -2,11 +2,11 @@
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**
 >
-> **版本：v0.9**
+> **版本：v0.10**
 >
 > **初稿日期：2026-10-09**
 >
-> **修订日期：2026-10-10；P0 Rule Contracts 与 Invocation / EVA 失败语义同步，非实现完成声明**
+> **修订日期：2026-10-10；Adventure Package / State Machine 接口边界同步，非实现完成声明**
 >
 > **文档级别：项目级（跨 Repository）**
 >
@@ -79,7 +79,7 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 | Visual Presentation | 不要求可交互战术画面、Token 或画面与规则/世界状态的深度绑定 | [已确认：MVP 后] |
 | AI 场景插画 | 可选、非阻塞增强，不参与规则裁决 | [已确认：可选] |
 | 验收等级 | 以 1–5 级常见能力作为重点候选范围；不删除已有高等级实现 | [建议] |
-| 角色准备 | 至少允许载入预设玩家角色；完整创建器范围另行决定 | [建议] |
+| 角色准备 | Package 内可含多个完整、机械属性经规则验证的静态 PC Templates，选一名；MVP 严格一玩家一 PC，无独立构建服务或外部角色导入前提 | [DECIDED]；完整创建器/未来导入 [OPEN] |
 | 战斗空间 | State Machine 权威保存 2D 战斗网格位置；Rule Engine 按规则计算移动、范围和掩护；无需渲染地图 | [建议] |
 | 单人战斗平衡 | 选用可由一名 PC 独自面对的遭遇，必须保留正常失败、死亡和撤退可能，不通过 DM 任意改骰“保护剧情” | [建议] |
 | 运行形态 | 本地/单实例优先；Agent 模型、调用成本、并发规模另议 | [待决策] |
@@ -310,7 +310,8 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 ### 6.0 冒险内容的静态输入（不是自动生成器）
 
 - MVP 必须能**加载**经过人工整理的固定 `Adventure Package`，从中初始化 Session、初始 Scene、NPC Profiles、初始 NPC 知识与关系、任务/世界标记、必要 Encounter 和 Rule Bindings。
-- `Adventure Package` 是**不可变的内容定义/初始状态模板**；`Runtime State` 由 State Machine 管理，初始模板只在 Session 创建时应用，不得在玩家重新进入场景时重置已发生的世界变化。
+- **[DECIDED]** 统一 load_adventure_package 内部验证后批准并固定包身份/摘要/RulesetBinding；静态验证不保证可玩性/平衡或版权合法。SM Create Session 使用 players[]（player_id / pc_template_id，严格一项）及可信 (principal_id, command_id) / Fingerprint 幂等并原子初始化，不留下半有效 Session。接口/字段 **[PROPOSED; NOT IMPLEMENTED]**，详见 ADVENTURE_PACKAGE_SCHEMA.md §9.1 / §9.1a。
+- `Adventure Package` 是**不可变的内容定义/初始状态模板**；`Runtime State` 由 State Machine 管理，初始模板在 Session 创建或相关实体/Scene 首次按需初始化时应用一次，不得在重访时重置已发生的世界变化；NPC 是 Session 级唯一实体。
 - MVP 不包含自动 PDF/HTML 解析、内容抽取 Agent、自动 NPC 生成、自动图片生成管线或一般化内容编译器。静态内容的人工准备是测试/内容工作，不是运行时服务。
 - 每个规则映射应留存来源或适配记录；未知 Actor/Spell/Item/Feature 不得静默当成合法规则执行。
 - **发布/保密**：完整 First Blush 原文及派生数据不得未经许可公开上传；Private fixture 与公开 Schema、合成测试 Fixture 分开存储。
@@ -385,7 +386,7 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 | A13 | **NPC 持续身份与记忆** | 重要 NPC 在多轮互动及必要的 Session 重载后保持身份、记得已知承诺/冲突；不泄漏其他 NPC 的私有事实。是否要求跨场景重逢，以 First Blush 正文为准 |
 | A14 | **NPC 子代理故障/拒绝** | NPC 提议非法动作时获得结构化反馈并在有界次数内重试；超时/失败不凭空创建对话事实、伤害或世界状态变更 |
 | A15 | 单人遭遇失败分支 | 验证撤退、失败/倒地/死亡至少一种合法处理路径，不允许因“只有一个 PC”而在未获授权时篡改骰点保护主线 |
-| A16 | 本地 Adventure Package 初始化 | 能从人工审核的静态内容初始化场景/NPC/遭遇/规则映射；再次进入场景不重置状态；**无 World Creation Agent** 时可重复运行 |
+| A16 | 本地 Adventure Package 初始化 | SM 从人工审核的静态定义原子创建 Session、按需一次初始化 Scene / 唯一 NPC；Encounter 可动态启动，不强制预定义；重访不重置状态；**无 World Creation Agent** 时可重复运行 |
 | A17 | 内容授权边界 | 公开代码仓库没有 First Blush 原文、地图、插画或实质性转写的完整剧情包；本地 Fixture 按许可隔离 |
 | A22 | Interactive Observation 增量 | 原 Interactive Context / LLM 接收有序新观察；无逐条 Gate 或额外 Background / Memory / Cognition LLM |
 | A23 | Interactive 暂时空闲但 Active | 重大事件可由 SM 批准 Task、Host 执行下一次 Interactive 推理，在途请求输入排队，不修改执行中请求/KV Cache |
@@ -484,6 +485,8 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 4. 最新实现是否已具备能力，始终以对应模块的实际代码、测试及审核清单为准。本文件的历史实现快照不作为持续更新的完成状态表。
 5. 每完成若干开发 Batch，应回看 MVP 场景是否更接近可玩状态；如果只是扩大规则条目但没有改善场景体验，需要重新考虑优先级。
 6. 文件审批人、文档维护流程以及决策记录位置：**[待决策]**。
+
+**v0.10 修订范围**：统一内置 PC Templates、可信创建幂等与 Scene 按需一次初始化；保持单人和既有恢复范围，候选接口不代表实现。
 
 **v0.9 修订范围**：同步 P0 Snapshot / Payload / Ruleset / Typed Delta / RNG / 事件 / 命令键回执及只读查询的目标语义，澄清预算内 Invocation 错误保持 EVA running；不修改 MVP 产品范围、不要求本轮实现接口。
 
