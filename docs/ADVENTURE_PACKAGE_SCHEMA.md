@@ -1,10 +1,15 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.2（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）  
-> **日期**：2026-10-09  
-> **级别**：项目级跨模块文档  
-> **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`  
-> **相关文档**：`MVP_SCOPE.md` v0.6；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`\
+> **状态**：Draft v0.2（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
+>
+> **日期**：2026-10-09
+>
+> **级别**：项目级跨模块文档
+>
+> **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
+>
+> **相关文档**：`MVP_SCOPE.md` v0.7；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+>
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
 ## 1. 目的与非目标
@@ -184,7 +189,7 @@ NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出�
 
 - 战斗初始化时校验 Actor、状态来源、Ruleset、已批准的怪物模板和地图约束。
 - 战斗中的 HP、位置、行动预算、RNG、条件、Spell Slot 均由 State Machine 统一持有；Rule Engine 根据 Snapshot 计算求值结果，Scene/Quest 只能消费最终已提交的事件。
-- Enemy Sub-agent 仅能提交带 Actor 身份的 Typed Intent，由 Host 授权，再由 Engine 校验与执行。**现有 Engine 的显式 NPC Intent 公共入口仍需核实或补齐**。
+- Enemy Sub-agent 仅能提交带 Actor 身份的 Typed Intent，由 State Machine 授权，Host 仅适配传输；Engine 求值后由 State Machine 验证提交。**现有 Engine 的显式 NPC Intent 公共入口仍需核实或补齐**。
 - Encounter 的结局可以是获胜、撤退、投降或指定条件结束，不能预设所有敌方 Actor 必须死亡。
 - `solo_adaptation_ref` 指向人工审查且可追溯的单人平衡决定，禁止在 Engine 已掷骰后因“保护主线”篡改结果。
 
@@ -208,7 +213,7 @@ adapter_notes: "Synthetic example; not an assertion that this ID exists."
 
 这三类属于 MVP 必需的**场景驱动机制**，但不能假装所有环境效果都有已实现的 Engine 公共入口。
 
-- **Trap/Hazard**：定义触发条件、观察/解除检查、失败后请求的机械效果。造成伤害或 Condition 的操作必须经可用且已验证的 Rule Engine/Host 边界；若没有对应受控入口，列为 `unsupported_mechanic`，不得直接写入 PC HP。
+- **Trap/Hazard**：定义触发条件、观察/解除检查、失败后请求的机械效果。造成伤害或 Condition 的操作必须经可用且已验证的 State Machine 授权 / Rule Engine 求值边界；若没有对应受控入口，列为 `unsupported_mechanic`，不得直接写入 PC HP。
 - **Skill Challenge**：State Machine 保存 `successes`、`failures`、`completed` 以及条件；每一次独立检定由 Rule Engine 计算并记录对应 Result/Request ID。下一步世界变化基于已提交结果。
 - **Scenario Threat**：如果剧情威胁本来不是可战斗的 Monster，不得为了触发演出伪造完整 Monster Stat Block。使用显式、已审查的剧情/危险事件，明确允许的应对方式和后果。
 
@@ -369,7 +374,7 @@ encounters: []
 bindings: []
 ```
 
-**注意**：例子中 `Gate Warden` 决定是否开门，仍需要由 Host 验证其身份、授权以及世界中的交互前提。`rule_bindings.yaml` 为空仅因示例没有规则检定/战斗，不代表真实 MVP 可以不对实际机械行为进行映射。
+**注意**：例子中 `Gate Warden` 决定是否开门，仍需要由 State Machine 验证其身份、授权以及世界中的交互前提；Host 仅传输可信任务关联与模型结果。`rule_bindings.yaml` 为空仅因示例没有规则检定/战斗，不代表真实 MVP 可以不对实际机械行为进行映射。
 
 ---
 
