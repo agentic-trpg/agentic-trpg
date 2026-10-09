@@ -124,7 +124,7 @@ Agent DM 可能需要完整的 GM 视图来正确主持秘密和伏笔，但面�
 
 Narrator 可以收到**受控公开的叙事提示**，不必拥有 Planner 的完整 GM 视角。主持涉及的原始知识可帮助 Planner 安排线索，但 Narrator 对玩家的呈现受 PlayerView 和已确认事件约束。Narrator 输出失败可安全重试生成表达，不可重复提交动作。
 
-**调用闭环**：Player Input → Planner 生成结构化计划/候选 Intent → Host 传输 → State Machine 鉴权并执行（必要时调用 Rule Engine evaluate）→ Commit Receipt / Perception → Narrator 生成最终对玩家可见的叙事。NPC 的个人对话/行动来自其独立 Sub-agent 或经批准的确定性行为策略，不能由 Planner 直接代写并冒充。
+**调用闭环**：Player Input → Planner 生成结构化计划/候选 Intent → Host 传输 → State Machine 鉴权并执行（必要时调用 Rule Engine evaluate）→ CommandReceipt / Perception → Narrator 生成最终对玩家可见的叙事。NPC 的个人对话/行动来自其独立 Sub-agent 或经批准的确定性行为策略，不能由 Planner 直接代写并冒充。
 
 ## 3. Agent DM 的一次玩家回合
 
@@ -666,7 +666,7 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 | AG-A01 | 同一底层模型交错调用 NPC A/B | 身份、私有知识、Memory 不串线 |
 | AG-A02 | DM 知道某秘密但 PC 不知道 | 玩家叙事中不泄漏该秘密 |
 | AG-A03 | 玩家指示 NPC 直接交出金币 | NPC 独立决定是否同意；最终归属只由 WorldCommand 提交改变 |
-| AG-A04 | NPC 自称攻击命中 | 未经 State Machine Commit Receipt 不可显示已发生的命中/伤害 |
+| AG-A04 | NPC 自称攻击命中 | 未经 State Machine 的 CommandReceipt 确认已提交，不可显示已发生的命中/伤害 |
 | AG-A05 | 两 NPC 私下都想取硬币，只有 A 成功 | B 观察 A 拿走硬币；A 不知道 B 未外显的 Intent |
 | AG-A06 | A/B 真实同时伸手且互相看见 | 两者都能观察公开动作；先后由游戏裁决而非网络速度决定 |
 | AG-A07 | B 看到 A 拿走硬币并猜测 A 故意挑衅 | 推断写为 Belief，不写公共事实 |

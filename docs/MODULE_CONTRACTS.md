@@ -126,7 +126,7 @@ state_snapshot:
 rng_context:
   algorithm: <PRNG algorithm and encoding version; OPEN>
   stream_id: main
-  stream_version: 27
+  stream_version: 12
   state: <explicit serialized RNG state; encoding OPEN>
 payload:
   intent_type: attack
@@ -217,7 +217,7 @@ proposed_events:
     payload: <typed mechanical event details>
 rng_transition:
   stream_id: main
-  input_version: 27
+  input_version: 12
   next_state: <successor explicit RNG state; encoding OPEN>
 choice: null
 error: null
@@ -297,7 +297,7 @@ status: committed             # committed | rejected | conflict | pending_choice
 world_version_before: 27
 world_version_after: 28
 committed_event_ids: [evt.001]
-rng_version_after: 28
+rng_version_after: 13
 result_ref: result.cmd.example.001
 ```
 
