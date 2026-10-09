@@ -1,17 +1,17 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.1（设计提案，尚未冻结为代码契约）  
+> **状态**：Draft v0.2（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）  
 > **日期**：2026-10-09  
 > **级别**：项目级跨模块文档  
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`  
-> **相关文档**：`MVP_SCOPE.md` v0.4；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`  
+> **相关文档**：`MVP_SCOPE.md` v0.5；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`  
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
 ## 1. 目的与非目标
 
 ### 1.1 目标
 
-首个 MVP 使用一个人工审阅、人工适配的 D&D 单人冒险包，初始化**一名玩家 PC**、场景、NPC、物体、谜题、必要的战斗与事件状态。由 State Machine 维护世界事实及持久化；Agent DM 主持和协调；需要独立决策的 NPC 使用 NPC Sub-agent；Rule Engine 执行受支持的规则与战斗机械状态转换。
+首个 MVP 使用一个人工审阅、人工适配的 D&D 单人冒险包，初始化**一名玩家 PC**、场景、NPC、物体、谜题、必要的战斗与事件状态。由 State Machine 维护世界事实及持久化；Agent DM 主持和协调；需要独立决策的 NPC 使用 NPC Sub-agent；Rule Engine 计算受支持的规则与战斗机械状态转换（不持有权威战斗状态）。
 
 本 Schema 的直接验收对象是一份固定、经过审核的本地 *First Blush* 冒险包，但**公开 Schema、示例和测试数据不得包含其未经授权的具体剧情、对白、地图或实质性改编内容**。下面所有示例均为**专门编写的合成场景**，不是从该作品中抽取。
 
@@ -24,7 +24,7 @@
 - 完整地图/Token/动画与视觉同步；少量静态插画可选、非权威。
 - 多玩家和可招募的常驻 AI 队友系统；剧本中角色的偶发援助不自动构成队友。
 - 把所有 D&D 法术、规则和怪物能力补齐；未知机制应标记为待映射/不支持。
-- 保证活跃 Combat 可以跨进程完整恢复（仍为未决产品要求）。
+- 保证活跃 Combat 可以跨进程精确续玩（已明确放到 Post-MVP）。
 
 ### 1.3 设计取舍
 
@@ -37,14 +37,14 @@
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
 | 剧本背景、场景结构、进入条件、起始模板 | Adventure Package 作者（MVP 手工） | State Machine | 初始化模板只能在创建 Session / 特定实体首次实例化时应用一次 |
-| PC 的角色构建、职业、数值与装备初始审核 | 玩家选择 + Rule Engine Build API | Rule Engine（机械状态）、State Machine（人物身份/世界归属） | 包只定义起始约束或预制角色**引用**，不任意伪造 PC 成品数值 |
+| PC 的角色构建、职业、数值与装备初始审核 | 玩家选择 + Rule Engine Build Evaluation | **State Machine**（人物身份及全部机械运行状态） | 包只定义起始约束/预制角色引用；Rule Engine 仅执行机械验证与转换计算 |
 | NPC Profile、动机、角色可知事实 | Adventure Package | State Machine 管理内容实例、知识与记忆 | NPC 只收到自身允许访问的数据 |
 | NPC 对话或行动选择 | 对应 NPC Sub-agent / 经审查的非 LLM 策略 | 仅为提议；不直接获得状态写权限 | Agent DM 不替需要独立决策的 NPC 直接编造行为 |
 | Scene、Quest、物体归属、剧情标志、世界时间 | Adventure Package 初始模板 | State Machine | 经过授权的结构化事件更新 |
-| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Rule Engine 的规则与输入 | Rule Engine | State Machine 不重复结算，不根据叙事修改数值 |
+| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Rule Engine 返回未提交的 Delta / Events；State Machine 验证并原子提交，不重写规则 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
 
-**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。被批准的命令应带有 `session_id`、`command_id`、`actor_id`、`expected_state_version`；调用 Rule Engine 的部分另使用其稳定的请求身份/回执。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 冻结。
+**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。被批准的命令应带有 `session_id`、`command_id`、`actor_id`、`expected_state_version`；调用 Rule Engine 的部分必须是无权威副作用的求值，并将结果纳入同一 State Machine 事务与回执。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 冻结。
 
 ---
 
@@ -128,7 +128,7 @@ adventure-pack/
 ### 4.3 Scene、Event 与时间
 
 - `scene.entered`、`scene.exited` 可作为结构化事件，不直接暗示剧本完成。
-- 游戏内轮数由 Rule Engine 的**已提交** `Turn/Round` 事件驱动；世界时间由 State Machine 管理。不得依赖 LLM 在文本中自行数回合。
+- 游戏内轮数由 State Machine **最终已提交**的 `Turn/Round` 规则事件驱动；世界时间由 State Machine 管理。不得依赖 LLM 在文本中自行数回合。
 - “第 N 回合”“获得某项线索后才能进入”“累计若干成功”需独立字段或累计状态，而非运行时解析自然语言。
 - 如果一个场景始终无法满足入口条件，系统要返回拒绝/解释，不能偷偷修改事实以确保剧情继续。
 
@@ -155,6 +155,10 @@ adventure-pack/
 
 **待决策**：普通敌人是否默认调用 `sub_agent`。`MVP_SCOPE.md` 目前要求**至少一名敌方 NPC 的显式战术 Intent**来自独立 NPC Sub-agent；这与“每个普通怪物都要调用 LLM”不是一回事。实现可对其它低复杂度怪物使用 `deterministic_policy`，但不得把它当作已完成上述 Sub-agent 验收。
 
+### 5.2a NPC Schedule 初始模板（可选、MVP 基础）
+
+`actors.yaml` 可以包含 `default_schedule` / `initial_activity` / `schedule_conditions`，表达 NPC 在游戏内时间下的预设工作、用餐、休息和初始位置。内容只规定**候选日程与初始条件**；实际 `current_activity`、日程取消/中断、下一游戏时刻、活动完成回执是 State Machine 持久化的 Runtime State。具体时间格式及触发 AST 待 `MODULE_CONTRACTS.md` 验证。不得从日程文本直接执行未授权动作、瞬间传送或越过 Rule Engine 求值。
+
 ### 5.3 NPC 知识隔离
 
 将同一 NPC 的资料分为：
@@ -179,7 +183,7 @@ NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出�
 关键不变量：
 
 - 战斗初始化时校验 Actor、状态来源、Ruleset、已批准的怪物模板和地图约束。
-- 战斗中的 HP、位置、行动预算、RNG、条件、Spell Slot 由 Rule Engine 负责；Scene/Quest 只能消费其权威事件。
+- 战斗中的 HP、位置、行动预算、RNG、条件、Spell Slot 均由 State Machine 统一持有；Rule Engine 根据 Snapshot 计算求值结果，Scene/Quest 只能消费最终已提交的事件。
 - Enemy Sub-agent 仅能提交带 Actor 身份的 Typed Intent，由 Host 授权，再由 Engine 校验与执行。**现有 Engine 的显式 NPC Intent 公共入口仍需核实或补齐**。
 - Encounter 的结局可以是获胜、撤退、投降或指定条件结束，不能预设所有敌方 Actor 必须死亡。
 - `solo_adaptation_ref` 指向人工审查且可追溯的单人平衡决定，禁止在 Engine 已掷骰后因“保护主线”篡改结果。
@@ -220,9 +224,9 @@ MVP 候选 `trigger.type`：
 | --- | --- | --- |
 | `scene.entered` / `scene.exited` | State Machine | 首次进入、离开 |
 | `object.interacted` | State Machine 经授权的交互提交 | 检查/操作机关 |
-| `check.resolved` | Rule Engine 的已提交检定结果 | 通过 DC、失败 |
+| `check.resolved` | State Machine 最终提交的 Rule Engine 检定求值结果 | 通过 DC、失败 |
 | `npc.decision_accepted` | 经 Host 审核的 NPC 意图 | NPC 发言/承诺或采取行动 |
-| `combat.event_committed` / `combat.ended` | Rule Engine 事件/结果 | 指定回合、离场、结算 |
+| `combat.event_committed` / `combat.ended` | State Machine 提交的机械规则求值事件/结果 | 指定回合、离场、结算 |
 | `world.flag_changed` | State Machine 事务 | 线索、门、任务标志改变 |
 | `challenge.updated` | State Machine | 技能挑战计数变化 |
 
@@ -239,7 +243,7 @@ MVP 候选 `trigger.type`：
 State Machine 可以在已验证的世界事务中执行：
 
 - `set_flag`、`set_object_state`、`move_world_actor`、`grant_or_transfer_world_item`、`reveal_fact_to_actor`、`update_relationship`、`advance_challenge`、`start_encounter_request`、`transition_scene_request`。
-- 与 Rule Engine 有关的效果只能生成**待执行的规则命令**，由合法入口提交并等待结果，不能直接输出 `hp=-5`、`spell_slot_spent=true` 作为已生效世界效果。
+- 与 Rule Engine 有关的效果只能生成**待执行的规则命令**，由 State Machine 合法入口发起求值并提交结果，不能直接输出 `hp=-5`、`spell_slot_spent=true` 作为已生效世界效果。
 
 所有提交有稳定 `command_id`/`event_id`、版本检查和去重；同一奖励、陷阱、场景转移不能因 Retry 或重入重复触发。世界多步事务应原子提交；跨模块事务可使用有记录的 Prepared/Committed/Rejected/Committed-Response-Failed 状态，不能声称网络错误等于规则未执行。
 
@@ -395,13 +399,13 @@ Player intent / NPC decision proposal
     -> DM narrates from the committed state
 ```
 
-对于 Rule Engine 与 State Machine 之间的网络/进程边界，必须显式协调执行已提交但响应丢失的情形；不能以第二次掷骰重放替代读取已提交回执。
+对于 State Machine 的最终数据库提交/响应边界，必须通过稳定 Command Receipt 识别是否已提交；Rule Engine 的求值本身没有权威副作用，响应丢失不代表已改变世界，未提交不能推进权威 RNG。
 
 ### 9.3 保存与恢复
 
-- `Adventure Package` 不随玩家操作改变；Session 保存**包版本、当前 Scene、世界 Flag、物品归属、NPC 身份/记忆/关系、Quest、事件去重记录**，并持有 Rule Engine 结果的稳定引用/已结算权威状态。
+- `Adventure Package` 不随玩家操作改变；Session 保存**包版本、当前 Scene、世界 Flag、物品归属、NPC 身份/记忆/关系、Quest、事件去重记录**，并持有已提交 Character/Combat/RNG State、规则求值关联信息和稳定 Commit Receipt。
 - 退出并重新进入某个 Scene，NPC 不会回到开局对话状态，已经领取的奖励和已解除的机关不会重置。
-- MVP 最少应支持**非活跃战斗 Session** 的保存/恢复。活跃战斗跨进程恢复仍为 **TBD**；若无法可靠保存，应阻止中途恢复或采用显式的受控边界，不能装作已恢复。
+- MVP 最少应支持**非活跃战斗 Session** 的保存/恢复。活跃战斗跨进程精确恢复已经明确为 **Post-MVP**；若无法可靠保存，应阻止中途恢复或采用显式的受控边界，不能装作已恢复。
 - Deterministic Replay 以**已提交的规则命令序列 + 同一规则包/种子/初始状态**为基准；不要求重新推理的 LLM 输出逐字一致，也不应保存/重放原始私有推理轨迹。
 
 ---
@@ -451,9 +455,9 @@ Player intent / NPC decision proposal
 | T02 | NPC/Monster `controller.kind` 默认值 | 重要 NPC 按需 `sub_agent`；普通怪物可使用确定性策略，但至少一次敌方 Sub-agent Intent 必须完成验收 | **产品决策未完全确认** |
 | T03 | PC 的角色构建范围 | 可从经审核的一级预制角色或有限 Build 输入开始 | 待决策 |
 | T04 | Scene 状态实例化时机 | Session 创建全局状态；Scene 懒初始化一次 | 待实现确认 |
-| T05 | Rule Engine 外部 Hazard / NPC 显式战斗 Intent | 先验证公开接口，缺失则作为 MVP 集成阻塞项 | 必须技术验证 |
+| T05 | Rule Engine 的 Stateless Hazard / NPC 显式战斗 Intent Evaluation | 先验证公开接口，缺失则作为 MVP 集成阻塞项 | 必须技术验证 |
 | T06 | 单人遭遇、非致命训练、旧版规则数据 | 独立人工裁定并追溯记录，不篡改骰点 | 待场景审阅 |
-| T07 | 活跃战斗持久化 | MVP 最少保证非战斗 Session 恢复 | 待决策 |
+| T07 | 活跃战斗精确续玩 | MVP 仅承诺非战斗 Session 恢复；活跃战斗跨进程精确续玩在 MVP 之后 | 已确认范围 |
 | T08 | 世界事件条件 AST 的精确编码与限制 | 固定少量 Operator，默认拒绝未知类型 | 待实现确认 |
 | T09 | 来源及许可元数据的自动发布检查 | 首版可结合人工审查 + CI 中的限制路径检查 | 待设计 |
 | T10 | World Builder 与 Visual Schema 未来如何扩展 | 只留 `schema_version` 与可选 Assets，不提前实现 | MVP 后 |
@@ -468,6 +472,6 @@ Player intent / NPC decision proposal
 2. 建立一个**公开可提交的原创合成 Fixture**，通过引用、条件、幂等与权限校验。
 3. 明确 Rule Engine 已有接口与缺失接口，特别是 NPC 显式 Combat Intent 和受控 Hazard 结算；给出真正的 MVP 阻塞项。
 4. 确认普通 Monster 是否强制 Sub-agent；明确 MVP 至少一条敌方 NPC Sub-agent 战斗验证链。
-5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、Engine Receipts、World Events 和 State Version 边界，避免两套权威状态。
+5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine Commit Receipts、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：先实现 `Adventure Package Validator + Session Initialization + Scene Persistence` 的最小闭环，再加入 NPC Knowledge Projection、World Events/Skill Challenges，最后接入经审核的规则入口与完整 Golden Adventure。未通过一次可重访且可恢复的端到端测试前，不应扩成通用世界模拟系统。

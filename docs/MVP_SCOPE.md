@@ -1,7 +1,7 @@
 # Agentic TRPG — MVP Scope Specification
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**  
-> **版本：v0.4**  
+> **版本：v0.5**  
 > **初稿日期：2026-10-09**  
 > **文档级别：项目级（跨 Repository）**  
 > **建议仓库位置：** `agentic-trpg/agentic-trpg/docs/MVP_SCOPE.md`  
@@ -33,6 +33,12 @@
 - **[已确认] 视觉引擎后置：** 可交互的 Visual Representation / Presentation Engine、自动地图资产管线、实时视觉状态同步均在 MVP 后开发。少量不影响游戏状态的 AI 插画仍可选；本地 Golden Adventure 无插画也须可通关。
 
 
+**已批准的顶层架构变更（ADR-001）**：State Machine 是 World / Character / Combat / RNG 的单一权威运行状态拥有者和最终提交者；Rule Engine 仅执行确定性规则求值，返回尚未提交的状态转换。既有文档中 迁移前 Rule Engine 持有 Combat State 的文字是迁移前遗留描述，不代表产品意图。
+
+**[已确认] DM 职责隔离**：DM Planner 负责游戏规划/主持与结构化提议；DM Narrator 只依据玩家可见的已提交结果进行叙事，不共享未经授权的 GM Secret/其他 NPC 私有认知，可使用同一 LLM 但需隔离上下文和权限。
+
+**[已确认] NPC 背景行为与认知**：NPC 是持久的逻辑角色，拥有 Schedule / Current Activity；Memory Gate 在 NPC 未激活时按保守策略保留重要 Observation。重大观察可以按需触发独立的 NPC Cognition 更新或行为中断；MVP 只要求简单游戏时钟日程，不实现常驻 NPC 社会模拟。Jev 为候选实现、非 MVP 强制依赖。
+
 **重要架构边界：** “没有战术画面”不等于“没有权威战术状态”；“NPC Sub-agent 有自主决策能力”不等于它可以修改世界状态、决定骰点或绕过 Rule Engine；“一个 NPC 一个独立角色上下文”也**不等于**必须为每个 NPC 常驻部署独立模型或进程。
 
 ## 1. 项目愿景与 MVP 定义
@@ -47,7 +53,7 @@
 
 **[已确认的产品方向；细节仍待验收设计]** 首个 MVP 的成功标准不是实现全部 SRD 或自动编译任意冒险，而是：
 
-> **一名真人玩家只控制一名 PC、没有 AI 队友**，在 Agent DM 主持下通过自然语言完成选定的 **First Blush** 单人冒险（经人工适配），核心流程涵盖**剧本实际包含的 NPC 互动、探索、检定、战斗、状态转移与合法结局**；休息/资源恢复等若未自然出现在剧本内的共用能力，通过独立集成测试验收。对话 NPC 和战斗敌人的实际决策通过有独立角色上下文的 **NPC Sub-agent** 提出；Agent DM 负责主持、协调与叙述。State Machine 管理世界/会话权威，Rule Engine 管理已支持的机械计算和战斗状态。所有越权或不支持的规则必须有明确反馈。
+> **一名真人玩家只控制一名 PC、没有 AI 队友**，在 Agent DM 主持下通过自然语言完成选定的 **First Blush** 单人冒险（经人工适配），核心流程涵盖**剧本实际包含的 NPC 互动、探索、检定、战斗、状态转移与合法结局**；休息/资源恢复等若未自然出现在剧本内的共用能力，通过独立集成测试验收。对话 NPC 和战斗敌人的实际决策通过有独立角色上下文的 **NPC Sub-agent** 提出；Agent DM 负责主持、协调与叙述。State Machine 统一持有并提交全部世界、角色和战斗运行状态，Rule Engine 按固定规则集计算机械 State Delta，不拥有独立权威 Combat State。所有越权或不支持的规则必须有明确反馈。
 
 MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块各自拥有 API 的集合。关闭图片生成后仍应完整可玩；**不以 NPC 同伴系统替代 NPC Sub-agent 的独立性验证**。
 
@@ -66,7 +72,7 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 | AI 场景插画 | 可选、非阻塞增强，不参与规则裁决 | [已确认：可选] |
 | 验收等级 | 以 1–5 级常见能力作为重点候选范围；不删除已有高等级实现 | [建议] |
 | 角色准备 | 至少允许载入预设玩家角色；完整创建器范围另行决定 | [建议] |
-| 战斗空间 | Engine 内部维持权威 2D 网格/位置、范围及掩护计算；无需渲染地图 | [建议] |
+| 战斗空间 | State Machine 权威保存 2D 战斗网格位置；Rule Engine 按规则计算移动、范围和掩护；无需渲染地图 | [建议] |
 | 单人战斗平衡 | 选用可由一名 PC 独自面对的遭遇，必须保留正常失败、死亡和撤退可能，不通过 DM 任意改骰“保护剧情” | [建议] |
 | 运行形态 | 本地/单实例优先；Agent 模型、调用成本、并发规模另议 | [待决策] |
 | 黄金冒险内容 | **First Blush**，人工编写/审核本地 Adventure Package；移除对 AI 队友的依赖、审查单人遭遇安全性 | [已确认；内容适配待核对] |
@@ -84,18 +90,18 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 | **Agent DM** | 解释玩家意图、主持场景、安排 NPC Sub-agent 调用、GM 难度/线索和叙事裁决、将已提交结果叙述给玩家 | **场景组织与语义裁决** | 直接代替 NPC Sub-agent 做人物决策；伪造命中/骰点、HP 或 Rule Engine 结果 | **核心** |
 | **NPC Sub-agent**（属于 Agent DM） | 基于 NPC 自身角色设定、当前知识、目标与记忆决定说什么、做什么；给出对话或结构化行动提议 | **角色层面的决策提议，不具备权威状态写入权限** | 查看角色不应知道的秘密；写 HP/Slot/世界状态；自行确认机械动作成功 | **核心内部能力** |
 | **State Machine** | Session、Scene、任务、世界实体、时间、NPC 记忆/关系、Actor 控制权限、持久化及协调结果提交 | **世界、会话与角色背景事实** | 再实现攻击、伤害、行动经济；直接把 NPC 提议当成已提交状态 | **核心** |
-| **Rule Engine** | Typed RuleSet、规则合法性、骰点、攻击/豁免、行动经济、战斗机械状态转换及事件 | **明确支持的机械规则与战斗运行态**，与发起提议的 Agent 无关 | 扮演 NPC、决定 NPC 的动机、管理剧情与完整世界 | **核心** |
+| **Rule Engine** | Typed RuleSet、规则合法性、骰点、攻击/豁免、行动经济、战斗机械状态转换计算及拟议事件 | **明确支持的机械规则求值，不拥有独立权威运行态**，与发起提议的 Agent 无关 | 扮演 NPC、决定 NPC 的动机、管理剧情与完整世界 | **核心** |
 | **Visual Presentation** | 将来的地图、Token、动画与场景呈现 | **只拥有展示层状态** | 直接决定伤害、HP、位置或合法性 | **MVP 后** |
 
 ### 2.1 状态所有权原则
 
 **[已确认的目标原则] 一份权威状态只能有一个计算/写入所有者。**
 
-- 战斗中的 HP、临时 HP、Condition、行动预算、集中、持续效果、战斗位置及 RNG：由 **Rule Engine** 负责裁决；玩家 PC 与敌方 NPC 走相同的规则正确性标准。
+- 战斗中的 HP、临时 HP、Condition、行动预算、集中、持续效果、战斗位置及 RNG：由 **State Machine** 统一持有并提交；由 **Rule Engine** 负责合法性判断和机械 State Delta 计算。玩家 PC 与敌方 NPC 走相同的规则正确性标准。
 - Session、Scene、任务、NPC 身份、已知事实、目标、人物关系、持久化记忆、场景物体、控制权限和世界时间：由 **State Machine** 保存或管理权威版本。
 - NPC Sub-agent 只接收经过权限/知识筛选的角色视角上下文；做出角色决定，并输出**待验证**的对话或行动意图。Sub-agent 不能直接写入世界数据，也不能自行宣告命中、伤害或资源消耗。
 - Agent DM 对 NPC 行动进行**世界可行性与规则执行协调**，负责 GM 裁决和对外叙事；不能任意覆盖 NPC Sub-agent 的人物决策，仅因剧情想要某种结果就替其发言或作弊改骰。
-- 战斗结束及其他明确同步时点，State Machine 根据 **Rule Engine 已提交的 Event/Result** 写回世界状态；不得从 DM/NPC 的自由文本推断机械资源变化。
+- 每次规则行为都由 State Machine 基于 Rule Engine **未提交的 Evaluation Result** 进行版本校验及原子提交；不存在战斗结束时从独立 Engine 权威存储批量回写世界的双权威同步阶段。不得从 DM/NPC 的自由文本推断机械资源变化。
 - 可选图片及文字展示不属于权威状态来源。
 
 **[待决策]** 跨场景 Effect、库存装备、NPC 记忆的精简/冲突处理以及活跃战斗恢复的最终契约由后续 `MODULE_CONTRACTS.md` 设计。
@@ -123,7 +129,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 2. **事件驱动、按需调用：** 仅在玩家与该 NPC 交互、NPC 需要做关键选择或轮到该 NPC 战斗行动时唤起其 Sub-agent；空闲角色不消耗持续推理资源。
 3. **输入受限：** State Machine/Agent DM 提供经过筛选的角色视角 Snapshot、允许的行为范围与必要的近期事件；NPC 不直接获得世界全部隐藏信息或其他 NPC 的私人思考。
 4. **输出结构化：** 普通对话产生 `NPCDialogueProposal`（表述、意图、必要的世界行动提议）；战斗产生 `NPCActionIntent`（actor、动作、目标/能力选择及必要参数）；字段名称只是产品级示例，最终 schema 待设计。
-5. **授权与提交分离：** DM/State Machine 校验世界交互；需要规则效果的行动交 Rule Engine 检查并执行；只有经过权威提交的结果进入长期世界状态。
+5. **授权与提交分离：** DM/State Machine 校验世界交互；需要规则效果的行动交 Rule Engine 求值，最终由 State Machine 验证提交；只有经过权威提交的结果进入长期世界状态。
 6. **记忆持续：** 关键 NPC 能在玩家再次见面时记得先前重要互动、承诺或冲突，存储由 State Machine 负责，Sub-agent 消费角色可知的摘要。
 7. **有限交互循环：** 明确每次行动的模型调用预算、拒绝重试上限与超时行为；不得出现 NPC 无限自发循环或调用风暴。具体数字待决策。
 8. **可重放性：** 保存已提交的 NPC 意图及其权威结果；**不要求**相同种子下 LLM 每次生成完全相同的话或选择。
@@ -145,9 +151,9 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
                                     |
                                     +──世界操作────────────> State Machine 授权/提交
                                     |
-                                    +──机械 Intent─────────> Rule Engine
+                                    +──机械 Intent─────────> State Machine -> Rule Evaluation
                                     |                         |
-                                    <──────已提交 Events / Result ─────────+
+                                    <──────最终 Commit Receipt / Perception Events ─────────+
                                     |
                               用权威结果叙述、推动 Scene
                                     |
@@ -168,7 +174,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 | G02 | NPC 独立对话、任务选择 | 玩家与委托人/商人等交流；NPC Sub-agent 根据个人目标、已知信息和关系回应；任务状态经授权更新 | NPC Sub-agent、Agent DM、State Machine | Core |
 | G03 | 探索、搜寻、调查 | 自由语言探索、发现线索和切换场景；必要时以 Engine 处理 Ability / Skill Check | Agent DM、State Machine、Rule Engine | Core |
 | G04 | 物体交互与基础陷阱 | 开门、调查物体、解除机关；失败在审定范围内可触发 Save、Damage、Condition | State Machine、Agent DM、Rule Engine | Core（有限范围） |
-| G05 | **单人 PC 对敌方 NPC 的战斗** | 玩家选择自己 PC 动作，敌方 NPC Sub-agent 选择合法攻击/战术意图；Engine 管理规则、资源与回合 | NPC Sub-agent、Rule Engine、State Machine | Core |
+| G05 | **单人 PC 对敌方 NPC 的战斗** | 玩家选择自己 PC 动作，敌方 NPC Sub-agent 选择合法攻击/战术意图；State Machine 持有并提交机械/战斗状态，Engine 计算规则、资源与回合转换 | NPC Sub-agent、Rule Engine、State Machine | Core |
 | G06 | 精选法术、职业能力与道具 | 已获准的动作正确检查目标、支付资源、产生状态/事件并可拒绝非法调用 | Rule Engine、Agent DM | Core（精选） |
 | G07 | 休息与资源恢复 | HP、Slots、特性等按规则恢复；世界时间由 State Machine 推进 | Rule Engine、State Machine | Core |
 | G08 | 战后状态与任务推进 | PC 及相关敌人状态正确写回；战利品与剧情分支可验证 | Rule Engine、State Machine、Agent DM | Core |
@@ -293,14 +299,14 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 
 - 每个改变权威状态的请求都能追踪 Session、Scene、Actor、调用源及请求身份。
 - 真人玩家仅能直接代表唯一 PC；NPC 的行为选择由对应 `npc_id` 的 NPC Sub-agent 提出，State Machine/Host 校验 NPC 身份、控制权、状态版本与可见信息；Agent DM 只做合法协调，不代其直接下决定。
-- NPC Sub-agent 的结构化产出必须区分 `dialogue`（可叙述内容）、`world_action_proposal`（待世界审核操作）和 `combat_intent`（待 Rule Engine 执行动作）；最终的具体数据 Schema 尚待设计。
+- NPC Sub-agent 的结构化产出必须区分 `dialogue`（可叙述内容）、`world_action_proposal`（待世界审核操作）和 `combat_intent`（待 State Machine 授权并调用 Rule Engine 求值后提交）；最终的具体数据 Schema 尚待设计。
 - NPC 决策不能直接携带“成功造成多少伤害”“把某目标 HP 改成多少”之类最终机械结论。含攻击模式、目标、法术效果和资源的命令必须明确选择。
 - PC 和 NPC 可以共享 Engine 机械语义，Controller 权限在外围执行，不能通过伪造 `actor_id` 越权。
 - 引擎或 Host 对非法提议应提供可解释的拒绝，NPC Sub-agent 可以在受限预算内重新选择；异常不能制造已提交的假象。
 
 ### 6.2 Result / Event
 
-- 区分：执行成功、规则拒绝、GM 裁决、执行异常、已提交但响应失败。
+- 区分：执行成功、规则拒绝、GM 裁决、执行异常、State Machine 已提交但响应失败。
 - 提交后的规则事件具备稳定顺序、来源和受影响对象；NPC Sub-agent 的原始提议与最终结果不能混为一谈。
 - 重试不会重复扣减 Action、Slot、Charges 或写入同一世界操作。
 - Agent DM 的叙事要以已提交结果为依据；任何 NPC 即兴表述都不能让未执行的行动自动变为事实。
@@ -311,8 +317,8 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 - State Machine 明确管理世界版本、场景、NPC 身份、角色私有与公共记忆、任务/关系的合法写入方式。
 - NPC Sub-agent 只读获取被授权的 NPC 视角：`npc_id`、角色设定、动机、可知事实、相关互动记忆、当前场景及可用动作摘要；不向 NPC 泄漏 DM 全知视角或其他 NPC 私密内容。
 - 已提交重要对话与剧情事件驱动记忆更新，确保同一个 NPC 跨场景和 Session 仍有连续人格与事实；记忆压缩/冲突解决属于后续契约的实现问题。
-- 战斗开始需要输入快照，结束需要输出/结算协议；HP、资源与 Effect 所有权明确，不能用 DM/NPC 自由文本推算扣减。
-- 首版是否支持**活跃战斗跨进程恢复**仍待决策，不能将一般 Session 保存等同于战斗恢复。
+- 战斗开始、持续回合与结束均需版本化 Combat/Character Snapshot 与规则求值协议；State Machine 最终提交全部 HP、资源、Effect、RNG 和事件，不能用 DM/NPC 自由文本推算扣减。
+- **MVP 已决定不支持活跃战斗跨进程精确续玩**，只要求非战斗安全恢复与正常战斗结束；不能将 State Machine 持久保存 CombatState 等同于已具备精确中途恢复。
 
 ### 6.4 适配现有 Rule Engine
 
@@ -321,6 +327,15 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 根据 2026-10-09 审计基准（`main`：`64dd920`），已有 `PlayerIntent`、`CombatEvent`、`LiveCombatView`、`CombatOutcome`、HTTP Bridge 等。上述接口仍是候选对接面，不代表所有 NPC Sub-agent 决策都能直接运行。
 
 **[必须优先验证的集成缺口]** 现有玩家行动主要经 `submit_player_intent`，怪物通过 `advance_monster_turn` 使用内部行为选择。若 MVP 要求**NPC Sub-agent 而非 Engine 内置 AI 决定敌人行动**，必须提供受 Host 授权、可表达目标/能力选择的 NPC 显式 Intent 执行契约（或证明已有公共入口能实现同等效果）。它必须复用共享合法性、资源、事件、RNG 与回滚，不能绕过到 `_LiveCombat`，也不能把 NPC 临时冒充为 Player Character。
+
+## 6.5 NPC Perception / Memory Gate / DM 分离（目标协议摘要）
+
+- State Machine 只向 NPC 提供经过 Perception 投影的 Event Observation 和 Current Perceptual View，不直接泄漏 WorldState 全量事实。重要事件依事件发生时的感知证据计算，不能按 NPC 当前所在位置追算旧事件。
+- Observation 先进入可靠证据路径，Memory Gate 可在不激活交互式 NPC LLM 的情况下判为 Durable / Short-term / Discard；不能无记录丢弃关键观察、承诺或待处理的 Cognition Trigger。
+- NPC 的主观 Belief/Relationship 更新仍由该 NPC Sub-agent 提议，经 State Machine 校验来源、身份和幂等后写入；认知更新可以事件驱动独立触发。
+- NPC 的 Schedule 由游戏时钟驱动，默认动作必须进行合法性/当前状态复验。Behavior Trigger 仅决定是否需中断或唤醒 NPC，不直接生成超出权限的行动结果。
+- DM Planner 与 DM Narrator 在职责、上下文和工具权限上逻辑隔离；Narrator 只能消费可呈现的玩家视图与已提交事件，不得代替 NPC 作私人决定。
+- **统一权威状态约束**：涉及 HP/资源/战斗/库存的一次行动统一由 State Machine 提交；Rule Engine 只返回可验证的规则求值结果。
 
 ## 7. MVP 验收标准（End-to-End）
 
@@ -331,12 +346,16 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 | A01 | First Blush 完整文字单人冒险 | 从人工审核、本地载入的 First Blush Adventure Package 初始化 Session；仅一名 PC、无 AI 队友；忠于原剧本的关键场景与合法结局可运行，无需手工修改运行中数据库或 Engine 私有状态 |
 | A02 | NPC 对话与探索 | 选定剧本中实际存在的可交互 NPC 由其 Sub-agent 提出角色决策；Agent DM 不直接代言；世界变化经 Host 验证保存 |
 | A03 | **单人 PC + 敌人 NPC Sub-agent 战斗** | 玩家仅选 PC 动作，敌人自己的 Sub-agent 提交至少一个显式、合法的战术 Intent；Engine 计算回合、移动、攻击/豁免、资源、伤害与结束条件，无视觉地图 |
-| A04 | 机械确定性重放 | 相同规则数据、初始状态、Seed 和**已提交的 PC/NPC 命令序列**产生相同权威事件、结果和最终状态；不要求 LLM 决策或文案逐字相同 |
+| A04 | 机械确定性重放 | 相同规则数据、初始状态、RNG Snapshot 和**已提交的 PC/NPC 命令序列**产生相同权威事件、结果和最终状态；不要求 LLM 决策或文案逐字相同 |
 | A05 | 非法/不支持请求 | 无效 Actor 权限、目标、资源或规则在相应 Preflight 边界拒绝；没有额外资源扣除、RNG 消耗或越权修改 |
 | A06 | 重试与异常 | 已提交 Command 按约定幂等；意外故障不导致状态、资源或事件不一致 |
-| A07 | 战斗转交世界 | 玩家 PC 与敌方 NPC 的机械状态按真实来源归属安全写回，资源不误记到施法目标或其他角色 |
+| A07 | 战斗转交世界 | 玩家 PC 与敌方 NPC 的机械状态按真实来源归属被 State Machine 安全提交，资源不误记到施法目标或其他角色 |
 | A08 | 休息与场景推进 | 玩家资源按已选规则恢复，世界时间/Scene 正确推进；若原剧本没有自然休息环节，允许独立集成测试验收，不修改原剧情 |
 | A09 | Session 保存与读取 | 重载非战斗 Session 后，PC、任务、Scene、NPC 重要记忆与人物关系一致 |
+| A18 | 统一状态所有权 | 同一条战斗中消耗物品并恢复 HP 的命令只由 State Machine 原子提交物品、HP、行动预算、RNG 与事件；Engine 的 accepted 不可冒充 committed |
+| A19 | DM Planner / Narrator 隔离 | Planner 可处理 GM 机密但 Narrator 不读取未公开秘密，不把未提交内容作为世界事实 |
+| A20 | NPC 背景 Memory Gate / Cognition | NPC 不在对话中目击重大事件也能持久保留证据，必要时有界触发私人 Cognition Update，重试不重复改变关系 |
+| A21 | NPC 日程合法性 | 游戏时钟触发活动，若地点/前提变化则安全中止；不常驻运行所有 NPC 的 LLM |
 | A10 | 已支持规则正确性 | 每个纳入范围的机械规则有 SRD/明确裁决依据、公共执行入口、正确/拒绝用例和已知边界 |
 | A11 | 角色决策隔离 | 玩家只直接控制唯一 PC；NPC Sub-agent 有自己角色知识与目标；DM 仅主持和协调，不替 NPC 选择行动或偷偷改权威结果 |
 | A12 | 纯文字运行 | 关闭图像生成，无地图/Token/动画仍可完整游玩；插画无法影响状态 |
@@ -351,11 +370,11 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 ### 7.1 最小黄金测试场景
 
 - **Invocation/Payment：** 选一个动作，仅执行其所选 Activity 并支付相应 Action/Slot/Charge。
-- **PC/NPC Actor 隔离：** 玩家仅操作 PC；敌人的 NPC Sub-agent 发出行动提议，Host 做权限验证，Engine 执行结果。
+- **PC/NPC Actor 隔离：** 玩家仅操作 PC；敌人的 NPC Sub-agent 发出行动提议，Host 做权限验证，State Machine 提交 Engine Evaluation 结果。
 - **NPC 知识边界：** 给 NPC 一个它不知道的世界秘密，确保回答与战术不依赖该事实；同一 NPC 后续能读取明确获知的线索。
 - **Agent 处理拒绝：** 不把失败提议说成已经成功；重试/超时受控。
 - **状态与 RNG：** 无效目标、缺少资源、不支持机制及注入故障均不污染权威状态或随机序列。
-- **跨模块同步：** HP/Slot/Effect 从 CombatOutcome 写回世界时保持所属 Actor。
+- **统一提交：** HP/Slot/Effect/Inventory/RNG State Delta 在 State Machine 的同一事务提交，Actor 归属正确，无双权威 CombatOutcome 回写。
 - **展示非权威：** 无需视觉层也能完成冒险；文字和插画不会自行造成伤害、位移或资源变更。
 
 ## 8. 里程碑与开发决策顺序
@@ -363,8 +382,8 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 | 阶段 | 目标 | 完成标准 |
 | --- | --- | --- |
 | **M0：Scope 冻结** | 确认 First Blush、NPC Sub-agent 自主性、精选规则、人工内容录入及非视觉/无 World Builder 范围 | 文档状态升级为 Approved，待定项收敛，产品决策记录齐全 |
-| **M1：Rule Engine Correctness Closure** | 修复影响单人战斗的核心正确性问题 | Activity 选择、支付归属、拒绝回滚、重复请求等有公共测试 |
-| **M2：Cross-module Contracts / NPC Intent** | 定义 Session、Scene、NPC Role Memory、Command、Event、状态权威和**NPC 战斗显式控制入口** | NPC Sub-agent 不访问 Engine 私有状态也能合法选取敌方动作；非战斗 NPC 能做独立对话决定 |
+| **M1：Rule Engine Evaluation/State Cutover + Correctness Closure** | 依据 ADR-001 抽离 Rule Engine 规则求值与权威状态持有，并修复单人战斗核心正确性问题 | Snapshot/Evaluation/Delta 与 State Machine 原子提交有测试，Activity 选择、支付归属、拒绝回滚、重复请求均被验证 |
+| **M2：Cross-module Contracts / NPC Intent** | 定义 Session、Scene、NPC Role Memory、Command、Event、统一权威 State/Delta/Commit 和**NPC 战斗显式求值入口** | NPC Sub-agent 不访问 Engine 私有状态也能合法选取敌方动作；非战斗 NPC 能做独立对话决定 |
 | **M3：First Blush Text-first Vertical Slice** | 人工整理剧本数据，加载场景初始状态，打通 NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
 | **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A17 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
 
@@ -374,7 +393,7 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 
 - `trpg-rules-engine/BACKLOG.md` 是**技术缺口清单**，不是跨项目的 MVP 任务清单；不必清空 Deferred 才宣布 MVP 完成。
 - 每项新规则需求都要对应明确的单人冒险场景及可独立验证的机械结果。
-- **新增优先级依赖：** 因敌方 NPC 行动需要来自 NPC Sub-agent 而不是默认 Monster AI，必须验证 Rule Engine 的 NPC 显式决策入口能否使用；若不具备，应在基础正确性修复之后优先补足，而不是继续拓展冷门法术。
+- **新增优先级依赖：** 因敌方 NPC 行动需要来自 NPC Sub-agent 而不是默认 Monster AI，必须验证 Rule Engine 的无权威状态 NPC 显式求值入口能否使用；若不具备，应在基础正确性修复之后优先补足，而不是继续拓展冷门法术。
 - Batch 的有效进度应由规则正确性、可执行场景、跨模块状态一致性和 NPC Agent 独立行为证明，而非新增行数、Commit 数或测试数量决定。
 - 当前已审阅 Engine 的 Invocation 多 Activity 误执行和 `CombatOutcome` 支出归属错误，仍是优先正确性工作。
 
@@ -388,7 +407,7 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 | D04 | 首版精选 Spell / Feature / Item / Monster？ | 从单人冒险和共用机制反推 Rule Support Matrix | [待决策] |
 | D05 | 交互方式？ | **文字/自然语言优先** | **[已确认]** |
 | D06 | Visual Presentation 是否进入 MVP？ | **不进入；战术视觉/场景深度联动留待 MVP 后** | **[已确认]** |
-| D07 | 首版持久化保障？ | 先支持非活跃战斗的 Session 恢复；活跃战斗另议 | [待决策] |
+| D07 | 首版持久化保障？ | **非战斗 Session 可恢复；活跃战斗跨进程精确恢复在 MVP 之后** | **[已确认]** |
 | D08 | GM Override 权限与审计？ | 显式授权、结构化、有限范围并记录来源 | [待决策] |
 | D09 | 冒险内容来源？ | **First Blush** 作为首个本地 MVP Golden Adventure，需合法获取与人工审核/适配 | **[已确认；正文核对待做]** |
 | D10 | 部署与成本边界？ | 本地/单实例优先；NPC Sub-agent 按需执行 | [待决策：预算上限] |

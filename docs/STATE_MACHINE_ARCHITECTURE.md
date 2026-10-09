@@ -1,23 +1,23 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.2（已记录明确产品/技术决策；具体消息 Schema 与实现仍待审阅）  
+> **状态**：Draft v0.3（依据 ADR-001 统一状态所有权；具体消息 Schema 与实现仍待审阅）  
 > **日期**：2026-10-09  
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`  
-> **依赖**：[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.4；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.1  
+> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./adr/ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.5；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.2  
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。  
 > **证据边界**：本文件是基于已讨论范围和冒险需求的**设计建议**，不是现有 State Machine 代码的完成状态。与 Rule Engine 的 API 适配以实际实现和独立测试为准。
 
 ## 1. 目标、边界和核心术语
 
-State Machine 是**一次具体游戏 Session 的权威世界状态协调器**，不是剧本生成器、规则引擎或 NPC 对话模型。
+State Machine 是**一次具体游戏 Session 的唯一权威运行状态拥有者和最终提交者**，不是剧本生成器、规则引擎或 NPC 对话模型。
 
 它承担五件事：
 
 1. 加载并验证**不可变** Adventure Package；为一次 Session 实例化初始状态。
 2. 记录玩家和 NPC 的行动在世界中造成了哪些**已验证、已提交**的变化。
 3. 为 Agent DM / NPC Sub-agent 提供**按角色权限过滤**的上下文视图。
-4. 将需要机械裁决的动作交给 Rule Engine，并根据**已提交的** Result / Events 做世界层同步。
-5. 使用 Python + SQLite（WAL）保存和恢复**非活跃战斗**的 Session，防止重访重置、事件重复执行、重试重复付款和知识泄漏。
+4. 将需要机械裁决的动作交给无权威可变状态的 Rule Engine 求值，验证其未提交的 `StateDelta`，再在自身事务中统一提交 World / Character / Combat State、RNG、事件和回执。
+5. 使用 Python + SQLite（WAL）持久保存 Session 的全部已提交运行态；MVP 产品仅保证非战斗状态下的安全续玩，不要求恢复进行中的战斗，防止重访重置、事件重复执行、重试重复付款和知识泄漏。
 6. 在权威事件提交后生成按角色过滤的 Observation，持久化观察溯源，并向 Agent Host 提供按需激活及记忆更新的安全接口。
 
 ### 1.1 四个容易混淆的概念
@@ -26,10 +26,10 @@ State Machine 是**一次具体游戏 Session 的权威世界状态协调器**�
 |---|---|---|---|
 | **Adventure Definition** | 地点、静态世界事实、NPC 初始档案、剧情条件、规则绑定 | **不可变**（Session 固定版本） | Adventure Package 作者 / 验证器 |
 | **Session Runtime State** | 当前场景、场景实例、世界标记、物体归属、任务、NPC 记忆、事件记录 | **可变** | **State Machine** |
-| **Mechanical Combat State** | 战斗中的 HP、位置、Action Economy、RNG、Conditions、集中等 | **可变** | **Rule Engine** |
+| **Mechanical Combat State** | 战斗中的 HP、位置、Action Economy、RNG、Conditions、集中、回合等 | **可变** | **State Machine（唯一权威）** |
 | **Agent Working Context** | DM / NPC 当次推理看到的许可信息与最近事件 | **临时派生视图** | State Machine 提供事实边界；Agent 生成非权威提议 |
 
-**不变量**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则计算结果；State Machine 不维护第二份独立可写的战斗规则状态。
+**不变量（ADR-001）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则计算结果。World、Character、Combat 和 RNG 只有 State Machine 一份持久权威；Rule Engine 只计算而不提交，可使用单次求值内的临时可变对象。
 
 ### 1.2 行动、观察与记忆的认识论边界
 
@@ -37,7 +37,7 @@ State Machine 是**一次具体游戏 Session 的权威世界状态协调器**�
 |---|---|---|---|
 | `Intent` / `Proposal` | PC/Agent/Host 提交的**内部提议** | **否**；被拒绝的私有意图尤其不能公开 | 提议者可获合法拒绝回执；其他角色不可据此读心 |
 | `ObservableActionStarted` | **真实在世界中发生**且被提交的外部动作（例如实际伸手） | **是，该外显动作已经发生**；但目标效果未必成功 | 通过 Perception 判断哪些角色看到了动作 |
-| `WorldEvent` | State Machine 或可信 Rule Engine Result 的已提交投影 | **是，记录客观行为或结果** | 不能向所有 NPC 原样广播含秘密的事件 |
+| `WorldEvent` | State Machine 原子提交的世界/规则事件 | **是，记录客观行为或结果** | 不能向所有 NPC 原样广播含秘密的事件 |
 | `Observation` | State Machine 的 Perception Projection（必要机械判定来自 Rule Engine） | **是，该角色获得了某项观察**；观察内容不一定涵盖全部事实 | 构成该角色后续认知的证据，按角色私有保存 |
 | `Belief / Memory` | NPC Sub-agent 根据观察、目标与既有记忆**提出解释和更新**；State Machine 校验后保存 | **否，不自动成为客观世界事实** | NPC 后续决策和对话的私有上下文 |
 
@@ -54,51 +54,40 @@ State Machine 是**一次具体游戏 Session 的权威世界状态协调器**�
 ## 2. 总体运行架构
 
 ```text
-Human Player ──自然语言──► Agent DM（主持与语义裁决）
-                                  │
-                                  ├── query_view(player / dm)
-                                  ├── request_npc_decision(npc_id)
-                                  │        │
-                                  │        ▼
-                                  │   NPC Sub-agent
-                                  │   （私有知识 + 目标 + 记忆）
-                                  │        │
-                                  │        └── NPC proposal（非权威）
-                                  ▼
-                       State Machine（Session 权威）
-                         ├── Package Registry（只读定义）
-                         ├── Session / Scene / NPC State
-                         ├── Permissions / Knowledge Projection
-                         ├── Command Validator / Version Gate
-                         ├── Event Condition / Effect Executor
-                         ├── World Event Log / Event-time Evidence
-                         ├── Perception Projection / Observation Inbox
-                         ├── NPC Memory Repository / View Projection
-                         ├── Rule Engine Adapter ───────► Rule Engine
-                         │                               （战斗/检定权威）
-                         ◄──────── typed receipt / authoritative events ──┘
-                         └── SQLite Persistence / Outbox / Recovery
-                                  │
-                     ┌────────────┴─────────────┐
-                     ▼                          ▼
-              Committed World Events     Per-Actor Observations
-                     │                          │
-                     ▼                          ▼
-              Agent DM 叙事             Agent Host 按需激活 NPC
-                                                │
-                                                ▼
-                                       NPC Memory Proposal
-                                                │
-                                                ▼
-                                       校验 / 持久化私有记忆
-                     │
-                     ▼
-                 最小文字 UI
+Human Player -> DM Planner（解释、主持决策与 NPC 激活请求）
+                         |              Agent Host / Scheduler
+                         |                 |- NPC Sub-agent（私有 Context / 决策）
+                         |                 |- Memory Gate / Cognition Trigger
+                         |                 '- Schedule / Behavior Trigger（可替换轻量策略）
+                         v
+              State Machine（单一权威 Session 状态）
+               |- Adventure Package（不可变，只读定义）
+               |- World / Scene / Character / Combat / RNG State
+               |- Command Validation / Version Gate / Atomic Commit
+               |- Event Log / Event-time Perception / Observation Inbox
+               |- NPC Memory / Belief / Commitment Repository
+               |- Calendar / Due Schedule / Durable Outbox
+               '- Rule Evaluation Adapter <--> Rule Engine（无提交权）
+                       |                         输入 Snapshot + Typed Intent + RNG
+                       |                         输出未提交 Delta + RuleEvents / Choice
+                       v
+              Committed State + WorldEvent + Observation
+                       |                       |
+                       v                       v
+             DM Narrator（只读已授权        NPC Context/Memory Gate
+             叙事视图，不提交状态）               |
+                       |                       v
+                       v                按需 NPC Cognition / Actions
+                   Text UI
 ```
 
-图示为**逻辑组件**，不意味着 MVP 必须拆为微服务、消息队列或独立数据库。Perception 是 State Machine 内部子系统；Agent Host 负责激活 NPC（属于 Agent DM 运行模块）。MVP 优先 Python 单进程 + SQLite WAL，未来再决定部署拓扑。
+**DM Planner 与 DM Narrator 是逻辑隔离的职责和上下文，可共享底层 LLM，但不得共享同一未经授权的推理视图。** Planner 可以提出合法世界裁决方案，但不能绕过 State Machine；Narrator 只组织已确认、可向玩家展示的结果，不能暗自改写事实或泄露 GM-only 内容。NPC 的私有认知由对应 NPC Sub-agent 处理。
+
+本文定义逻辑组件，不要求微服务、常驻模型或新数据库。State Machine 首版为 Python + SQLite WAL；Perception、日程和确定性触发可作为内部子系统；Jev 仅为可替换、待实验的轻量分类器候选。Rule Engine 当前代码仍使用内存 `_LiveCombat`：它是**迁移前实现**，不能视为目标架构。
 
 ## 3. 运行时数据模型与状态所有权
+
+依据 ADR-001，CharacterState、CombatState、RNGState 及其版本与 WorldState 在同一权威提交域内；Rule Engine 输入是经验证的只读状态快照，输出只是待提交结果。
 
 建议把 Session 存储划分为少量聚合（aggregate）；下面是**概念数据结构**，不是已经冻结的 JSON/Python Schema。
 
@@ -128,7 +117,7 @@ Human Player ──自然语言──► Agent DM（主持与语义裁决）
 约束：
 
 - `flags` 仅用于剧情/场景状态，不能成为 HP、Slot、Action Budget 等机械变量的替代品。
-- 物品 `owner_id`、当前位置与 `quantity` 由世界事务唯一维护；在活跃战斗期间涉及装备/消耗的行为需遵守 Engine 的权威结算边界。
+- 物品 `owner_id`、当前位置与 `quantity` 由 State Machine 唯一维护；在活跃战斗中也由 State Machine 原子提交，机械消耗与合法性先经 Rule Engine 求值。
 - 人物身份在 World State 中稳定；战斗中 `Combatant` 是同一 Actor 的临时机械表示，其结束结果通过映射返回世界。
 - 若两个场景引用同一个世界 Actor，不复制成互不关联的角色实例。
 
@@ -154,6 +143,12 @@ Human Player ──自然语言──► Agent DM（主持与语义裁决）
 
 **三个独立命题**：`world_fact_is_true`、`npc_knows_fact`、`npc_believes_fact`。允许 NPC 有错误信念和撒谎，但禁止把信念自动提交为世界事实。
 
+### 3.4a `CharacterState`、`CombatState` 与 RNG（统一权威）
+
+State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数、装备、Condition、持续效果；活跃 Encounter 持有 Initiative/Turn、行动经济、位置、Concentration、反应窗口、Pending Choice、RNG 流位置以及所需技能/规则生命周期账本。只存储明确规定的权威数据，不复制可由规则确定性计算的派生字段作为第二权威。
+
+同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。State Snapshot 必须完整、版本化并固定 Ruleset Digest。Rule Engine 内部临时缓存及执行对象不是可持久化权威。
+
 ### 3.5 `ChallengeInstance`：非战斗技能挑战
 
 针对撤退、追逐或跨多次检定的任务，建议记录：`challenge_id`、`scene_id`、`successes`、`failures`、`required_successes`、`status`、`resolved_check_ids`。每次检定的 DC/能力/结果由合法规则或显式 GM 裁决产生，**State Machine 仅累计已提交 Result**。
@@ -167,7 +162,7 @@ Human Player ──自然语言──► Agent DM（主持与语义裁决）
 - `event_seq` 由 Session 中的权威提交顺序分配，单调递增；它是**记录顺序**，不自动证明角色的生理反应速度。
 - `WorldEvent` 应记载必要的**发生时刻证据**（行动时地点、参与者位置、光照/可听性、遮挡/秘密等级、相关动作是否外显）。不能在 NPC 数分钟后苏醒时用**当前**视野倒推此前谁看到了什么。
 - 可见动作的开始与成功/失败结果是不同的事实；只有实际外显的 `action.started`（候选事件）才允许投影给旁观者。私有 Intent、未执行命令、LLM 私下计划不得伪造为外显动作。
-- Rule Engine 相关事件必须从可信的已提交结果投影；战斗期间可能存在暂未持久结算的临时 Engine 事件，应按第 7 节的战斗隔离边界处理，不得冒充已永久提交的世界状态。
+- Rule Engine 产生的拟议机械事件只有在 State Machine 原子提交对应 Delta 后才成为权威 WorldEvent/CombatEvent；未提交的求值结果不得触发永久世界事件或 NPC 观察。
 
 ### 3.7 `ObservationRecord`：角色实际收到的观察
 
@@ -218,7 +213,7 @@ payload:
 | 分支 | 输入 | 权威执行 | 成功后的 State Machine 工作 |
 |---|---|---|---|
 | **世界操作** | 开门、取物、NPC 位置转移、设旗标 | State Machine 验证条件、权限并提交 | 记录一次世界事件，更新物体/Quest/Scene |
-| **规则操作** | Ability Check、Save、Combat Intent、受控 Hazard | Rule Engine（或明确授权的 GM 判定协议） | 消费已提交结果，再决定关联世界事件 |
+| **规则操作** | Ability Check、Save、Combat Intent、受控 Hazard | Rule Engine 进行无副作用求值；State Machine 统一提交 | 验证待提交 Delta，原子写入角色/战斗/世界状态、RNG、事件和回执 |
 | **纯对话** | `NPCDialogueProposal` | NPC 提议，经 Host 校验后成为可呈现内容 | 只有有明确语义的承诺/线索公开/关系变化才持久化；普通一句对话不产生机械效果 |
 | **场景转移** | 进入已定义出口、传送剧情事件 | State Machine 的场景与权限判断，必要时 Rule Engine | 更新位置并记录 enter/exit；不重置旧场景 |
 | **脚本事件** | 经审查的 `event_id` 触发及条件满足 | State Machine 的受限声明式 Event Executor | 执行允许列表的世界效果，一次性/按规定次数去重 |
@@ -229,41 +224,44 @@ payload:
 
 1. 按 `(session_id, command_id)` 查询历史完成回执；同键相同内容返回原结果，**同键不同内容拒绝冲突**。
 2. 验证 `expected_world_version`、Actor 控制权、当前 Phase、可见/可用对象与事件条件。
-3. 生成具体 State Delta；同一事务中应用 Delta、递增 `world_version`、追加 World Events、记录命令回执与事件去重键。
+3. 对需要机械规则的操作，先在**写事务外**调用 Rule Engine 求值得到 `accepted` / `rejected` / `needs_choice` / `unsupported`，并持有返回的预期版本和 RNG 转换；进入短事务后再次验证身份、版本及 Delta 不变量，再将全部 World / Character / Combat / RNG Delta、Events、Receipt 和去重键一并提交。世界操作可直接生成待提交 Delta。
 4. **事务提交完成后**才返回 `committed` 并允许 Agent DM 将其叙述为事实；失败/冲突不写任何部分 Delta。
 
 请求 payload 应使用稳定序列化计算指纹，以区分重复提交和同一 `command_id` 下的不同请求。MVP 使用单个本地 SQLite 数据库的原子事务，不引入分布式事务协调器。
 
 **性能与锁纪律（SM-01 已确认）**：Agent 推理、远程/本地 LLM 调用、需要等待的 Rule Engine 调用必须在 SQLite **写事务之外**。读取版本和生成提议后，在短写事务内重新验证 `world_version` 与操作条件，再原子提交 State Delta + World Events + Command Receipt + 去重记录 + 可即时生成的 Observation/Outbox。SQLite WAL 允许并发读，但写事务仍需串行；Session 内逻辑命令协调不等于 SQLite 自带游戏顺序。
 
-### 5.4 Rule Engine 跨边界提交：不可假装原子性
+### 5.4 单一提交者协议：Rule Evaluation ≠ Commit
 
-State Machine 与 Rule Engine **不是天然共享一个事务**。尤其现有 Bridge 的重试回执为进程内数据，不能据此宣称断电/跨 Worker 的永久 Exactly-once 保证。
-
-建议最小操作日志模型（最终枚举待冻结）：
+**目标语义由 ADR-001 固定。** Rule Engine 不拥有独立的权威可变 Combat；调用 `evaluate(snapshot, typed_intent, pinned_ruleset, rng_context)` 返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommitReceipt.status=committed` 才代表世界已变更。
 
 ```text
-prepared -> engine_requested -> engine_committed -> world_committed
-                      │                 │
-                      ├── refused ───────┘（无成功的机械世界副作用）
-                      └── uncertain / requires_reconciliation
+Load State Snapshot + version + RNG position
+  -> Rule Engine evaluate（不得提交）
+  -> accepted / rejected / needs_choice / unsupported
+  -> State Machine begin short transaction
+  -> Validate read set, versions, authorization, delta invariants, idempotency
+  -> Apply World + Character + Combat + RNG deltas and Events + Outbox
+  -> Commit SQLite transaction
+  -> Return immutable CommitReceipt / publish perceptions / Narrator output
 ```
 
-关键纪律：
+**核心约束**：
 
-- 发起调用前持久记录本次 `operation_id` / `command_id` 与经过验证的目标；发送给 Engine 时使用稳定 `request_id`。
-- `EngineResult` 必须明确是 `not_executed`、`rule_refused`、`committed`、`rolled_back` 还是`commit_unknown`（规范化候选分类）。**不能仅以 HTTP 是否为 200 判断有没有花费资源。**
-- 当确认 Engine 已提交后，在本地世界事务中完成**一次**对应同步和事件追加；同一 `engine_operation_id` 重放不得重复写入奖励、HP 或进度。
-- 如 Engine 已提交但 HTTP 响应丢失，优先用同一 Request ID 获取回执；若回执不可恢复（例如 Bridge 进程重启），将 Session 标记为 `blocked_reconciliation`，暂停影响状态的后续指令，**不得重新随机执行本次动作**。
-- `world_committed` 前后的任何异常都要可以通过幂等记录辨认；跨模块未解决缺口必须成为显式发布阻塞/部署限制，不能在日志中伪称“已原子提交”。
+- 不能在 SQLite 写事务中等待 LLM、Rule Engine 或远程调用；提交前重新验证输入版本/关联读集；冲突时废弃未提交的规则结果，并根据稳定命令 ID 与 RNG 语义受控重试。
+- State Machine 持有权威 RNG 状态或流位置；求值使用显式 RNG Snapshot；未提交请求、规则拒绝、版本冲突均不得推进权威 RNG。重试遵守幂等回执，不得双掷骰或重复付款。
+- Accepted Delta 必须覆盖一次动作的全部机械及世界副作用（例如药水消耗、恢复 HP、行动经济），状态更新、事件、RNG 和 Receipt 原子提交；不能用 Engine 自身的最终提交回执替代状态事务。
+- `needs_choice` 必须返回可标识、版本绑定的待续裁决状态，不得把未完成动作误写为结果；取消、超时及失效必须明确处理。复杂 Reaction Chain 可能需要可验证的短事务级分段及安全 PendingChoice 状态，实际协议在 Module Contracts 冻结。
+- 旧 `_LiveCombat`、`CombatHandle` 和 Bridge 进程内回执属于迁移前代码，不是可继续采用的双权威设计；迁移可以有短期兼容适配，但同一实际 Session 不得出现两个最终状态持有者。
+- Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
 
-**MVP 已确认范围**：主流程优先部署为单进程，对非活跃战斗做可靠持久化；不提供活跃 Combat 跨进程精确恢复。但即使不支持此能力，也必须拒绝伪恢复和重复付款，明确显示需要人工/受控恢复。
+本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
 
 ### 5.5 事件驱动与链式触发
 
-- 只有**已提交的权威事件**能触发 `events.yaml` 条件。LLM 的自述、未接受的 NPC 决策或草稿对话不是 Event。
+- 只有**由 State Machine 最终提交的权威事件**能触发 `events.yaml` 条件。LLM 的自述、未接受的 NPC 决策或草稿对话不是 Event。
 - Event Condition 使用既定封闭表达式词汇（`all`、`any`、`not`、`flag_equals`、`actor_present`、`event_once`、`challenge_count_at_least` 等），禁止 `eval`。
-- 可执行的 World Effect 只使用 `ADVENTURE_PACKAGE_SCHEMA.md` 的允许列表；机械结果必须发起 Rule Engine 请求并消费结果。
+- 可执行的 World Effect 只使用 `ADVENTURE_PACKAGE_SCHEMA.md` 的允许列表；机械效果必须先经 Rule Engine 求值，随后由 State Machine 验证并提交完整 State Delta。
 - 为防止 Event A → Event B → Event A 的无限循环，按 `event_id + trigger_event_id + session_id` 去重，并设定每个外部命令的最大链式事件数。发现循环应**整体拒绝世界事务**或进入显式故障状态；具体限额待实现期确定。
 - 一次“获得宝物”“取消机关”“完成任务”的世界效果应具有持久事件身份，不能因重试或再次进入场景重复发奖。
 - 事件链完成提交后，向 Perception Projection 提供事件时证据；观察对各 NPC **分别投影**而非广播完整世界事件。下游 Agent 激活可以异步，但对应 Observation/Outbox 不能无记录地丢失。若投影依赖额外 Rule Check，则在事务外协调受控检定并持久化待定状态，不能持有数据库写锁等待检定。
@@ -295,7 +293,7 @@ prepared -> engine_requested -> engine_committed -> world_committed
 
 ### 6.2 `WorldEvent → Observation`：事实如何成为角色经历
 
-1. State Machine 在世界操作成功后，或在消费可信的 Rule Engine 已提交回执后，持久化带顺序和来源的 `WorldEvent`。
+1. State Machine 在世界操作或 Rule Engine 求值结果**成功原子提交后**，持久化带顺序、来源与事件发生时证据的 `WorldEvent`。
 2. Perception Projection 使用该事件**发生时**的角色位置、在场状态、光照、可听范围、已审查可见性标签及必要规则检定，按 `observer_actor_id` 生成不同的 `ObservationRecord`。
 3. 只给每个角色提交自己可知的观察文本/结构；例如 NPC 见到某人倒下，不自动知道其隐藏 HP 或凶手的内心动机。
 4. Observation 先保存到该角色的私有有序收件箱（inbox）；可在其下一次激活时消费。离线 NPC 不需要运行 LLM，也不能因延迟激活而从**现在**的 WorldState 重算先前视野。
@@ -303,55 +301,34 @@ prepared -> engine_requested -> engine_committed -> world_committed
 
 **没有可观察事件就没有旁观者读心**：仅有 B 的 `Intent: take_coin` 不得通知 A“B 想抢钱”；若 B 实际伸手且 A 看见了，则 A 可以收到外显动作观察。对话、误认、隐匿、感知检定及证人转述的特殊情况要保留各自来源，不得把“听说”冒充“亲眼目击”。
 
-### 6.3 `Observation → Memory`：NPC 的推理权与 State Machine 的保存权
+### 6.3 `Observation → Memory Gate → Cognition`：区分证据、存留与主观认知
 
-记忆形成分两步：
+**Observation 的产生不依赖 NPC LLM 是否激活。** 系统应先把观察关联到该 NPC 的私有事件时证据和可靠 Outbox / Inbox，之后由独立于交互 Context 的 **Memory Gate** 决定保留策略。Memory Gate 是信息筛选机制，**不是**主观 Belief 的形成者、不是规则执行器，也没有写 World Facts 的权力。
 
-- **自动阶段（不调用 LLM）**：State Machine/Perception Projection 记录结构化 Observation 与来源、顺序、观察者权限。若事件本身明确授予已知事实（如 `reveal_fact_to_actor`），可确定性更新 `known_fact_ids`。
-- **NPC 激活阶段（按需 LLM）**：Agent Host 将尚未消费的重要 Observation、NPC 私有历史、Goals、Relationships、已有 Beliefs 提供给该 NPC Sub-agent。Sub-agent 可提出 `NPCMemoryUpdateProposal`：新增情景记忆、形成/修正 Belief、关系/态度变化或无须额外长时记忆。并非每次观察必须生成一次 LLM 摘要。
+候选保留分类：
 
-State Machine 验证 Proposal 的 `npc_id`、可信激活身份、来源 `source_observation_ids` 是否属于该 NPC、允许更新的类型、数据形状、因果/版本关系和幂等键。**它不能凭 Schema 验证 LLM 对心理动机的解释真伪**；因此必须保留 `epistemic_status`（亲历观察 / 推断 / 听说）与 `confidence`，禁止将推断写为共同的世界事实或伪造亲见经历。
+| 结果 | 用途 | MVP 安全约束 |
+|---|---|---|
+| `durable` | 重要目击、重大秘密、危机、不可遗忘的个人经历 | 必须保留来源与感知权限；可确定性写入结构化 Episode；不自动生成 Belief |
+| `short_term` | 日常场景变化、近期在场和普通声响 | 采用有界 TTL / 游标与必要的当前感知刷新；需要时仍可追溯来源 |
+| `discard` | 被允许淘汰的低价值观察 | **绝不能删除未完成投影、待提交承诺或需要保证处理的关键证据**；处置要有幂等处理记录 |
 
-`episodic` 不等于永久储存逐字对话；`belief` 可以错误；`relationship` 的变化应遵循该 NPC 的合法更新策略，不能借机修改目标角色的关系或覆盖公共世界事实。NPC 的私有记忆可修改其自身下一轮行为，但不能直接触发对其他人物、物品、Quest 的未经审查的 State Delta。
+**可靠性边界**：`discard` 只针对 NPC 的可检索工作/记忆副本，并不等于删除权威 `WorldEvent`；观察已经过重要性确认或标记为待复杂 Cognition 之前不能无记录消失。分类错误对 NPC 后续行为有真实影响，先采用保守确定性白名单与保留默认值，再评估轻量分类模型的漏判率。
 
-**示例（原创场景，字段均为候选）：**
+**主观认知**：NPC Sub-agent（一次短调用即可）可依据该 NPC 授权的 Observation、既有 Beliefs、人格、目标和关系，提出 `episodic` / `belief` / `relationship` / `commitment-awareness` 更新。State Machine 校验该 NPC 的来源、身份、重复处理、认知归属与格式并保存；推断或转述不得伪装为亲眼所见或转变为 World Fact。已确认的客观承诺和世界副作用需在发生时独立提交，不能等待记忆整理。
 
-```yaml
-observation:
-  observation_id: obs.24
-  observer_actor_id: npc.b
-  source_event_id: evt.coin_transferred_to_a
-  perception_kind: sight
-  observed_payload:
-    actor: npc.a
-    action: picked_up
-    object_id: item.coin_001
-    before_my_attempt: true # 只能依据 B 自己的已提交动作时序来断言
+### 6.4 非交互 Cognition、日程与有界行为触发
 
-memory_update_proposal:
-  npc_id: npc.b
-  source_observation_ids: [obs.24]
-  changes:
-    - kind: episodic
-      text: "A 比我先拿起了金币。"
-      epistemic_status: observed
-    - kind: belief
-      text: "A 可能故意与我争抢。"
-      epistemic_status: inferred
-      confidence: 0.5
-```
+即使 NPC 不在与玩家对话，也可以发生重要的认知变化或日程动作，但**不要求长期运行一个 NPC LLM 进程**。
 
-这里 `before_my_attempt` 不是投影系统随意从 Intent 推出来的；如果 B 尚无实际可观察/已提交的尝试，应改为只报告 A 取走金币，不添加竞争关系。
+1. **Cognition Trigger**：重大且已合法感知的事件（例如亲见朋友遭袭）可以要求独立于交互 Context 的一次有界 NPC 推理；其输出只能是个人 Belief/Relationship/Memory Proposal，不能改写世界真相。
+2. **Schedule-driven Activity**：Adventure Package 可定义 NPC 默认日程；State Machine 根据**游戏内时间**推进有限的到期动作，执行前重新校验地点、存活、权限和前提条件；铁匠铺毁坏时不能继续正常开工。无需连续实时模拟数百个 NPC。
+3. **Behavior Interruption Trigger**：NPC 收到重大 Observation 时可以打断待执行日程；轻量检测器只决定是否需重新评估，不能替 NPC 直接形成复杂 Action Intent。可用预先审查的确定性逃生策略或激活对应 NPC Sub-agent。
+4. **Jev**：仅作为可能实现 `Cognition Trigger` / `Behavior Trigger` 的可替换轻量模型候选，尚未确认训练、可靠性和性能；MVP **不依赖 Jev 特定模型**。
+5. **调度与防循环**：Host 控制可自动激活数量、反应深度、预算与冷却时间；State Machine 保存稳定 trigger_id、NPC 活动计划版本、下次执行游戏时间、已完成/取消回执；事件重试不能重复移动 NPC、写关系或扣资源。
+6. **感知时间一致性**：Event Observation 基于事件**发生时**的位置、可见性、听觉等可信数据；进入场景和重新激活时的 Current Perceptual View 只能说明 NPC 现在能看见什么，不能反推未亲眼经历的历史。
 
-### 6.4 Agent Activation：按需响应、不常驻监听
-
-1. Host 因玩家与 NPC 交谈、NPC 面临明确情境选择、关键已观察威胁或当前战斗轮到其行动，决定是否激活该 NPC；不得把所有 NPC 事件都变成 LLM 调用。
-2. State Machine 为特定 NPC 生成授权 `NPCView`，其中包括按 `source_event_seq` 排序的待消费 Observation、必要旧记忆、当前可执行动作摘要与对应 `world_version`。
-3. Sub-agent 产生对话/行动/记忆更新**提议**。Host 分别向 State Machine 或 Rule Engine 的受控入口提交；提议期间世界可能已变化，执行前必须再次校验世界版本与权限。
-4. 只有 Observation 确实被投递、且结果按协议完成后，才能移动 `observation_cursor` / 确认消费；Agent 失败、超时、进程重启不得使观察永久丢失或重复变成多条记忆。激活请求和记忆更新各有稳定幂等 ID。
-5. 为防止 NPC A 回复触发 B、B 回复又触发 A 的无限循环，限制单次玩家行动的自动 NPC 反应深度、激活数量及 Token/时间预算；超过预算保留待处理观察，不得假装角色已经回应。
-
-**权责归属**：State Machine 负责谁观察到了什么、记忆怎样验证/保存；NPC Sub-agent 负责如何理解、选择是否提升为长期记忆、怎样作出下一步决定；Agent Host 负责何时激活与调用预算。长期记忆压缩、相关性检索、虚假记忆检测和复杂冲突解决可在 `AGENT_ARCHITECTURE.md` 进一步设计，MVP 不引入独立 Memory Agent。
+普通 NPC 的每条观察**不必**产生 LLM 调用；Memory Gate 可保守地分类保存；只有重大认知事件、实际交互或重要行为选择才按需调用 NPC Sub-agent。Observation ACK 必须与必要的保留/认知处理结果及幂等证明匹配，失败不能使观察永久丢失。
 
 ### 6.5 对话承诺、知识传播及故障
 
@@ -359,47 +336,38 @@ memory_update_proposal:
 - 公开事实、完成承诺、赠与物品、关系改变等只有在结构化意图获批并提交后才产生其对应**世界副作用**；NPC 自行宣称“我给你金币”不等于金币已转移。
 - Sub-agent 超时、输出不合法或提出不可能行为：返回 `proposal_rejected`/`agent_unavailable`，保留未确认 Observation，允许有限次重新提议或由事先批准的非 LLM 策略接管；不能让 DM 静默冒充该 NPC 的独立决定。
 
-## 7. 战斗与世界交接
+## 7. 战斗：单一权威状态与规则求值
 
 ### 7.1 战斗开始
 
-1. State Machine 验证 Encounter 已满足触发条件、当前 PC 与 NPC World State、规则绑定及进场参数。
-2. 在请求启动 Engine Combat **之前**先持久化一个安全的 `pre_combat_checkpoint`（Session/Scene/World/Actor/Inventory/NPC Observations + 相关非战斗机械资料的可信引用）；同时将 Encounter 标记为待启动。
-3. 根据 Actor 到 Combatant 的**审查过的映射**请求启动 Rule Engine Combat；带 `session_id`、`encounter_id`、幂等命令标识和初始位置约束。只有在可核验的入口回执后才确立 `active_combat_ref`。
-4. State Machine 保存 `active_combat_ref`、映射 ID、规则版本和进度操作记录；战斗期间不另建可变 HP/Slot/Position 镜像作为权威。
-5. Agent DM/NPC Sub-agent 仅能提交合法角色身份的动作提议；Host 验证 Actor 控制权，Rule Engine 负责合法性、支付、RNG 和状态变化。
-
-**既有集成阻塞**：先验证 `trpg-rules-engine` 是否已有受 Host 授权的 NPC/Monster 显式 Typed Intent 入口；不可用时必须补公共机制或修改已批准的 MVP 范围，不能假装内置 `advance_monster_turn` 等于 NPC Sub-agent 决策。
+1. State Machine 加载 Encounter 定义、角色资源、初始位置与固定 Ruleset，验证玩家与 NPC 的 Actor 归属、战斗许可与相关 WorldState。
+2. 通过 Rule Engine **计算**初始化（包括先攻 RNG、起始效果、回合顺序），得到初始 `CombatStateDelta + RuleEvents + next_rng_context`；Rule Engine 不注册一个独立的权威活跃战斗对象。
+3. State Machine 在短写事务中原子提交 `phase=combat`、Encounter/Combat State、Character State、RNG、事件、Receipt 和必要 Outbox；同时保留合法的战前安全 Checkpoint 及战斗入口元信息。
 
 ### 7.2 战斗期间
 
-- State Machine 可以读取 Engine 暴露的只读 `LiveCombatView`，但不通过文本或镜像修改伤害和行动预算。
-- NPC 战术 Sub-agent 不可只因其决定攻击就获得自动命中；它只输出 Action/Target 等 Intent 参数。
-- 场景事件（例如若干回合后出现威胁）只消费**已提交的 Engine Round/Turn 事件**，并遵守已有战斗状态边界；这些战斗内事件可供当前进程叙事/观察，但未安全结算前不得被误写成已永久落库的最终世界结果。
-- 不允许把场景剧情失败自动转成隐藏的 HP 修改；若缺少受控 Hazard/External Damage 接口，必须把该能力列为实现阻塞项。
+- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。Host 绑定身份与权限，State Machine 获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
+- CombatState 包括回合顺序、行动预算、位置、Active Effects、Concentration、待处理 Reaction/Choice 等。State Machine **持有和持久化**这些字段但不自行计算规则；Rule Engine 不维护跨调用的私有战斗权威。
+- 战斗中打开门、拾取物品、喝药、触发机关等跨世界/规则动作必须经**同一最终事务域**提交完整副作用，不能在 Rule Engine 内偷偷提前扣费。
+- 已提交的 Combat/World Events 经事件时 Perception 分发，可供 DM Narrator 叙述；未提交的规则求值或 LLM 提议不能被叙述为已发生。
+- `needs_choice`、Reaction、未完成效果生命周期及 RNG 语义必须有显式待续裁决契约，不能假设一步求值总可完成；具体协议在 `MODULE_CONTRACTS.md` 冻结。
 
-### 7.3 战斗结束与结算
+### 7.3 战斗结束
 
-- Rule Engine 提供权威结束事件、`CombatOutcome`、最终影响世界的结果和资源来源。
-- State Machine 用稳定 `combat_id`/`settlement_id` **一次性**结算死亡、HP/资源、Quest、战利品、NPC 地点等可持久化结果；保持 Actor 身份归属一致。
-- Rule Engine 之外的世界物品与任务进度由 State Machine 按世界事务提交；**不得由叙事文本推算资源支出**。
-- 当前 Rule Engine `CombatOutcome.expended_resources` 曾在代码审阅中发现对集中法术的支出归属问题；在独立修复与验收前不能把该字段未经校验地写回持久角色资源。
-- 战斗结束后清除当前活跃引用，并设置持久的已结算标记；重复结算只返回旧回执。
-- **战斗结果落库边界**：持久世界更新、角色资源同步、战利品/任务变化、已经确认的战斗相关重要观察与 Settlement Receipt 要按可恢复的结算协议一次性推进；不可将已结算 HP 与未结算资源拆成互不关联的永久事实。
-- **不可简单把整场战斗当作 SQLite 长事务**：战斗可能持续数分钟，必须使用入口安全检查点 + Engine 权威执行 + 有记录的结算阶段。战斗期间若允许非机械世界事件独立提交，需证明它们可以安全保留/回滚；MVP 可限制此类跨边界写入以简化恢复。
+- Rule Engine 只计算结束条件和对应 State Delta/Rewards；State Machine 原子提交状态/任务/战利品/事件与最终 Receipt，并切换 `phase`。不存在“结束后从另一个权威战斗内存回写世界”的阶段。
+- 资源始终按原 Actor 的实际支付者归属记录；既有 `CombatOutcome.expended_resources` 的已知缺陷必须通过独立正确性用例检验，不能照搬旧有错误聚合。
 
-### 7.4 活跃战斗中断的 MVP 故障语义（SM-02 已确认）
+### 7.4 活跃战斗恢复的 MVP 边界（SM-02）
 
-- **不在 MVP 范围**：战斗进行中退出应用、断线或进程崩溃后，从原回合恢复完整 Engine 状态（RNG、Reaction Queue、Concentration、Action Economy、持续效果）。不提供“战斗中途精确续玩”的功能承诺。
-- 正常游玩中的战斗必须能够跨多个回合连续执行，退出/恢复功能限制不影响战斗合法性或战后结算。
-- 只有在可证明 Engine 尚未持久提交不可撤销副作用、战前 Checkpoint 与规则/世界版本均匹配，且期间没有已永久提交的不可回滚事件时，才可**明确提示玩家**重新开始该场遭遇；这是重新开始而不是恢复原回合。若条件不满足，Session 进入 `combat_unrestorable` 或 `blocked_reconciliation`，停止影响状态的操作并给出恢复/人工处理路径。
-- 尤其当 Engine 操作**可能已提交**但回执丢失时，不允许静默载入战前存档后重新 RNG 或二次扣除资源。此时优先按原 `operation_id` 核对 Receipt；无法确定则阻塞，而非假定未执行。
+**统一持有并持久化 CombatState 不等于承诺精确的中途战斗续玩。** MVP 必须保证正常连续战斗和已提交动作的可靠性；非战斗 Session 恢复为发布要求。中途退出后的 PendingChoice、反应窗口、特殊效果延续和完整 Replay 能否精确恢复仍属于 Post-MVP 验证目标。
+
+若进程中断且处于活跃战斗：系统不能宣称能够无损续玩；可以在确认不违反已提交副作用与版本要求时**经玩家确认**从战前 Checkpoint 重新开始，否则明确阻塞并给出故障信息。不能悄悄回滚已永久提交的规则操作。安全重新开始是否支持及限制条件需要独立验收。
 
 ## 8. 持久化与恢复边界
 
 ### 8.1 需要保存的最小状态
 
-`SessionRecord`、全局世界标记、SceneInstance、NPC 身份/知识/记忆/关系、**Observation Inbox、事件时感知证据、NPC 观察消费游标及待处理 Outbox**、物品与 Quest、Challenge 计数、已提交 Event Log、命令回执与去重键、Package/Ruleset Digest、当前阶段及必要的 Engine 操作/结算引用。
+`SessionRecord`、全局世界标记、SceneInstance、NPC 身份/知识/记忆/关系、**Observation Inbox、事件时感知证据、NPC 观察消费游标及待处理 Outbox**、物品与 Quest、Challenge 计数、已提交 Event Log、命令回执与去重键、Package/Ruleset Digest、当前阶段、权威 `CharacterState` / `CombatState` / `RNGState`、待续裁决和规则求值/提交回执。
 
 **SM-01 已确认的实现基线**：Python + SQLite 单进程 State Machine，启用 `PRAGMA journal_mode=WAL`、`PRAGMA foreign_keys=ON`，优先 `PRAGMA synchronous=FULL` 保障关键存档的断电持久性；合理配置 `busy_timeout`、连接生命周期与备份策略。WAL 并不消除单写者限制；不要在写事务中等待 LLM/Rule Engine。数据库文件放在本地支持可靠文件锁与同步的存储上，不假定可经共享网络盘安全多写。
 
@@ -409,17 +377,17 @@ memory_update_proposal:
 
 ### 8.2 非活跃战斗恢复（MVP 必须）
 
-加载 Session 时：校验包版本与 Ruleset、重建或读取最新 World State、恢复 NPC 知识、私有 Observation Inbox / `observation_cursor` 与 Memory、恢复 Scene 位置及已提交事件去重集合；重访不得从 `initial_state` 重新复制已改变的实例。**只有不存在活跃战斗及未解决 Engine 操作，或已完成受控结算的安全点，才可以宣称成功恢复。**
+加载 Session 时：校验包版本与 Ruleset、重建或读取最新 World State、恢复 NPC 知识、私有 Observation Inbox / `observation_cursor` 与 Memory、恢复 Scene 位置及已提交事件去重集合；重访不得从 `initial_state` 重新复制已改变的实例。**只有处于非战斗状态且不存在未解决的命令/待续裁决，或已有明确受控安全点，才可以宣称 MVP 的成功续玩。**
 
 ### 8.3 活跃 Combat 恢复（明确移至 Post-MVP）
 
-**SM-02 已确认**：不要求跨进程恢复活跃战斗的精确回合状态。活跃战斗不能调用普通 `save_session` 返回“可安全续玩”的成功回执。按 §7.4 使用战前 Checkpoint + 显式重新开始资格判定 / 阻塞状态；**不得悄悄回滚已提交机械结算**。未来版本再考虑 Engine Handle、RNG、Reaction Queue、Concentration 和 Active Effect 的完整序列化与恢复。
+**SM-02 已确认**：不要求跨进程恢复活跃战斗的精确回合状态。活跃战斗不能调用普通 `save_session` 返回“可安全续玩”的成功回执。按 §7.4 使用战前 Checkpoint + 显式重新开始资格判定 / 阻塞状态；**不得悄悄回滚已提交机械结算**。未来评估从 State Machine 的持久 `CombatState` 和 PendingChoice/Reaction/RNG 精确续玩，**不再以恢复 Engine 私有 Handle 为前提**。
 
 ### 8.4 Replay 与审计
 
 - **世界 Replay**：可根据已提交的有序世界命令/事件恢复或核验；保留各 NPC 的 Observation 来源、投影版本与记忆提议回执；不要求 LLM 对话、记忆解释逐字重生成。
-- **机械 Replay**：要求同一已审核规则数据、初始种子及**已提交 Intent 序列**生成同样权威结果。实际由 Rule Engine 提供与验证。
-- **禁止**通过新一次随机执行重建已有已提交且状态未知的 Engine 调用。
+- **机械 Replay**：以固定 Ruleset、已提交的 Snapshot/Intent/RNG 进度和确定性 Rule Evaluation 复算核验；由 State Machine 持久保存权威原始事实，Rule Engine 提供求值一致性。
+- **禁止**通过新一次随机执行重建已提交但回执不明确的命令；按 State Machine 的幂等记录恢复或阻塞。
 
 ## 9. 错误分类与安全失败语义（设计建议）
 
@@ -430,15 +398,15 @@ memory_update_proposal:
 | `unauthorized_controller` / `knowledge_denied` | 越权 Actor、读取秘密 | 不提交 |
 | `state_version_conflict` | 过期 `expected_world_version` | 不提交；要求刷新视图 |
 | `rule_refused` / `unsupported_mechanic` | Engine 不接受目标、成本或机制 | 不得凭空写入机械成功；可有已发布的拒绝事件 |
-| `engine_committed_response_failed` | Engine 已提交，但响应构建失败 | 通过同一请求身份恢复；不能二次执行 |
-| `reconciliation_required` | 不确定 Engine 是否已提交，回执不可取得 | 暂停影响该状态的操作；人工/受控恢复 |
+| `commit_response_failed` | State Machine 已提交，但响应构建失败 | 查询本地稳定命令回执；不能二次执行 |
+| `evaluation_or_commit_unknown` | 网络异常或提交回执未知 | Rule Engine 评估不构成提交；查询 State Machine 命令记录，无法判定则安全阻塞 |
 | `world_transaction_failed` | 世界数据库提交异常 | 不产生部分提交；重试按命令回执/去重处理 |
 | `agent_unavailable` | NPC 模型调用错误、超时 | 无 NPC 世界副作用；保留观察收件箱，执行明确的故障策略 |
 | `observation_projection_pending` | 投影排队、需要受控规则检定或 Agent 尚未消费 | 保留事件及证据/Outbox，不对观察者泄漏秘密或丢事件 |
 | `invalid_memory_proposal` | 记忆来源不属于该 NPC、越权编造亲见/引用、错误版本 | 拒绝更新；不污染世界事实或他人记忆 |
 | `combat_unrestorable` | 活跃战斗退出，精确机械状态无安全恢复办法 | 不宣称恢复原回合；检查战前重开条件或阻塞 |
 
-特别区分：**Rule refused**、**Engine execution failed**、**Result delivery failed after commit**、**World settlement failed** 四种情况，不能一律映射为“失败，请重试并重新掷骰”。
+特别区分：**Rule Evaluation rejected**、**Rule Evaluation failed**、**State Machine Commit failed/unknown**、**Committed response delivery failed**；不能一律映射为“失败，请重新掷骰”。
 
 ## 10. 最小公共接口（仅候选名称）
 
@@ -454,12 +422,14 @@ memory_update_proposal:
 | `ack_observations` | Session、`npc_id`、已确认激活/消费回执、游标 | 持久化确认位置；不越权修改世界事实 |
 | `submit_npc_memory_proposal` | 可信 NPC 激活凭证、源 Observation IDs、受限记忆变更、幂等 ID | 已提交/拒绝的 NPC 私有记忆更新回执 |
 | `project_world_event`（内部） | 已提交 Event 与事件时证据、投影版本 | 各观察者独立 Observation / 持久待处理投影 |
+| `process_npc_observation`（内部） | 观察来源、NPC 身份、Memory Gate 分类、稳定处理 ID | Durable / Short-term / Discard（有限保留）或待 Cognition Trigger |
+| `tick_npc_schedule`（内部） | 游戏时间、NPC 当前活动及日程模板、稳定 trigger ID | 已提交的合法到期活动 / 取消回执 / 重新评估请求 |
 | `request_npc_activation`（Host 责任） | NPC ID、场景/交互原因、调用预算 | 获授权 NPC View 与后续行动/记忆提议；**不等于数据库后台任务** |
 | `submit_world_command` | 身份/控制者、命令 ID、版本、操作 | 提交/拒绝回执、World Events、新版本 |
-| `submit_check_request` | 合法规则参数、GM 裁决来源、稳定操作 ID | Engine 检定 Result + 世界条件消费 |
-| `start_encounter` | `encounter_id`、Actors、Rule Binding、起始坐标 | Combat Ref、初始事件或受控拒绝 |
-| `submit_combat_intent` | PC/NPC 控制权证明、Actor、Typed Intent、请求 ID | Engine Receipt + Events；必要的 World Reconciliation |
-| `apply_engine_result` | 可信 Engine 回执、操作关联 ID | 幂等世界同步及事件 |
+| `submit_check_request` | 合法规则参数、GM 裁决来源、稳定操作 ID | Rule Evaluation + State Machine 最终 Commit Receipt |
+| `start_encounter` | `encounter_id`、Actors、Rule Binding、起始坐标 | State Machine 新建并提交的 CombatState、事件或受控拒绝 |
+| `submit_combat_intent` | PC/NPC 控制权证明、Actor、Typed Intent、请求 ID | State Machine 的 Commit Receipt + 已提交 Combat/World Events |
+| `evaluate_rule`（内部适配器） | 版本化快照、Typed Intent、固定规则数据及 RNG 上下文 | 尚未提交的 RuleEvaluationResult / StateDelta；必须交由 State Machine Commit |
 | `save_session` / `resume_session` | Session ID、包版本 | 一致的非活跃战斗世界快照，或活跃战斗不可恢复/待协调的明确拒绝 |
 
 **权限特别说明**：由 Host 注入可信 `controller_id`，不要把用户/LLM 在 JSON 内随意提供的 `controller_id` 当作已认证身份。
@@ -488,11 +458,11 @@ memory_update_proposal:
 - NPC 按需激活与观察游标、提议与提交分离、非 LLM fallback 边界、有限自动反应深度。
 - **完成证据**：NPC A 无法读到 B 私有 Intent 或秘密；可见争抢各自形成正确 Observation；相同事件重试不重复投影；无论模型认为谁故意抢钱，都不能修改客观世界事实。
 
-### Batch SM-4：Rule Engine Adapter + World Settlement
+### Batch SM-4：Rule Evaluation Adapter + Unified Atomic Commit
 
-- 受控战斗开启、战前安全 Checkpoint、权威结果消费、资源归属、世界结算、不可续战退出与错误回执。
+- 受控战斗开启、战前安全 Checkpoint、版本化 CombatState/CharacterState/RNG 快照、RuleEvaluationResult、完整 Delta 原子提交、资源归属、不可续战退出与错误回执。
 - 必要外部 Hazard 和 NPC 显式 Combat Intent API 与 Rule Engine 团队联合验收。
-- **完成证据**：同一场战斗结果最多结算一次；失败和已提交响应异常不产生重复消耗；不支持的能力明确报告。
+- **完成证据**：战斗中每条动作均恰好产生至多一次 State Machine 权威提交；失败、版本冲突或响应异常不产生重复消耗或推进 RNG；不支持的能力明确报告。
 
 **节奏约束**：上述 Batch 是推荐依赖序列，不是 Codex 可以未经审阅连续开发的授权。在每批次完成后根据实际测试和模块接口重新评估下一批；优先减少影响真实端到端场景的缺口。
 
@@ -510,8 +480,8 @@ memory_update_proposal:
 | SM-A08 | 多事件链与循环 | 合法链执行一次，循环/无限触发被阻断 |
 | SM-A09 | Skill Challenge 三次检定成功 | 只累计权威 Result，重复结果不重复计数 |
 | SM-A10 | 规则拒绝/故障 | 不伪造机械结果，不能直接修改 HP/Slot |
-| SM-A11 | 战斗结算及重试 | PC/NPC 资源归属正确，世界只同步一次 |
-| SM-A12 | 引擎提交后网络中断 | 有回执时恢复；回执丢失时暂停而不是重掷 |
+| SM-A11 | 战斗中多步事务及重试 | PC/NPC 资源归属正确，World/Character/Combat/RNG 一次原子提交，无战后双权威同步 |
+| SM-A12 | State Machine 提交后响应丢失 | 按命令 ID 读取本地 Receipt，不能二次扣资源或重掷 |
 | SM-A13 | 重载非战斗 Session | Scene/NPC/任务/物品/挑战状态一致 |
 | SM-A14 | 关闭插画及视觉模块 | 纯文字端到端流程继续运行 |
 | SM-A15 | A、B 同时提交内部取物 Intent，A 优先成功 | 金币只属 A，B 刷新状态；**A 不得从 B 的私有 Intent 读取“争抢”** |
@@ -524,7 +494,18 @@ memory_update_proposal:
 | SM-A22 | NPC A/B 对话相互触发循环 | 有限激活深度/预算；未处理观察保留而非无限唤起 |
 | SM-A23 | 非战斗进程重启 | SQLite 中的 NPC 观察/记忆、世界版本、事件与回执无丢失或串 Session |
 | SM-A24 | 活跃战斗中途退出后尝试精确恢复 | 明确不支持；仅满足战前重开安全条件时提示可重开，否则阻塞，不重掷已提交操作 |
-| SM-A25 | 战斗 Engine 已提交、世界同步/回执异常 | 依稳定 ID 协调后最多结算一次；不得把已花费资源的战斗当成未开始 |
+| SM-A25 | Rule Evaluation accepted 但状态提交失败 | 不改变任何权威状态/RNG，不发布事件；可受控刷新状态后重新求值 |
+
+### v0.3 追加合成验收
+
+| ID | 行为 | 必须通过 |
+|---|---|---|
+| SM-A26 | 战斗中同时支付资源和恢复 HP | 单个 State Machine 事务处理规则 Delta、库存、行动预算和 RNG；不存在 Engine 自己的最终提交 |
+| SM-A27 | Rule Engine 求值成功但提交前版本失效 | 不发布未提交机械事件，不推进权威 RNG，重试受控制 |
+| SM-A28 | NPC 不活跃时获得重大 Observation | 经可靠 Outbox 和 Memory Gate 保留溯源，不强制进行长时对话推理 |
+| SM-A29 | NPC 重大事件独立 Cognition Update 超时 | 未处理观察与触发器仍可恢复，重复触发不重复修改 Belief/Relationship |
+| SM-A30 | NPC 日程遇到环境前提改变 | State Machine 拒绝失效活动，不错误转移 NPC 或污染世界事件 |
+| SM-A31 | DM Narrator 读取玩家视图 | 不可获得 Planner GM Secret，不能擅自叙述未提交的 Rule Evaluation |
 
 ## 12. 决策登记与仍需确认的实现细节
 
@@ -534,7 +515,9 @@ memory_update_proposal:
 |---|---|---|---|
 | **SM-01** | 持久化语言与数据库 | Python + SQLite WAL、单进程优先、短事务、强持久化默认、Repository/Adapter 边界 | **已确认** |
 | **SM-02** | 战斗中途精确恢复 | **MVP 不支持**，列入 Post-MVP；须有明确安全检查点、不可伪恢复及战后可靠结算 | **已确认** |
-| **SM-03** | 多 Agent 共同感知与记忆 | WorldEvent → Perception → per-Actor Observation → 按需 NPC 激活；Sub-agent 解释 Memory、State Machine 保存/校验 | **已确认基础架构** |
+| **SM-03** | 多 Agent 共同感知与记忆 | WorldEvent → Perception → per-Actor Observation → Memory Gate / 必要时 NPC Cognition；State Machine 保存和验证 | **已确认基础架构** |
+| **SM-04** | 统一权威状态 | State Machine 持有并提交 World/Character/Combat/RNG，Rule Engine 只计算 StateDelta；遵守 ADR-001 | **已确认** |
+| **SM-05** | 非交互 NPC 状态 | 游戏时间驱动的基本日程；Memory Gate 和按需 Cognition / Behavior Trigger，不要求常驻 NPC LLM | **已确认逻辑设计，具体阈值待实验** |
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
 | S05 | `world_version` 与实体版本粒度 | MVP 先 Session 级版本；更高并发时评估细化 | 建议 |
 | S06 | NPC/普通怪物是否默认用 LLM 战术 | **不得降低** `MVP_SCOPE.md` 已规定的至少一个敌方 NPC Sub-agent Typed Combat Intent 验收；普通怪物默认策略尚待明确 | 默认策略待决策 |
@@ -545,24 +528,26 @@ memory_update_proposal:
 | S11 | 感知何时需要规则检定 | MVP 确定性同场景感知 + 个别经审查 Rule Check；复杂遮挡等后置 | 精确触发待设计 |
 | S12 | 同步争夺物品的游戏时序 | 禁止按网络先后来断言敏捷；Host/Engine 裁定条件与公式待冻结 | 待设计 |
 | S13 | Observation Outbox/消费回执/投影唯一键 | 必须能防丢、防重复和追溯；具体字段在 `MODULE_CONTRACTS.md` 固定 | 待设计 |
-| S14 | 战前 Checkpoint 可重开资格与 Engine 协调 | 不承诺所有崩溃都能自动重开，存在不确定提交则阻塞 | 待技术验证 |
+| S14 | 战前 Checkpoint 可重开资格与已提交副作用的保护 | 不承诺所有崩溃都能自动重开，已提交事件不能被静默回滚 | 待技术验证 |
 
 ---
 
 ## 13. 文档治理与下一步
 
-### v0.2 相对 v0.1 的修订摘要
+### v0.3 相对 v0.2 的修订摘要
 
-1. 将 Python + SQLite WAL 单进程持久化及短事务锁纪律登记为 **SM-01 已确认**。
-2. 将“活跃战斗跨进程精确恢复”明确移出 MVP，补充安全战前 Checkpoint、战后 Settlement 和未知提交状态保护（**SM-02**）。
-3. 新增 `WorldEvent`、`ObservableActionStarted`、`ObservationRecord`、`NPCMemoryRecord`、`AgentActivation` 的权威边界与按需调用路径（**SM-03**）。
-4. 通过 A/B 争抢金币明确私有 Intent 不可泄漏、事件时感知与游戏排序不等同数据库提交顺序。
-5. 扩展合成验收 SM-A15–SM-A25，覆盖视角、主观推断、幂等、掉线/重试和 NPC 内存隔离。
+1. 按 ADR-001 将 World / Character / Combat / RNG 状态所有权和事务提交集中在 State Machine，移除旧有 Rule Engine 作为权威战斗状态拥有者的描述。
+2. 以版本化快照 + 无权威副作用 RuleEvaluationResult + 统一原子提交替换 Engine 提交后 World Settlement 和 Bridge 回执协调的目标协议。
+3. 统一战斗开始、进行、结束的状态生命周期，保持 SM-02：不要求 MVP 战斗中断后精确续玩。
+4. 加入保守 Memory Gate、独立背景 Cognition Trigger、游戏时钟 NPC Schedule 与 Behavior Interruption Trigger；Jev 仅为可替换实验候选。
+5. 增加 DM Planner / Narrator 的可见性隔离，并同步更新接口候选及合成验收项。
 
 
 - 此文档只给出 State Machine 运行时架构与状态权威边界；**不替代**项目总架构 `ARCHITECTURE.md`、Agent 内部设计 `AGENT_ARCHITECTURE.md` 或正式跨模块消息契约 `MODULE_CONTRACTS.md`。
 - 发现本架构与 `MVP_SCOPE.md` 已确认决定冲突时，以已确认的 MVP Scope 为准，并在审阅中提出修改，不擅自改动产品范围。
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
-- **下一文档建议**：`AGENT_ARCHITECTURE.md`（DM 与 NPC Sub-agent 的边界、Context Projection、Intent / Proposal、记忆与调用预算），随后 `MODULE_CONTRACTS.md` 冻结跨模块消息。完成总体架构审阅后再整理根目录 `README.md`。
+- **文档优先级**：ADR-001 是权威架构决策；旧 MVP Scope 的双权威用语为历史遗留，已在 v0.5 修正。
+
+**下一文档建议**：按 `AGENT_ARCHITECTURE.md` v0.3 已确认的 DM Planner/Narrator、Memory Gate、Schedule 和 NPC Cognition 设计，继续在 `MODULE_CONTRACTS.md` 冻结跨模块消息与 RuleEvaluationResult → Atomic Commit 契约。完成总体架构审阅后再整理根目录 `README.md`。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**
