@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.5（依据 ADR-001 与 NPC Evaluation Mode 决策；具体消息 Schema 与实现仍待审阅）
+> **状态**：Draft v0.6（依据 ADR-001 与 NPC Evaluation Mode 决策；具体消息 Schema 与实现仍待审阅）
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.7；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.2；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.5；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.3 / Draft
+> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.8；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.2；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.6；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.4 / Draft
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -73,13 +73,13 @@ Human Player / DM Planner -> State Machine domain request / authorization
                                   |
                         NPCEvaluationResult (data)
                                   |
-                     Host transports trusted envelope
+                     Host submits evaluation_id + Result
                                   v
-                      State Machine validates / commits
-                |- NPC private updates / Dialogue publication
-                '- Typed Command -> Rule Engine evaluation -> SM Commit
+                      State Machine atomic Meta / sole Result / EVA completion
+                |- reliable Dialogue / Action Intent handoff
+                '- independent command_id -> Rule Engine -> SM Commit
                                   |
-                    durable receipts / internal Processing Completion
+                    EvaluationReceipt / cognitive completion + reliable handoff
                     committed WorldEvent -> Perception
                     player-visible receipts -> DM Narrator -> Text UI
 ```
@@ -146,7 +146,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 
 **三个独立命题**：`world_fact_is_true`、`npc_knows_fact`、`npc_believes_fact`。允许 NPC 有错误信念和撒谎，但禁止把信念自动提交为世界事实。
 
-Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两份 NPCState。State Machine 管模式切换、Evaluation Task、epoch、版本及内部完成状态；Agent Host 仅管理非权威 Context 与模型运行，不能从 Context 内容反向覆盖权威状态。
+Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两份 NPCState。State Machine 管当前模式、Evaluation Task / Status、NPCStateVersion 及内部完成状态；Agent Host 仅管理非权威 Context 与模型运行，不能从 Context 内容反向覆盖权威状态。
 
 ### 3.4a `CharacterState`、`CombatState` 与 RNG（统一权威）
 
@@ -158,7 +158,7 @@ State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数
 
 针对撤退、追逐或跨多次检定的任务，建议记录：`challenge_id`、`scene_id`、`successes`、`failures`、`required_successes`、`status`、`resolved_check_ids`。每次检定的 DC/能力/结果由合法规则或显式 GM 裁决产生，**State Machine 仅累计已提交 Result**。
 
-不要把非战斗技能挑战实现为伪造的 Combat；若失败伴随伤害/Condition，需要State Machine 授权的受控 Hazard / Rule Engine 求值接口，缺失时明确阻塞该场景而不是直接写入 HP。
+不要把非战斗技能挑战实现为伪造的 Combat；若失败伴随伤害/Condition，需要 State Machine 授权的受控 Hazard / Rule Engine 求值接口，缺失时明确阻塞该场景而不是直接写入 HP。
 
 ### 3.6 `WorldEvent`、感知证据与顺序
 
@@ -179,21 +179,31 @@ State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数
 - `ObservationRecord` 是证据而非角色长期记忆。一个 NPC 可以暂时不理解、不在意甚至忘记某个观察，但不能因此篡改原始事件与感知来源。
 - 稳定 `observation_id` 与按 NPC 的有序 Delivery Cursor 支持至少一次投递；读取分页位置、Host Context 已追加位置与 SM 内部 Processing / Completed Cursor 分开。完成游标只推进连续已完成前缀，必须以投影完成水位/等价机制防止跳过尚未投影的早期事件；具体字段见 `MODULE_CONTRACTS.md` §7、§9（Proposed / Not Implemented）。
 
-### 3.8 `NPCMemoryRecord`：角色内部认知的持久表达
+### 3.8 NPC Meta、Episodic Memory 与 Belief History
 
-建议将 NPC 私有记忆分为 `episodic`（经历摘要）、`belief`（主观判断，允许错误）、`relationship`（对他人的态度）逻辑记录；Goal / Plan 同属权威 NPC 认知状态。统一保留 `npc_id`、稳定记录 ID、`source_observation_ids` / `source_memory_ids`、`epistemic_status`（observed / inferred / told）、`confidence`（如适用）、`evaluation_id`、`proposal_id`、模式 epoch 和内容版本；承诺回忆引用另存的已确认 Commitment。
+Memory、Belief、Relationship、Goal、Plan 是同一 NPC 的权威认知状态，作为一个原子更新单元。SM 保留稳定 NPC / 记录 ID、来源 Observation / Memory 引用、epistemic_status（observed / inferred / told）、confidence（如适用）、evaluation_id、NPCStateVersion 与内容版本；承诺回忆引用已确认 Commitment。具体类型/约束为 Proposed / Not Implemented。
 
-**主观 Memory、Belief、Relationship、Goal / Plan 更新由当前模式的 NPC LLM 提议**；State Machine 验证 Actor 权限、来源、受限字段、版本、模式资格及幂等性后保存。Interactive 活跃期间不另开 Background / Memory / Cognition LLM。Schema 不能证明自然语言推断真实，故保留来源与推断/听说标签；确定性知识授予、原始证据、已确认承诺及必要安全处理无需等待 LLM。
+Initial Belief 与运行时 Belief 使用兼容结构。同一稳定 Belief 追加新版本，保留来源、版本、当前有效状态及完整旧历史，不直接覆盖/删除；NPC LLM 可修改、降低置信度或放弃旧 Belief，SM 不替它改写文本。
 
-### 3.9 NPCEvaluationTask 与 ObservationProcessingStatus（概念模型）
+SM 仅确定性验证 Schema/类型、身份权限、Observation / Memory 引用、任务状态/版本、允许字段、幂等与数据库约束。Memory / Belief / Relationship / Goal / Plan 整批合法才在一 SQLite 事务提交；一项非法整批不写，返回结构化错误供同一有效 EVA 有限修正，不能出现 Goal 未写而依赖的 Plan 已写。
 
-SM 创建或批准任务并持久关联 Session/NPC、evaluation_id、触发原因、授权范围、mode/epoch、输入 View / Observation / 版本、稳定 observation_work_id、候选 Proposal / 子操作及处理终态。任务状态编码与表结构仍为 Proposed / Not Implemented，不要求保存模型私有推理链或完整 Prompt。
+**SM 不做自然语言语义验证**：引用合法不证明 Memory 忠实，允许错误主观 Belief，但不改变 World Fact；不增加 Semantic Validator LLM。避免把未执行动作记为已发生是 NPC 输出要求，SM 只能核验结构化来源，不能宣称能判断文本真实性。原始证据、已确认承诺与确定性安全处理仍不等待 LLM。
 
-SM 管游戏语义与模式协调；Host 管 invocation_id（具体模型尝试）和 context_id（运行时 Context）。一个 Evaluation 可多次 Invocation，一个 Interactive Context 可服务多个 Evaluation；这两个运行时 ID 不要求成为提交必填。evaluation_id 不是认证凭证，SM 仍核验可信主体与 NPC 绑定、权限、版本和幂等。
+MVP 向 Host 提供该 NPC 完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 与新 Observation。Host 只组装 Context，不做语义筛选 / Semantic Retrieval / Memory Ranking / 智能压缩，不增加独立 Memory Agent。已有 Interactive Context 可复用，后续增量追加已提交变化，不要求每 EVA 重注入全量 Meta；完整授权不等于泄漏他人秘密或全量世界。
 
-两种模式返回预定义的同一/兼容 NPCEvaluationResult：dialogue、memory_updates、belief_updates、relationship_updates、goal_updates、plan_updates、action_intents；均可为空。原始模型数据不含可信元数据，NPCUpdateProposal.result 原样承载该结构，受控任务上下文提供提交信封。具体 Schema 见 Contracts §9.4。
+### 3.9 NPCEvaluationTask 与 ObservationProcessingStatus
 
-ObservationProcessingStatus 由 SM 根据持久 Proposal、Command Receipt、No-op / Rejection 等终态计算；Task 取消不自动代表 Observation Work 完成。部分已提交副作用保留回执，剩余义务可转交新任务，不重复执行。
+SM 持久 Task 关联 evaluation_id、Session/NPC、Evaluation Mode、授权范围、NPCStateVersion、Observation / observation_work_id、玩家输入、EvaluationStatus、最多一份最终 Result / 指纹、Meta 提交与必要输出交接。候选状态 authorized / running / failed / completed / cancelled 的具体编码待评审；仅有效/运行任务可选新 Result，调用者不能自行恢复失败/取消任务资格。
+
+Evaluation ID 是 Meta 幂等键而非认证凭证；提交接口只有 evaluation_id + NPCEvaluationResult，SM 从 Task 恢复可信关联，运行环境提供调用身份。首次合法 Result 在**同一 SQLite 事务**重验任务有效性/认知版本、选定结果、整批提交 Meta、记录可靠输出交接和 completed。相同 Result 重试返回原 EvaluationReceipt，已选定后不同 Result 拒绝；选定前非法输出允许当前有效任务有界修正。
+
+两模式统一七字段 NPCEvaluationResult：dialogue、memory_updates、belief_updates、relationship_updates、goal_updates、plan_updates、action_intents，均可为空。EVA 是认知与决策评估；Action Execution 独立使用稳定 command_id / Typed Command / Command Receipt，不以 Evaluation ID 替代行动幂等。
+
+Host 管 invocation_id / context_id，一 EVA 可多 Invocation，一 Interactive Context 可多 EVA，非提交必填。SM 保留当前 interactive / inactive 状态，不需要模式代次计数器；切换原子撤销旧有效 EVA、移交未完成 Work 并创建新 EVA，不等待旧失败反馈，迟到旧结果拒绝。
+
+ObservationProcessingStatus 根据必要认知处理与可靠输出交接维护。EVA 完成不等行动执行成功；Command 失败/等待 choice 独立跟踪，不自动重开已完成认知。读取、追加、模型返回、取消/失败本身不等于观察完成。新接口/状态模型均 Proposed / Not Implemented。
+
+同一 NPC 的有效认知 EVA 由 SM 串行授权/提交；模式切换的取消与新任务授权原子完成。旧物理 Invocation 未结束不影响新 Task，但旧任务无提交资格；一个 Interactive Context 可依次复用多个 EVA。
 
 ## 4. Session 生命周期与场景流程
 
@@ -319,49 +329,52 @@ Load State Snapshot + version + RNG position
 
 ### 6.3 Observation Delivery 与 NPC Evaluation Mode Exclusivity
 
-观察先由 SM Perception / Evidence / Inbox 可靠保存；SM 决定领域路由和任务，Host 执行模型运行：
+SM 先可靠保存 Perception / Evidence / Inbox，再创建授权 Task；Host 只执行模型运行：
 
 ```text
-SM committed WorldEvent -> Perception -> reliable Observation / Work
-   |- Interactive active (including idle): SM approves Interactive Task
+SM committed event -> reliable Observation / Work
+   |- Interactive active (including idle): SM Interactive EVA
    |    -> Host ordered append -> current Interactive LLM
-   '- Inactive: SM Gate domain policy
-        |- Safe Retention / No-op -> SM durable disposition
-        '- SM Background Task -> Host one-shot Context -> NPC LLM -> release
-   -> same NPCEvaluationResult + trusted envelope -> SM validate / commit
-   -> SM internal ObservationProcessingStatus from terminal receipts
+   '- Inactive: SM Gate policy
+        |- Safe Retention / No-op -> SM disposition
+        '- SM Background EVA -> Host one-shot Context -> NPC LLM -> release
+   -> submit_npc_evaluation_result(evaluation_id, result)
+   -> SM whole-Meta deterministic validation
+   -> same SQLite transaction: Task validity / NPCStateVersion check,
+      sole Result + atomic Meta + reliable output handoff + EVA completed
+   -> separate Typed Command / Rule Evaluation / SM Commit / Command Receipt
 ```
 
-Interactive 活跃期间，所有需要 LLM 的 Memory、Belief、Relationship、Goal、Plan 和自主行动判断交当前 Interactive LLM；不额外调用 Gate / Background / Memory / Cognition LLM。暂时无请求仍为 Active；重大事件可由 SM 批准下一次 Interactive Task，Host 排队执行，不修改运行中的请求或 KV Cache。
+Interactive 活跃期间，所有 LLM 主观 Memory / Belief / Relationship / Goal / Plan 与自主决策交当前 Interactive LLM，包括模型空闲期间；不另开 Gate / Background / Memory / Cognition LLM。SM 可因重大事件授权下一次 EVA，Host 排队执行，新输入不修改运行中请求/KV Cache。
 
-Inactive Gate 的触发条件、保留政策、分类采用与任务结果由 SM 管理；确定性规则可直接采用 Safe Retention / No-op 或创建 Background Task。若需轻量模型，Host 执行并返回非权威分类候选，SM 验证采用和调度。Memory / Cognition / Behavior Trigger 可联合判断；Gate 不代 NPC 修订主观 Belief / Goal / Plan。`durable / short_term / discard` 仅为安全保留候选，不把证据当成主观 Memory；discard 不删除权威事件、未完成投影、关键证据或任务，不确定/模型失败时保守保留。
+Inactive Gate 的触发、保留政策、分类采用和任务结果由 SM 管理；可选轻量模型由 Host 推理、SM 采用候选。Gate 不替 EVA 语义筛选完整授权 Meta、不生成 NPC 主观 Belief。durable / short_term / discard 仍仅安全保留候选，不删除关键证据、未完成投影/任务或权威事件；不确定或失败时保守保留。
 
-Background 用该 NPC 当前授权身份、人格、相关认知和观察，允许独立 Prompt / 模型 / Builder；一次返回同一或兼容版本 NPCEvaluationResult，认知更新与 Action Intent 均可为空，也可独立产生行动。调用后释放一次性 Context，不创建、恢复或激活 Interactive Agent。SM 继续独立处理原始证据、已确认承诺和确定性安全政策；全部模型调用在写事务外。
+Background 使用完整授权 NPC Meta 与新观察，可有独立 Prompt / 模型 / Builder，返回同一/兼容七字段 Result，可全空或独立提出行动；一次性 Context 不创建/恢复/激活 Interactive Agent。SM 不执行主观推理，也不判断自然语言 Memory 忠实性，所有模型调用在写事务外。
 
-### 6.4 自主 Action Intent、日程与模式切换
+### 6.4 Action Intent、日程与模式切换
 
-Interactive、Background LLM 和已审核 Schedule / Policy 产生的 Action Intent 共享 **Actor 授权 → Typed Command → 必要 Rule Evaluation → SM Commit**；非机械操作沿用 §5.2。Intent 不是行动成功，只有提交后生成 WorldEvent，不依赖 Interactive Agent 激活。
+Interactive / Background EVA 及已审核 Schedule / Policy 可提出 Action Intent，实际执行共用 Actor 授权 → Typed Command → 必要 Rule Evaluation → SM Commit，非机械操作沿用 §5.2。EVA 不执行动作；Meta 合法整批提交，Action Intent 非法单独拒绝、不回滚 Meta，合法意图独立交接和执行。command_id 独立稳定、派发重试复用；Command Receipt 与 EvaluationReceipt 分开。
 
-SM 管游戏时钟、Schedule、稳定 Trigger / 活动版本 / 到期时间 / 终态回执，重验存活、失能、地点和环境条件；也管理领域评估预算、冷却与防循环。Host 执行模型队列和调用资源预算，不决定游戏日程结果。安全暂停不等于 NPC 已生成新主观计划，Jev 仍非强制依赖。
+SM 管游戏时钟、日程、Trigger / 活动版本 / 到期时间 / 完成取消回执，重验存活、失能、地点和环境前提，控制领域防循环；Host 只管调用资源预算与模型队列。确定性安全暂停不等于 NPC 已形成新主观计划，Jev 仍非强制依赖。
 
-**Mode Switching（Proposed / Not Implemented）由 SM 协调**：Background → Interactive 先停止新授权，短事务 CAS 推进 mode_epoch、撤销旧 Task 及派生 Action Command 未提交资格；Host 尽力取消，SM 拒绝旧 epoch 迟到输出。切换前已提交结果保留并对账，未提交旧候选终态拒绝；SM 将未完成 Work 和已有回执关联到当前模式新任务，Host 从新鲜授权 View 建立/复用 Context。Interactive → Inactive 同样先完成或撤销任务、对账并推进 epoch，再允许 Background，Host 只执行 Context 释放和运行时反馈。
+**Mode Switching（Proposed / Not Implemented）不等待旧 EVA**：Background → Interactive，SM 在短 SQLite 事务撤销旧有效任务资格、保留已提交 Meta、移交未完成 Work、更新 interactive 状态并创建新 Evaluation ID。新 Interactive LLM 获最新完整授权 Meta、未完成 Observation 与当前玩家输入；Host 尽力取消旧 Invocation，不等待旧调用结束、失败回执或 ACK，SM 拒绝取消任务的迟到结果。若旧结果先提交，则保留原 Meta 和可靠交接，不重做。
 
-同一模式内主观 Evaluation 及处置有序，最终提交重验可信主体、NPC 绑定、范围、epoch、版本、来源与前提。evaluation_id 不是认证凭证。版本冲突先查回执，SM 批准有界重评估；不能只靠 Host 内存锁或取消标记。重启先恢复任务/回执、撤销旧资格，再重建 Context，见 `MODULE_CONTRACTS.md` §9。
+Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未完成 Work、更新当前状态后按需创建 Background EVA。已交接 Command 的资格/取消由独立 Command 流程管理，不能因 EVA 切换回滚已提交动作。任务有效性和 Meta 提交必须在同一事务核验，不依赖 Host 内存状态；版本冲突/恢复由 SM 决定有效任务与最新输入，不允许调用方复活旧任务。
 
-### 6.4a SM 内部 Observation Processing Completion
+### 6.4a EVA Completion、Observation 与独立 Command
 
-- SM 维护 `ObservationProcessingStatus` 和稳定 Work / Task / Proposal / 子操作关联；Host 已读取、已追加 Context、模型返回仅是运行时进度，不是完成。
-- SM 在副作用前持久选定输出与子操作义务；由持久 Proposal、私有更新/Dialogue 处置、Command Receipt、Safe Retention / No-op / Rejection 等终态判断完成。全空 Result 可记录为 No-op。
-- 部分操作已提交必须复用原回执，只处理未完成槽位；重试、重复观察、冲突或切换不重复 Memory / Relationship Delta 或行动，不能换新 ID 绕过去重。
-- Pending Choice 持久保存且保持未完成；模型失败、取消、epoch 撤销本身不完成 Work，须明确处置或转交义务。
-- 完成状态可在终态事务中更新或由持久回执幂等恢复；内部 Processing / Completed Cursor 仅推进连续完成且不跨投影缺口的前缀。**无需 Host 额外 `ack_observations()` 或跨模块 ACK 握手。**
-- SM 管 Evidence / NPC 认知 / Completion；Host 管模型与物理 Context。Memory Persistence 不强制 Compaction / Rebuild，压缩只因 Token、延迟、成本或质量压力，摘要无权改写认知或世界事实。
+- SM 在完成事务内记录唯一 Result、整批 Meta 与 Dialogue / Action Intent 的可靠交接或明确拒绝/no-op，返回必要结构化 EvaluationReceipt；全空 Result 也可完成。
+- ObservationProcessingStatus 根据必要认知处理与可靠交接维护；内部 Completed Cursor 不越过认知/交接缺口或未完成投影，不要求 Host 独立 ACK。读、追加 Context、模型返回、失败/取消本身不等于完成。
+- **EVA 完成不等待 Action Execution 成功**。稳定 command_id 与持久交接防止遗漏/重复派发；Command 的失败、needs_choice 或未执行项继续以独立 Command Receipt / PendingOperation 跟踪，不阻塞已经完成且可靠交接的 EVA / Observation。
+- 动作失败反馈可交现有 Interactive LLM 做动作交互，不自动重做完整 EVA / 重写 Meta；确需认知评估时由 SM 显式授权新任务。
+- Schema / Meta 验证失败不选最终 Result、不写半批认知，返回错误给同一有效 EVA 有限修正；重试耗尽保存 failed 与未完成观察。提交响应丢失按 evaluation_id 查持久结果，行动响应丢失按 command_id 查独立回执。
+- SM 不承担自然语言语义验证，不自动修改 Belief，不新增 Semantic Validator LLM。Memory Persistence 与 Context 资源管理独立；MVP 只预算保护、释放/完整 Meta 重建，不增加语义筛选或智能压缩。
 
 ### 6.5 对话承诺、知识传播及故障
 
 - NPC 对话可包含谎言、猜测、转述或修辞；话语事实不等于内容是真实世界事实。可观察的已发布话语可以形成 `speech` 类型世界事件，并投影给合适的听众。
-- 公开事实、完成承诺、赠与物品只有在结构化意图合法执行并提交后才产生对应**世界副作用**；NPC 自称“我给你金币”不等于金币已转移。私人 Relationship 更新由 NPCUpdateProposal 独立验证保存，不自动产生公开世界事实。
-- Sub-agent 超时、输出不合法或提出不可能行为：返回 `proposal_rejected`/`agent_unavailable`，保留未确认 Observation，允许有限次重新提议或由事先批准的非 LLM 策略接管；不能让 DM 静默冒充该 NPC 的独立决定。
+- 公开事实、完成承诺、赠与物品只有在结构化意图合法执行并提交后才产生对应**世界副作用**；NPC 自称“我给你金币”不等于金币已转移。私人 Relationship 与其他 Meta 更新整批验证、以 evaluation_id 幂等原子保存，不自动产生公开世界事实。
+- Sub-agent 超时或 Schema / Meta 非法：当前有效 EVA 内有界重试/修正，耗尽保存 failed 与未完成 Observation；不能让 DM 静默冒充该 NPC 的独立决定。Action Intent 非法或执行失败独立反馈，不回滚合法 Meta、不重开已完成 EVA / 观察；事先批准的非 LLM 行动策略仍走独立命令授权。
 
 ## 7. 战斗：单一权威状态与规则求值
 
@@ -394,17 +407,17 @@ SM 管游戏时钟、Schedule、稳定 Trigger / 活动版本 / 到期时间 / �
 
 ### 8.1 需要保存的最小状态
 
-`SessionRecord`、全局世界标记、SceneInstance、唯一 Persistent NPC State（含 Personality、Goal、Plan、Schedule / Current Activity）、**Observation Inbox、事件时感知证据、NPC ObservationProcessingStatus / 内部 Completed Cursor及待处理 Outbox**、Evaluation Task / Observation Work / Proposal / 子操作回执与模式 epoch 协调记录、物品与 Quest、Challenge 计数、已提交 Event Log、命令回执与去重键、Package/Ruleset Digest、当前阶段、权威 `CharacterState` / `CombatState` / `RNGState`、待续裁决和规则求值/提交回执。LLM Context / KV Cache 不属于 NPC 权威存档。
+`SessionRecord`、全局世界标记、SceneInstance、唯一 Persistent NPC State（含 Personality、Goal、Plan、Schedule / Current Activity）、**Observation Inbox、事件时感知证据、NPC ObservationProcessingStatus / 内部 Completed Cursor 及待处理 Outbox**、Evaluation Task / Status / Observation Work、唯一选定 Result / Meta 版本、可靠输出交接与独立 Command Receipt、物品与 Quest、Challenge 计数、已提交 Event Log、命令回执与去重键、Package/Ruleset Digest、当前阶段、权威 `CharacterState` / `CombatState` / `RNGState`、待续裁决和规则求值/提交回执。LLM Context / KV Cache 不属于 NPC 权威存档。
 
 **SM-01 已确认的实现基线**：Python + SQLite 单进程 State Machine，启用 `PRAGMA journal_mode=WAL`、`PRAGMA foreign_keys=ON`，优先 `PRAGMA synchronous=FULL` 保障关键存档的断电持久性；合理配置 `busy_timeout`、连接生命周期与备份策略。WAL 并不消除单写者限制；不要在写事务中等待 LLM/Rule Engine。数据库文件放在本地支持可靠文件锁与同步的存储上，不假定可经共享网络盘安全多写。
 
-建议索引/约束（具体表结构待实现）：`UNIQUE(session_id, command_id)`、`UNIQUE(session_id, event_seq)`、`UNIQUE(session_id, observation_id)`、`UNIQUE(session_id, npc_id, evaluation_id)`、`UNIQUE(session_id, npc_id, proposal_id)`，以及按观察者/有序 Delivery Cursor 的查询索引和模式 epoch CAS；以实际键模型消除重复副作用。Session 的 Version Gate 与数据库写锁串行性分别负责语义一致性和持久化原子性。
+建议索引/约束（具体表结构待实现）：`UNIQUE(session_id, command_id)`、`UNIQUE(session_id, event_seq)`、`UNIQUE(session_id, observation_id)`、`UNIQUE(evaluation_id)`（在 SM 本地运行时唯一定位 Task）、每个 Evaluation 最多一个最终 Result 的唯一约束，以及按观察者/有序 Delivery Cursor 的索引和原子任务状态/认知版本检查；以实际键模型消除重复副作用。Session 的 Version Gate 与数据库写锁串行性分别负责语义一致性和持久化原子性。
 
 快照可用于快速读取/恢复，但权威一致性来自短事务内提交的 State Delta + Receipt + Event/Observation Outbox；MVP 不必构建完整 Event Sourcing 平台。4–5 名玩家、数百 NPC 的支持属于将来基于真实并发与延迟测试评估的扩展目标，**不是**当前单人 MVP 的功能承诺。
 
 ### 8.2 非活跃战斗恢复（MVP 必须）
 
-加载 Session 时：校验包版本与 Ruleset、重建或读取最新 World State、恢复 NPC 知识、私有 Observation Inbox / `observation_cursor` 与 Memory、恢复 Scene 位置、Evaluation Task / Observation Work / 内部 ProcessingStatus 及已提交子操作回执，先对账再续未完成项；重访不得从 `initial_state` 重新复制已改变的实例。**只有处于非战斗状态且不存在未解决的命令/待续裁决，或已有明确受控安全点，才可以宣称 MVP 的成功续玩。**
+加载 Session 时：校验包版本与 Ruleset、重建或读取最新 World State、恢复 NPC 知识、私有 Observation Inbox / `observation_cursor` 与 Memory、恢复 Scene 位置、Evaluation Task / Status / Observation Work / 内部 ProcessingStatus、已选 Result / Meta 与可靠交接及 Command Receipt，先对账再续未完成项；重访不得从 `initial_state` 重新复制已改变的实例。**只有处于非战斗状态且不存在未解决的命令/待续裁决，或已有明确受控安全点，才可以宣称 MVP 的成功续玩。**
 
 ### 8.3 活跃 Combat 恢复（明确移至 Post-MVP）
 
@@ -444,31 +457,31 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 ## 10. 最小公共接口（仅候选名称）
 
-新增接口/消息均为 **Proposed / Not Implemented**，具体 Schema 见 `MODULE_CONTRACTS.md` §7、§9。SM 创建/批准 Evaluation Task 后发送 NPCEvaluationRequest；这不要求 SM 实现 Prompt、模型推理或 KV Cache。表内注明内部的操作不是跨模块公共 API。
+新增接口/消息均 **Proposed / Not Implemented**，见 `MODULE_CONTRACTS.md` §7、§9。SM 发出 NPCEvaluationRequest，Host 执行模型；SM 不实现 Prompt / 主观推理 / KV Cache。内部操作不作为新增跨模块服务。
 
 | 接口 / 方向 | 输入 | 输出 |
 |---|---|---|
-| `validate_package` | Package 路径/数据 | 完整性、Ruleset Binding 报告 |
-| `create_session` | 冒险版本、唯一 PC 身份、命令 ID | Session、初始 View、回执 |
-| `get_scene_view` | Session、可信 Viewer | 过滤场景事实 |
-| `get_npc_view` | Session/NPC、可信主体 | 唯一 NPC Persistent State 授权 View 与版本 |
-| `get_event_observations` | Session/NPC、读取 Cursor / 范围 | 稳定有序观察、投影水位和分页 Cursor；读取不完成处理 |
-| `get_current_perceptual_view` | NPC、授权范围 | 当前过滤感知；长期记忆来源须可验证 |
-| `request_npc_interaction`（DM/UI → SM） | 可信交互请求、NPC、原因 | SM 决定授权与模式，不信任请求自报 epoch |
-| `NPCEvaluationRequest`（SM → Host） | SM 创建/批准 Task、授权 View / Observation、可信绑定与版本 | Host 执行 Interactive 或 Background 推理，返回结构化 Result |
-| `submit_npc_update_proposal`（Host → SM） | 同一 NPCEvaluationResult 与可信信封关联 | SM 验证 NPC 更新、Dialogue 和行动；持久处置及共享 Command 回执 |
-| Gate 分类 / Runtime 状态反馈（Host → SM） | 非权威分类、超时/取消/Context 状态、受控任务关联 | SM 决定采用、资格、重试与终态 |
-| 创建 Task / 协调模式 / 更新 ProcessingStatus（SM 内部） | 领域触发、权威状态及持久终态回执 | 稳定 Evaluation ID、mode_epoch、内部处理状态/Completed Cursor；不要求独立 Host ACK |
-| `project_world_event`（内部） | 已提交事件、事件时证据、投影版本 | 私有 Observation / 待处理 Outbox |
-| `tick_npc_schedule`（内部） | 游戏时钟、日程、稳定 Trigger | 合法活动提交/取消回执/重评估任务 |
-| `submit_world_command` | 可信主体/Actor、命令 ID、版本、操作 | SM 提交/拒绝、事件与版本 |
-| `submit_check_request` | 合法参数、GM 裁决来源、操作 ID | Rule Evaluation 与最终 Commit Receipt |
-| `start_encounter` | Encounter、Actors、Rule Binding、位置 | SM 提交的 CombatState 与事件/拒绝 |
-| `submit_combat_intent` | PC/NPC 可信绑定、Typed Intent、命令 ID | Commit Receipt / 已提交事件 |
-| `evaluate_rule`（内部适配器） | 版本快照、Typed Intent、规则数据、RNG | 未提交 RuleEvaluationResult / StateDelta |
-| `save_session` / `resume_session` | Session、包版本 | 一致非战斗恢复，或中断战斗的明确安全限制 |
+| validate_package | Package | 完整性、Ruleset Binding 报告 |
+| create_session | 冒险版本、唯一 PC、命令 ID | Session / 初始 View / 回执 |
+| get_scene_view | Session、可信 Viewer | 过滤场景事实 |
+| get_npc_view | Session/NPC、可信主体 | 完整授权 Profile / Episodic Memory / Belief History / Relationship / Goal / Plan 及 NPCStateVersion |
+| get_event_observations | Session/NPC、读取 Cursor / 范围 | 有序观察、投影水位；读取不完成工作 |
+| get_current_perceptual_view | NPC、授权范围 | 当前感知；用于记忆的来源须可核验 |
+| request_npc_interaction（DM/UI → SM） | 可信交互请求 / 当前玩家输入 | SM 原子撤销旧有效 EVA、授权新任务，不等待旧反馈 |
+| NPCEvaluationRequest（SM → Host） | 已授权 Task、完整授权 Meta / 新观察 / 玩家输入（适用时） | Host 模型运行与 NPCEvaluationResult |
+| submit_npc_evaluation_result（Host → SM） | evaluation_id: str, result: NPCEvaluationResult | EvaluationReceipt；从 Task 恢复全部关联，整批 Meta 原子提交 / 结构化错误 |
+| Runtime 状态 / Gate 分类反馈（Host → SM） | 非权威失败/取消/Context 状态、分类候选 | SM 采用分类、维护任务与领域状态 |
+| 创建/取消 Task、维护 Completion（内部） | 领域触发、必要认知处理与可靠交接 | EvaluationStatus、ObservationProcessingStatus / Completed Cursor |
+| project_world_event（内部） | 已提交事件、事件时证据 | 私有 Observation / 持久 Outbox |
+| tick_npc_schedule（内部） | 游戏时钟、日程、稳定 Trigger | 合法活动 / 取消 / 重评估任务 |
+| submit_world_command | 可信 Actor、稳定 command_id、版本、操作 | SM Commit / Rejection / Command Receipt |
+| submit_check_request | 合法参数、GM 来源、command_id | Rule Evaluation / 最终 Commit Receipt |
+| start_encounter | Encounter、Actors、Rule Binding、位置 | SM CombatState / 事件 / 拒绝 |
+| submit_combat_intent | 可信 PC/NPC 绑定、Intent、command_id | 独立 Command Receipt / 已提交事件 |
+| evaluate_rule（内部适配器） | Snapshot、Typed Intent、规则数据、RNG | 未提交 RuleEvaluationResult / StateDelta |
+| save_session / resume_session | Session、包版本 | 非战斗恢复或中断战斗安全限制 |
 
-`ack_observations()` 从 MVP 必需公共接口移除；完成由 SM 内部持久终态决定。`invocation_id` / `context_id` 是可选运行时追踪，不是提交必填。可信身份关联由受控调用上下文传递，SM 检查 principal、NPC 绑定、授权范围、版本及幂等；LLM 自报 controller_id / evaluation_id 不能认证。
+提交入口只需 evaluation_id 与 Result；调用身份来自可信运行环境，不接受 LLM 自报。invocation_id / context_id 非必填提交信息，Evaluation ID 不是认证凭证；Action Execution 仍独立 command_id。EvaluationReceipt 是结构化反馈，不新增独立服务/复杂公共 Receipt 系统，也不增加 ACK 握手。
 
 ## 11. MVP 开发顺序与验收测试
 
@@ -490,9 +503,9 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 ### Batch SM-3：WorldEvent / Perception / NPC Memory + Agent Integration
 
 - 事件稳定顺序、外显动作与私有 Intent 区分、事件时感知证据、Perception Projection、各 NPC Observation Inbox 与持久 Outbox。
-- NPC Profile/Knowledge/Beliefs/Memory 隔离，Observation → Memory Proposal → 版本/来源/权限验证 → 私有记忆保存。
+- 完整授权 Profile / Episodic Memory / Belief History / Relationship / Goal / Plan 隔离，Observation → EVA Result → 整批确定性验证 → Meta 原子保存，不做语义筛选/验证。
 - NPC 按需激活与观察游标、提议与提交分离、非 LLM fallback 边界、有限自动反应深度。
-- SM 双模式任务路由与独占、持久 epoch、NPC Update Proposal / 子操作去重、内部 Completed Cursor；Host 执行模型与 Context；新接口均待实现。
+- SM 双模式独占、持久 EvaluationStatus / NPCStateVersion、每 EVA 唯一 Result、原子 Meta 与可靠行动交接、内部 Completed Cursor；Host 执行模型与 Context；新接口均待实现。
 - **完成证据**：NPC A 无法读到 B 私有 Intent 或秘密；可见争抢各自形成正确 Observation；相同事件重试不重复投影；无论模型认为谁故意抢钱，都不能修改客观世界事实。
 
 ### Batch SM-4：Rule Evaluation Adapter + Unified Atomic Commit
@@ -550,11 +563,11 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 |---|---|---|
 | SM-A32 | Active Interactive NPC 新增 Observation | SM 可靠保存并有序投递；Host 仅追加现有 Context，无逐条 Gate / 额外 Background LLM |
 | SM-A33 | Interactive Context 空闲时收到重大事件 | SM 批准 Interactive Task，Host 执行当前 Interactive LLM；模式不因无在途请求而变成 Background |
-| SM-A34 | 一响应包含 Dialogue、Belief、Memory、Action Intent | 可选认知更新验证来源/版本；行动统一 Typed Command；提交前不发布世界事实 |
+| SM-A34 | 一 Result 包含 Dialogue、Belief、Memory、Action Intent | Meta 整批确定性验证原子写入，Action / Dialogue 独立处理，EVA 完成不等待动作成功 |
 | SM-A35 | Inactive NPC 一次 Background Evaluation 决定移动 | 无 Interactive Agent Context 亦能提出并合法提交行动；临时 Context 释放 |
 | SM-A36 | 普通低价值 Observation | Safe Retention / No-op 回执后 SM 内部记录完成，不调用完整 NPC LLM，关键证据保留 |
-| SM-A37 | Background → Interactive 与旧 Proposal 提交竞争 | epoch 撤销和提交检查串行；先对账已提交项，拒绝迟到更新/动作，不覆盖新认知 |
-| SM-A38 | 模型失败、Observation 重投、DB 版本冲突、提交后 完成状态更新前崩溃 | 不重复 Memory / 关系 Delta / 行动；未完成前缀不推进 Completed Cursor，读/投影缺口不漏处理 |
+| SM-A37 | Background → Interactive 与旧 EVA 提交竞争 | 取消旧任务/新建与 Meta 事务内资格检查串行；不等旧反馈，保留先提交 Meta/可靠交接，拒绝取消任务结果 |
+| SM-A38 | 模型失败、重投、版本冲突、完成事务前后崩溃 | 唯一 Result 与原子 Meta 防半批/重复写，稳定 Command ID / 可靠交接防重复行动；认知/交接缺口不跳过 |
 | SM-A39 | Memory 成功持久化 | Host 可继续复用 Active Context；无强制 Compaction / Rebuild |
 
 ### 11.3 v0.5 职责与统一协议验收（Proposed / Not Implemented）
@@ -565,11 +578,26 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 |---|---|---|
 | SM-A40 | Evaluation / Gate 触发 | SM 创建授权 Task、维护领域模式与处理状态；Host 分类仅候选，SM 不执行 LLM 推理或 Prompt 管理 |
 | SM-A41 | 多 Invocation / Context 复用 | Task ID 与调用尝试分开，Invocation/Context ID 可省略；Evaluation ID 不是认证凭证 |
-| SM-A42 | 模型伪造身份/授权/版本 | SM 从受控上下文绑定并核验 principal、NPC、范围、epoch、版本及幂等，不信任自报 |
-| SM-A43 | Interactive / Background Result | 同一/兼容七字段、允许全空，可信信封不另定义数据结构；Background 无 Interactive Context 也可行动 |
-| SM-A44 | 不调用独立 ACK，部分副作用后崩溃 | SM 由持久终态计算 Completion，已提交回执复用；读/追加/模型返回不完成，Pending Choice 不提前完成 |
+| SM-A42 | 模型伪造身份/权限/版本/状态 | SM 从持久 Task 恢复关联，并核验可信主体、NPC、范围、引用、版本、任务与幂等，不信任自报 |
+| SM-A43 | Interactive / Background Result | 同一/兼容七字段、可全空，最小提交只有 evaluation_id + result；Background 无 Interactive Context 也可提出行动 |
+| SM-A44 | 无 ACK、EVA 交接后 Command 失败/等待选择 | Meta / Result / EVA 完成原子持久，可靠交接后 EVA / 必要认知处理可完成，独立 Command / PendingOperation 继续跟踪 |
 | SM-A45 | Dialogue 发布或 Action Intent | SM 检查受众/叙事权限，Action 复用共享 Typed Command / Rule Engine / Atomic Commit |
 | SM-A46 | SM 持续故障及非战斗恢复 | Session 停止权威推进，Host 不接管；从 SM 持久任务/状态/回执恢复，未知提交先查回执 |
+
+### 11.4 v0.6 简化 EVA 合成验收（Proposed / Not Implemented）
+
+以下是待实现目标，本轮未执行模型或 SQLite 故障注入测试。
+
+| ID | 行为 | 必须通过 |
+|---|---|---|
+| SM-A47 | 同任务重复/不同结果 | Evaluation ID 幂等，每 EVA 至多一个最终 Result；相同返回原反馈，已选后不同结果拒绝 |
+| SM-A48 | Memory / Goal / Plan 任一更新非法 | 整批 Meta、最终 Result 均不提交；同一有效 EVA 有界修正，任务有效性与 Meta 写入同事务核验 |
+| SM-A49 | 模式切换与 Meta 提交竞争 | 原子取消旧有效任务并新建，不等旧反馈；先成功 Meta 保留，取消后新 Invocation/迟到结果不能提交 |
+| SM-A50 | Meta 成功、Action 非法/失败/needs_choice | Meta 与 EVA 完成保留；可靠交接及独立 command_id 防漏防重，Command / PendingOperation 独立跟踪 |
+| SM-A51 | Timeout / Schema 非法 / Meta 非法 / 重试耗尽 / 反馈丢失 | 有效任务有限修正，耗尽 failed 与未完成观察持久，提交反馈丢失查原 Result / Receipt |
+| SM-A52 | SM 提供完整 Meta、Host 构建/复用 Context | 六类完整授权 Meta + 新观察，不语义筛选/Ranking/智能压缩；复用后增量变化即可 |
+| SM-A53 | Initial / Runtime Belief 演变 | 同一 Belief 追加版本，来源/当前状态/历史保留，NPC 可修改/降低置信度/放弃，SM 不改写 |
+| SM-A54 | 自然语言错误但结构/权限/引用合法 | SM 不做忠实性语义判断或引入验证 LLM，错误 Belief 不提升为 World Fact |
 
 ## 12. 决策登记与仍需确认的实现细节
 
@@ -582,12 +610,12 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | **SM-03** | 多 Agent 共同感知与记忆 | WorldEvent → SM Perception / Reliable Observation → SM Task / Mode Routing → Host Runtime → 可选 NPC Evaluation；State Machine 保存和验证 | **已确认基础架构，v0.5 明确 SM 领域任务与 Host Runtime** |
 | **SM-04** | 统一权威状态 | State Machine 持有并提交 World/Character/Combat/RNG，Rule Engine 只计算 StateDelta；遵守 ADR-001 | **已确认** |
 | **SM-05** | 非交互 NPC 状态 | 简单游戏时钟日程；Inactive Lightweight Gate / Background Evaluation 可产生行动；不要求 Interactive Agent 激活或常驻 LLM | **已确认逻辑设计，具体阈值待实验** |
-| **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务与模式、验证 epoch / 状态版本、持久回执与 Completion；Host 管 Context / 模型；旧 Background 资格撤销后拒绝迟到结果 | **已确认原则；具体协议 Proposed / Not Implemented** |
+| **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务/模式、EvaluationStatus / NPCStateVersion、原子 Meta 与可靠交接；切换直接取消旧有效 EVA 并新建、不等旧反馈；Host 管 Context / 模型 | **已确认原则；具体协议 Proposed / Not Implemented** |
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
 | S05 | `world_version` 与实体版本粒度 | MVP 先 Session 级版本；更高并发时评估细化 | 建议 |
 | S06 | NPC/普通怪物是否默认用 LLM 战术 | **不得降低** `MVP_SCOPE.md` 已规定的至少一个敌方 NPC Sub-agent Typed Combat Intent 验收；普通怪物默认策略尚待明确 | 默认策略待决策 |
 | S07 | 外部 Hazard 与 NPC 显式战斗入口 | 先核实 Rule Engine 公共 API，缺失则列为 MVP 集成阻塞项 | 技术验证待做 |
-| S08 | 记忆筛选、压缩、冲突与预算 | MVP 只需 Episode/Belief/Relationship + 溯源/幂等；高级 Compression/Dedup 后置 | 细节待设计 |
+| S08 | 完整 Meta、Belief 历史与 Context 预算 | MVP 输入完整授权数据、追加 Belief 版本、增量复用 Context；不新增语义筛选/排名/智能压缩，超预算反馈策略待验证 | 细节待设计 |
 | S09 | 玩家 PC 构建来源 | 优先经审核的一名一级 PC；是否开放全部构建另定 | 待决策 |
 | S10 | First Blush 许可与发布 | 未经许可，不公开上传受限制的原剧情与派生数据 | 已明确约束 |
 | S11 | 感知何时需要规则检定 | MVP 确定性同场景感知 + 个别经审查 Rule Check；复杂遮挡等后置 | 精确触发待设计 |
@@ -599,20 +627,20 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 ## 13. 文档治理与下一步
 
-### v0.5 相对 v0.4 的修订摘要
+### v0.6 相对 v0.5 的修订摘要
 
-1. 确认 SM 游戏领域逻辑及全部权威状态职责，补充持久 Evaluation Task、模式协调、Gate 领域策略和 ObservationProcessingStatus；Host 只执行模型与物理 Context。
-2. 统一 SM → Host → NPC LLM → SM，区分逻辑 Task 与 Invocation / Context，可信绑定来自受控上下文而非模型。
-3. 统一 NPCEvaluationResult / NPCUpdateProposal.result，SM 验证 NPC 更新、Dialogue 和共享 Typed Command 行动。
-4. 内部 Completion 由持久终态回执决定，不要求 Host 额外 ACK，部分提交复用回执恢复。
-5. SM 持续故障停止权威推进，从自身持久状态与回执恢复；保留非战斗恢复要求及战斗精确续玩后置。
-6. 保留 ADR-001、双模式独占、Background 独立行动、DM 隔离、简单日程及原产品范围；新增验收仅为设计目标。
+1. 简化任务标识与最小 Result 提交，SM 持久 Task / EvaluationStatus / NPCStateVersion，不依赖 Host 内存状态或模式代次计数器。
+2. Evaluation ID 为 Meta 幂等键，每 EVA 至多一个最终 Result；同事务验证任务/版本、选定 Result、整批原子写 Meta、记录交接与 completed。
+3. 非法 Meta 整批不写，当前有效任务有限修正；SM 仅确定性验证，不做自然语言语义判断、不改写 Belief、不新增验证模型。
+4. Action Execution 独立 command_id / Command Receipt，EVA 完成不等动作成功，可靠交接防漏防重，Command 失败/needs_choice 独立跟踪。
+5. 模式切换原子取消旧有效任务、保留 Meta、移交 Work 并新建，不等旧调用或失败反馈；取消任务不能靠新 Invocation 恢复资格。
+6. 提供完整授权 Meta，Belief 与 Initial Belief 兼容且追加版本保留历史，Host 只组装/增量复用，不新增语义筛选/检索/排名/智能压缩。保留 ADR-001、P0 规则契约、双模式独占及原 MVP 范围。
 
 - 此文档只给出 State Machine 运行时架构与状态权威边界；**不替代**项目总架构 `ARCHITECTURE.md`、Agent 内部设计 `AGENT_ARCHITECTURE.md` 或正式跨模块消息契约 `MODULE_CONTRACTS.md`。
 - 发现本架构与 `MVP_SCOPE.md` 已确认决定冲突时，以已确认的 MVP Scope 为准，并在审阅中提出修改，不擅自改动产品范围。
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
 - **文档优先级**：ADR-001 是权威架构决策；旧 MVP Scope 的双权威用语为历史遗留，已在 v0.5 修正。
 
-**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.5 与 `MODULE_CONTRACTS.md` v0.3 / Draft 的模式、Result / 可信 Proposal / 内部 Completion 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
+**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.6 与 `MODULE_CONTRACTS.md` v0.4 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**

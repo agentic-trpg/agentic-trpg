@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：`MVP_SCOPE.md` v0.7；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：`MVP_SCOPE.md` v0.8；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -170,12 +170,12 @@ adventure-pack/
 
 1. `profile`：稳定身份、说话风格、目标、行为约束、可用行动类别。
 2. `initial_knowledge_ids`：该 NPC **起初已知**的 `fact_id`，不等于世界全部事实。
-3. `initial_beliefs`：角色可能误解的主观判断，含 `confidence`、来源或不确定状态；不覆盖世界真实事实。
+3. `initial_beliefs`：与运行时 Belief History 使用兼容结构，保留稳定 Belief 标识、来源、版本、confidence（适用时）与当前有效状态；可为错误主观判断，不覆盖 World Fact。运行时修改/降低置信度/放弃由 NPC LLM 提议，SM 仅确定性验证并追加新版本，不覆盖/删除旧历史；具体 Schema Proposed / Not Implemented。
 4. `relationship_state`：与 PC 或其他 NPC 的关系与初始标记。
 5. `memory_policy`：哪些**已提交**的重要互动才允许成为记忆，谁有权读取；原始私有推理轨迹不作为世界事实存储。
 6. `secrets`：只有具该角色权限的上下文可见；不能以一个 `dm_only` 密文的引用自动授权给 NPC。
 
-NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
+NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。MVP 首次构建/重建 Context 提供完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 和新 Observation，Host 只组装、不语义筛选；已有 Interactive Context 后续可增量追加已提交变化，不要求每次全量重注入。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
 
 ---
 
