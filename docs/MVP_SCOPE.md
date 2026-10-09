@@ -1,11 +1,11 @@
 # Agentic TRPG — MVP Scope Specification
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**  
-> **版本：v0.3**  
+> **版本：v0.4**  
 > **初稿日期：2026-10-09**  
 > **文档级别：项目级（跨 Repository）**  
 > **建议仓库位置：** `agentic-trpg/agentic-trpg/docs/MVP_SCOPE.md`  
-> **适用范围：** Agent DM（包括 NPC Sub-agent）、State Machine、Rule Engine；Visual Presentation 作为 MVP 后续阶段
+> **适用范围：** Agent DM（包括 NPC Sub-agent）、State Machine、Rule Engine 与轻量文字入口；World Creation Agent、Visual Presentation Engine 均属于 MVP 后续阶段
 
 ## 0. 文档定位与决策状态
 
@@ -28,6 +28,10 @@
 - **[已确认] Agent DM 职责：** 主持故事、理解玩家意图、决定场景推进与 GM 语义裁决、协调 NPC Sub-agent；不得把“协调 NPC”变成“代 NPC 作出所有行动决定”。
 - **[已确认] 交互方式：** MVP 以文字、自然语言交互为核心。简单文字界面足以满足演示；可选根据 DM 的描述生成插画。
 - **[已确认] 视觉分期：** 与 Rule Engine、State Machine 深度联动的地图、Token、动画、场景渲染及游戏世界可视化**不属于 MVP 验收条件**，在 MVP 后单独推进。
+- **[已确认] 黄金冒险剧本：** 选用 **First Blush**（D&D Duet）作为首个 MVP 的**本地端到端验收剧本**。不再编造一部代替它的原创剧情；具体地点、NPC、Encounter、线索和分支，必须在取得剧本原文后逐项提取和核对，不能凭介绍猜测。
+- **[已确认] World Creation Agent 后置：** MVP **不开发** PDF/HTML/Markdown 自动剧本解析、跨剧本通用编译器、World Creation Agent，亦不要求兼容 Gamebook-style Adventure。首个冒险采用**人工整理、人工审核**的本地 Adventure Package（也可以先用最小化结构化配置）驱动，作为未来 World Builder 的参考样本。
+- **[已确认] 视觉引擎后置：** 可交互的 Visual Representation / Presentation Engine、自动地图资产管线、实时视觉状态同步均在 MVP 后开发。少量不影响游戏状态的 AI 插画仍可选；本地 Golden Adventure 无插画也须可通关。
+
 
 **重要架构边界：** “没有战术画面”不等于“没有权威战术状态”；“NPC Sub-agent 有自主决策能力”不等于它可以修改世界状态、决定骰点或绕过 Rule Engine；“一个 NPC 一个独立角色上下文”也**不等于**必须为每个 NPC 常驻部署独立模型或进程。
 
@@ -41,9 +45,9 @@
 
 ### 1.2 MVP 的成功定义
 
-**[已确认的产品方向；细节仍待验收设计]** 首个 MVP 的成功标准不是实现全部 SRD，而是：
+**[已确认的产品方向；细节仍待验收设计]** 首个 MVP 的成功标准不是实现全部 SRD 或自动编译任意冒险，而是：
 
-> **一名真人玩家只控制一名 PC、没有 AI 队友**，在 Agent DM 主持下通过自然语言完成一段 D&D 单人冒险，包含 **NPC 对话、探索、检定、危险/陷阱、至少一次完整战斗、战利品或任务结果、休息/资源恢复以及场景转换**。对话 NPC 和战斗敌人的实际决策通过有独立角色上下文的 **NPC Sub-agent** 提出；Agent DM 负责主持、协调与叙述。State Machine 管理世界/会话权威，Rule Engine 管理已支持的机械计算和战斗状态。所有越权或不支持的规则必须有明确反馈。
+> **一名真人玩家只控制一名 PC、没有 AI 队友**，在 Agent DM 主持下通过自然语言完成选定的 **First Blush** 单人冒险（经人工适配），核心流程涵盖**剧本实际包含的 NPC 互动、探索、检定、战斗、状态转移与合法结局**；休息/资源恢复等若未自然出现在剧本内的共用能力，通过独立集成测试验收。对话 NPC 和战斗敌人的实际决策通过有独立角色上下文的 **NPC Sub-agent** 提出；Agent DM 负责主持、协调与叙述。State Machine 管理世界/会话权威，Rule Engine 管理已支持的机械计算和战斗状态。所有越权或不支持的规则必须有明确反馈。
 
 MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块各自拥有 API 的集合。关闭图片生成后仍应完整可玩；**不以 NPC 同伴系统替代 NPC Sub-agent 的独立性验证**。
 
@@ -51,7 +55,7 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 
 | 维度 | MVP 产品范围 | 决策状态 |
 | --- | --- | --- |
-| 首个 RuleSet | 优先以 D&D 2024 / 可合法使用的 SRD 5.2.1 为内容基线；不将其他模块设计为 D&D 专用 | [建议] |
+| 首个 RuleSet | Rule Engine 采用 D&D 2024 / SRD 5.2.1 机械能力作为实现基线；First Blush 的旧版规则细节需要人工核对/适配，不将其他模块设计为 D&D 专用 | [建议] |
 | 冒险类型 | 单人叙事探索、NPC 互动、检定、具备战术规则的战斗、休息及任务推进，组成完整小型冒险 | [已确认] |
 | 玩家模式 | **一名真人玩家，只直接控制一名 PC** | [已确认] |
 | AI 队友 / 同伴 | **首版没有 AI 队友**；不做招募、组队控制、队友战斗管理及同伴专属玩法 | [已确认：不纳入 MVP] |
@@ -65,7 +69,9 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 | 战斗空间 | Engine 内部维持权威 2D 网格/位置、范围及掩护计算；无需渲染地图 | [建议] |
 | 单人战斗平衡 | 选用可由一名 PC 独自面对的遭遇，必须保留正常失败、死亡和撤退可能，不通过 DM 任意改骰“保护剧情” | [建议] |
 | 运行形态 | 本地/单实例优先；Agent 模型、调用成本、并发规模另议 | [待决策] |
-| 冒险内容 | 先用一段可复现的小型单人冒险验收；不要求无限开放世界 | [已确认] |
+| 黄金冒险内容 | **First Blush**，人工编写/审核本地 Adventure Package；移除对 AI 队友的依赖、审查单人遭遇安全性 | [已确认；内容适配待核对] |
+| World Creation Agent | **不纳入 MVP**；不要求自动读取或编译其他 D&D 模组 | [已确认：MVP 后] |
+| 游戏内容分发 | 代码/通用 Schema 可开源；未经权利人许可不得把 First Blush 正文、地图或实质性改编数据提交公开仓库 | [已确认：发布约束] |
 
 **边界说明：** 不开发 AI 队友系统，不妨碍故事中的商人、守卫、委托人、盗匪和怪物出现，也不妨碍 NPC 做出不利于玩家、并非 DM 预定的选择。NPC 的身份与会话状态必须稳定；NPC Sub-agent 的文本输出与内部 LLM 推断不构成可重放的规则结果。
 
@@ -173,17 +179,22 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 **明确排除的首版场景：** 1 PC + AI 队友组队战斗、同伴招募/控制、多玩家合作、完整 NPC 后台生活模拟、NPC 之间无限自动社交。
 
-### 3.1 代表性单人短篇冒险（待确认具体剧本）
+### 3.1 黄金冒险：First Blush（已选定）
 
-1. **村庄接任务：** 玩家以唯一 PC 与一位委托人 NPC 交谈。委托人的话语及取舍由其 **NPC Sub-agent** 决定；DM 提供情境、解释世界和必要检定。
-2. **调查遗迹：** 玩家探索线索、检查机关、决定进入路线；State Machine 记录发现与已改变的物体，Rule Engine 完成必要检定。
-3. **独自遭遇敌人：** 至少一名敌方 NPC/Monster 由自己的 **NPC Sub-agent** 根据可知事实与可用行动提交战斗意图；玩家仅控制自己的 PC。所有战斗资源、RNG、效果与状态由 Engine 裁决。
-4. **战斗或撤退之后：** 处理失败、胜利或离开战场等合法结果；保存 PC 的 HP/资源与敌方 NPC 的关键世界状态。**不依赖 AI 队友参与战斗。**
-5. **返回委托人：** 与同一位 NPC 再次交流，其 Sub-agent 读取此前对话中的重要记忆，按关系、承诺和任务结果回应。保存并重新载入 Session 后这些事实仍存在。
+**[已确认]** First Blush 是首个本地 MVP Golden Adventure。我们选择它，是因为它面向一名 PC 和一名 DM，适合评估开放式自然语言冒险、NPC 决策和确定性规则协作。**不得凭封面、宣传页或过往假设写入该剧本的具体剧情事实。**
 
-**强制验证：** 至少一次非战斗 NPC 的独立对话决策、一次敌人 Sub-agent 的真实战斗行动、一次 NPC 重要记忆的跨场景读取。NPC 决策应受角色目标/知识约束；不要求每次生成同样的句子，也不承诺开放世界里每个 NPC 永久在线。
+**MVP 的内容准备流程是人工的，不是 World Creation Agent：**
 
-这个场景是**产品验收样本**，不是故事只能这样发展。玩家的开放式行动可由 DM 理解和裁决，但只有明确已支持的机械效果才能由 Engine 权威执行。
+1. 通过作者或授权分发平台合法取得剧本；仅在授权范围内使用和保存原文。
+2. 人工审阅实际正文，抽取场景、场景连接、出场 NPC、NPC 可知信息与目标、事件前置条件、互动对象、怪物/Encounter、结局条件和原始数值。
+3. 将内容整理成**本地 Adventure Package**（建议至少包含 `manifest`、`scenes`、`npc_profiles`、`encounters`、`initial_state`、`rule_bindings`、`source_trace`）。MVP 允许针对 First Blush 编写最小数据结构，不承担“任意模组导入”的兼容责任。
+4. 逐条将原剧本涉及的规则映射到 SRD 5.2.1 / 现有 Rule Engine，记录不兼容能力、规则替代和来源。由于版本差异，不应直接把旧数据视为 2024 版权威数据。
+5. 核对是否依赖 Sidekick/友方战斗角色；MVP **不引入 AI 队友**。如须调整遭遇平衡、剧情触发或可选辅助，记录为透明的**本地 Solo Adaptation**，不要擅自更改掷骰结果。
+6. 使用该固定、人工审核的数据集初始化 Session，再测试 NPC 子代理交互、合法战斗意图、规则拒绝、场景转移和重载。
+
+**验收覆盖与忠于剧本同时成立：** 检定、NPC 对话、探索、一次合法战斗及结局推进应来自实际剧本；如某项工程性能力（例如短休、再次会见同一 NPC）在原剧本里不自然出现，应以**独立集成测试**验收，不能为凑 Checklist 强行编造剧本片段。NPC 持续记忆可用同一角色的多轮互动验证，是否要求跨场景重逢待正文审查。
+
+**可发布性限制：** First Blush 可免费取得并不等于允许公开改编和再分发。除非获得明确许可，**不得**将原文、地图、插画、受保护的场景表达或实质性转写的 Adventure Package 推送到公开的 `agentic-trpg` 仓库。公开仓库只放通用 Schema、工具、文档、测试协议与不包含受保护表达的合成数据；完整本地 Fixture 应被 Git 忽略。未来若需要开箱即玩的开源 Demo，再另选开放授权剧本或取得许可。
 
 ## 4. Rule Engine 支持范围政策
 
@@ -236,7 +247,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 3. **混合型效果：** 将可执行的机械部分和需要 Host 裁决的部分清楚拆开；不得因一个规则的某个 Activity 可解析，就宣称整个规则效果已实现。
 4. **不得静默变更规则：** 若要采用简化、Homebrew 或 DM Override，应留有操作来源与审计记录，并与正式 SRD 机制区分。
 
-## 5. 文字交互 MVP 与可选插画（Visual Presentation 延后）
+## 5. 文字交互 MVP 与可选插画（World Builder / Visual Engine 均延后）
 
 **[已确认] MVP 不交付完整 Visual Presentation 模块。** 三个核心模块只需一个最低限度的文字交互入口（CLI、轻量 Chat UI 或其他形式待技术选型），便可完整游玩。
 
@@ -255,14 +266,28 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 - 图像不作为地形、HP、距离、物品归属或任何规则数据的权威来源。
 - MVP 不要求将 Rule Engine / State Machine 的结构化场景状态转换成可交互画面，也不要求从图片反向解析世界状态。
 
-### 5.3 MVP 后的 Visual Presentation 阶段
+### 5.3 MVP 后的 World Creation Agent 与 Visual Presentation 阶段
 
-以下不属于本版发布条件：PixiJS / 专用 Scene Engine 选型、可编程 VTT 地图、角色 Token、行动动画、与 Rule Engine/State Machine 深度同步的世界可视化、图像资产管线和 UI 战术操作系统。未来仍应**只读消费权威事件和状态**，避免成为第二个规则或世界引擎。
+以下均**不属于本版发布条件**：
 
-**独立验收门槛：** 在禁用图片生成、没有地图渲染的环境下，A01 的完整冒险仍必须成功。
+- **World Creation Agent**：自动读取 PDF/HTML/Markdown 剧本、从 DM-oriented 或 Gamebook-style 模组生成通用世界、自动生成 NPC Profile、自动编排 Scene Initial State、自动转换地图/图片、跨剧本通用性及质量评估。
+- **Visual Presentation Engine**：PixiJS / 专用 Scene Engine 选型、可编程 VTT 地图、角色 Token、行动动画、与 Rule Engine/State Machine 深度同步的世界可视化、图像资产管线和 UI 战术操作系统。
+
+MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状态**；后置的是“让 Agent 自动创建这些内容”，而不是取消 State Machine 的 `Scene`/`NPC` 初始化能力。未来视觉层仍应消费权威事件和状态，避免成为第二个规则或世界引擎。
+
+**独立验收门槛：** 在禁用图片生成、没有地图渲染、没有 World Creation Agent 的环境下，读取**人工审核的本地 First Blush Adventure Package**，A01 的完整冒险仍必须成功。
 ## 6. 跨模块契约最低要求
 
 **本节列出产品层级要求，不替代最终的 `MODULE_CONTRACTS.md`。**
+
+### 6.0 冒险内容的静态输入（不是自动生成器）
+
+- MVP 必须能**加载**经过人工整理的固定 `Adventure Package`，从中初始化 Session、初始 Scene、NPC Profiles、初始 NPC 知识与关系、任务/世界标记、必要 Encounter 和 Rule Bindings。
+- `Adventure Package` 是**不可变的内容定义/初始状态模板**；`Runtime State` 由 State Machine 管理，初始模板只在 Session 创建时应用，不得在玩家重新进入场景时重置已发生的世界变化。
+- MVP 不包含自动 PDF/HTML 解析、内容抽取 Agent、自动 NPC 生成、自动图片生成管线或一般化内容编译器。静态内容的人工准备是测试/内容工作，不是运行时服务。
+- 每个规则映射应留存来源或适配记录；未知 Actor/Spell/Item/Feature 不得静默当成合法规则执行。
+- **发布/保密**：完整 First Blush 原文及派生数据不得未经许可公开上传；Private fixture 与公开 Schema、合成测试 Fixture 分开存储。
+
 
 ### 6.1 Command / NPC Decision
 
@@ -299,25 +324,27 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 ## 7. MVP 验收标准（End-to-End）
 
-以下为**[建议] MVP 验收合同**；等级、精选规则、具体单人剧本及成本上限仍需讨论。**AI 队友已明确排除，不再保留同伴战斗的强制或候选发布门槛。**
+以下为**[建议] MVP 验收合同**；等级、精选规则、具体 First Blush 场景的人工审阅及成本上限仍需讨论。**AI 队友已明确排除，不再保留同伴战斗的强制或候选发布门槛。**
 
 | 验收 ID | 场景与操作 | 通过标准 |
 | --- | --- | --- |
-| A01 | 完整文字单人冒险 | G01–G10 获批准的 Core 场景贯通同一 Session；仅一名 PC、无 AI 队友；从接受任务到合法结局，无需人工修改数据库或 Engine 私有状态 |
-| A02 | NPC 对话与探索 | 委托人等 NPC 的发言及选择由其自身 Sub-agent 提出；Agent DM 不直接代言；世界变化经 Host 验证保存 |
+| A01 | First Blush 完整文字单人冒险 | 从人工审核、本地载入的 First Blush Adventure Package 初始化 Session；仅一名 PC、无 AI 队友；忠于原剧本的关键场景与合法结局可运行，无需手工修改运行中数据库或 Engine 私有状态 |
+| A02 | NPC 对话与探索 | 选定剧本中实际存在的可交互 NPC 由其 Sub-agent 提出角色决策；Agent DM 不直接代言；世界变化经 Host 验证保存 |
 | A03 | **单人 PC + 敌人 NPC Sub-agent 战斗** | 玩家仅选 PC 动作，敌人自己的 Sub-agent 提交至少一个显式、合法的战术 Intent；Engine 计算回合、移动、攻击/豁免、资源、伤害与结束条件，无视觉地图 |
 | A04 | 机械确定性重放 | 相同规则数据、初始状态、Seed 和**已提交的 PC/NPC 命令序列**产生相同权威事件、结果和最终状态；不要求 LLM 决策或文案逐字相同 |
 | A05 | 非法/不支持请求 | 无效 Actor 权限、目标、资源或规则在相应 Preflight 边界拒绝；没有额外资源扣除、RNG 消耗或越权修改 |
 | A06 | 重试与异常 | 已提交 Command 按约定幂等；意外故障不导致状态、资源或事件不一致 |
 | A07 | 战斗转交世界 | 玩家 PC 与敌方 NPC 的机械状态按真实来源归属安全写回，资源不误记到施法目标或其他角色 |
-| A08 | 休息与场景推进 | 玩家资源按已选规则恢复，世界时间/Scene 正确推进 |
+| A08 | 休息与场景推进 | 玩家资源按已选规则恢复，世界时间/Scene 正确推进；若原剧本没有自然休息环节，允许独立集成测试验收，不修改原剧情 |
 | A09 | Session 保存与读取 | 重载非战斗 Session 后，PC、任务、Scene、NPC 重要记忆与人物关系一致 |
 | A10 | 已支持规则正确性 | 每个纳入范围的机械规则有 SRD/明确裁决依据、公共执行入口、正确/拒绝用例和已知边界 |
 | A11 | 角色决策隔离 | 玩家只直接控制唯一 PC；NPC Sub-agent 有自己角色知识与目标；DM 仅主持和协调，不替 NPC 选择行动或偷偷改权威结果 |
 | A12 | 纯文字运行 | 关闭图像生成，无地图/Token/动画仍可完整游玩；插画无法影响状态 |
-| A13 | **NPC 持续身份与记忆** | 重要 NPC 在至少两次跨场景互动中保持身份、记得已知承诺/冲突；同一 NPC 的私有事实不泄漏给其他 NPC |
+| A13 | **NPC 持续身份与记忆** | 重要 NPC 在多轮互动及必要的 Session 重载后保持身份、记得已知承诺/冲突；不泄漏其他 NPC 的私有事实。是否要求跨场景重逢，以 First Blush 正文为准 |
 | A14 | **NPC 子代理故障/拒绝** | NPC 提议非法动作时获得结构化反馈并在有界次数内重试；超时/失败不凭空创建对话事实、伤害或世界状态变更 |
 | A15 | 单人遭遇失败分支 | 验证撤退、失败/倒地/死亡至少一种合法处理路径，不允许因“只有一个 PC”而在未获授权时篡改骰点保护主线 |
+| A16 | 本地 Adventure Package 初始化 | 能从人工审核的静态内容初始化场景/NPC/遭遇/规则映射；再次进入场景不重置状态；**无 World Creation Agent** 时可重复运行 |
+| A17 | 内容授权边界 | 公开代码仓库没有 First Blush 原文、地图、插画或实质性转写的完整剧情包；本地 Fixture 按许可隔离 |
 
 **独立正确性要求：** 关键规则预期来自 SRD 5.2.1 或有记录的公开裁决，而不是用 Engine 自身输出生成正确答案。多 Agent 能力另需测试角色可知事实与行动授权，不等同于规则测试。
 
@@ -335,11 +362,13 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 | 阶段 | 目标 | 完成标准 |
 | --- | --- | --- |
-| **M0：Scope 冻结** | 确认单人剧本、NPC Sub-agent 自主性、精选规则与非视觉范围 | 文档状态升级为 Approved，待定项收敛，产品决策记录齐全 |
+| **M0：Scope 冻结** | 确认 First Blush、NPC Sub-agent 自主性、精选规则、人工内容录入及非视觉/无 World Builder 范围 | 文档状态升级为 Approved，待定项收敛，产品决策记录齐全 |
 | **M1：Rule Engine Correctness Closure** | 修复影响单人战斗的核心正确性问题 | Activity 选择、支付归属、拒绝回滚、重复请求等有公共测试 |
 | **M2：Cross-module Contracts / NPC Intent** | 定义 Session、Scene、NPC Role Memory、Command、Event、状态权威和**NPC 战斗显式控制入口** | NPC Sub-agent 不访问 Engine 私有状态也能合法选取敌方动作；非战斗 NPC 能做独立对话决定 |
-| **M3：Text-first Solo Adventure Vertical Slice** | 打通一段真实单人剧本、NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
-| **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A15 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
+| **M3：First Blush Text-first Vertical Slice** | 人工整理剧本数据，加载场景初始状态，打通 NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
+| **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A17 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
+
+**后续阶段（不阻塞 MVP）：** `World Creation Agent` 自动从合法输入剧本生成多类型 Adventure Package；`Visual Presentation Engine` 消费已有的权威状态和事件进行视觉呈现。二者是未来方向，不要提前作为当前 Milestone 的依赖。
 
 ### 8.1 与 Rule Engine Backlog 的关系
 
@@ -361,7 +390,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 | D06 | Visual Presentation 是否进入 MVP？ | **不进入；战术视觉/场景深度联动留待 MVP 后** | **[已确认]** |
 | D07 | 首版持久化保障？ | 先支持非活跃战斗的 Session 恢复；活跃战斗另议 | [待决策] |
 | D08 | GM Override 权限与审计？ | 显式授权、结构化、有限范围并记录来源 | [待决策] |
-| D09 | 冒险内容来源？ | 精选单人短篇剧本；外部剧本导入方式另议 | [待决策] |
+| D09 | 冒险内容来源？ | **First Blush** 作为首个本地 MVP Golden Adventure，需合法获取与人工审核/适配 | **[已确认；正文核对待做]** |
 | D10 | 部署与成本边界？ | 本地/单实例优先；NPC Sub-agent 按需执行 | [待决策：预算上限] |
 | D11 | 三大核心模块是否独立进程？ | 不强制，先保证逻辑职责和状态权威独立 | [待决策] |
 | D12 | 开放世界裁决边界？ | 从场景选择 Engine vs Host 的规则职责 | [待决策] |
@@ -373,8 +402,14 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 | D18 | NPC 的长期记忆及知识粒度？ | 角色可知事实、动机、关系、关键互动记忆由 State Machine 维护 | [已确认：原则；Schema 待设计] |
 | D19 | NPC 和 DM 是否使用相同底层模型？ | 可以复用模型与进程，**必须逻辑上隔离角色上下文和决策接口** | [已确认：允许共享；技术待选型] |
 | D20 | NPC 决策如何接入当前 Engine 怪物战斗？ | 需检验并必要时建立 Host 授权的 NPC 显式 Intent API，不能只把现有默认怪物 AI 当作 Sub-agent | [待设计：MVP 集成阻塞] |
+| D21 | World Creation Agent 是否进入 MVP？ | **不进入**；MVP 使用人工整理的本地 First Blush Adventure Package，不开发通用剧本导入和自动世界构建 | **[已确认：MVP 后]** |
+| D22 | 支持 Gamebook-style Adventure 自动转换？ | **不作为 MVP 交付**；第二种剧本格式待 World Creation Agent 阶段讨论 | **[已确认：MVP 后]** |
+| D23 | Visual Representation Engine 是否进入 MVP？ | **不进入**；文字优先，可选非权威静态插画 | **[已确认：MVP 后]** |
+| D24 | 第一部剧本如何初始化世界和 NPC？ | **人工审阅并制作最小静态 Adventure Package + Initial State Templates**，由 State Machine 加载 | **[已确认：原则；Schema 待设计]** |
+| D25 | First Blush 能否公开随项目分发？ | 未取得单独再分发/改编授权，不随公开仓库发布其原文、地图或实质性改编内容 | **[发布限制]** |
+| D26 | 每个普通 NPC/怪物都必须调用 LLM Sub-agent 吗？ | **待定**；建议只为有对话、策略或剧情决策价值的角色按需调用，简单怪物允许确定性战术策略；不降低至少一个 NPC/敌方 Sub-agent 的 MVP 验收要求 | **[待决策]** |
 
-**当前下一步：** 明确 NPC Sub-agent 的**最小行为和记忆契约**（对话 NPC、敌方 NPC、什么情况下唤起、怎么获得可知信息、如何处理非法行动），之后再决定首版等级与精选规则清单。这个方向已经取代先前的“是否增加 AI 队友”讨论。
+**当前下一步：** 先合法取得并通读 First Blush，人工制作**场景/NPC/Encounter/规则差异清单**（内容仅本地保存）；在此基础上定义最小 Adventure Package + Initial State Schema，再落实 NPC Sub-agent 的行为/记忆契约和首版精选规则。不要提前启动 World Creation Agent 或 Visual Representation Engine 的研发。
 
 ## 10. 文档维护与变更规则
 
@@ -395,4 +430,4 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 - [Engine / Bridge Intent Parity](https://github.com/agentic-trpg/trpg-rules-engine/blob/main/docs/dev/bridge-intent-parity.md)
 - [Rule Engine Development Standards](https://github.com/agentic-trpg/trpg-rules-engine/blob/main/AGENTS.md)
 
-> **下一步：** 先确认 D13（是否强制包含 AI 同伴参战），再依序确认角色等级、规则支持清单和 State Machine↔Engine 的 NPC/PC Actor 路由。后续使用已确认的 Gameplay Scenarios 反推 `MODULE_CONTRACTS.md` 与 Rule Engine 工作优先级。
+> **下一步：** 获取并审阅 First Blush 原始剧本（当前未提供正文，尚不能声称完整提取或兼容验证）；以它的真实内容确定 Adventure Package/Initial State Schema、NPC/PC Actor 路由和精选规则清单。World Creation Agent、Gamebook 转换及可交互视觉引擎均延后。
