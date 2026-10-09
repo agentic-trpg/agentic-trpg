@@ -1,14 +1,14 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.2（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
+> **状态**：Draft v0.3（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
 >
-> **日期**：2026-10-09
+> **日期**：2026-10-10
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：`MVP_SCOPE.md` v0.8；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：`MVP_SCOPE.md` v0.9；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -402,14 +402,14 @@ Player intent / NPC decision proposal
     -> DM narrates from the committed state
 ```
 
-对于 State Machine 的最终数据库提交/响应边界，必须通过稳定 Command Receipt 识别是否已提交；Rule Engine 的求值本身没有权威副作用，响应丢失不代表已改变世界，未提交不能推进权威 RNG。
+对于 State Machine 的最终数据库提交/响应边界，必须按 (session_id, command_id) 查询稳定 CommandReceipt 识别是否已提交，无独立回执 ID 或二次 ACK；Rule Engine 的求值本身没有权威副作用，响应丢失不代表已改变世界，未提交不能推进权威 RNG。
 
 ### 9.3 保存与恢复
 
-- `Adventure Package` 不随玩家操作改变；Session 保存**包版本、当前 Scene、世界 Flag、物品归属、NPC 身份/记忆/关系、Quest、事件去重记录**，并持有已提交 Character/Combat/RNG State、规则求值关联信息和稳定 Commit Receipt。
+- `Adventure Package` 不随玩家操作改变；Session 保存**包版本、当前 Scene、世界 Flag、物品归属、NPC 身份/记忆/关系、Quest、事件去重记录**，并持有已提交 Character/Combat/RNG State、规则求值关联信息和按 (session_id, command_id) 查询的稳定 CommandReceipt。
 - 退出并重新进入某个 Scene，NPC 不会回到开局对话状态，已经领取的奖励和已解除的机关不会重置。
 - MVP 最少应支持**非活跃战斗 Session** 的保存/恢复。活跃战斗跨进程精确恢复已经明确为 **Post-MVP**；若无法可靠保存，应阻止中途恢复或采用显式的受控边界，不能装作已恢复。
-- Deterministic Replay 以**已提交的规则命令序列 + 同一规则包/种子/初始状态**为基准；不要求重新推理的 LLM 输出逐字一致，也不应保存/重放原始私有推理轨迹。
+- Deterministic Replay 以**已提交命令序列 + 固定 RulesetBinding（ruleset_id / 生效 data_revision / evaluator_version，含适用 Homebrew）+ 初始 Snapshot / 显式 RNG 状态**为基准，不以 seed 单独承诺重放；不要求重新推理的 LLM 输出逐字一致，也不应保存/重放原始私有推理轨迹。
 
 ---
 
@@ -475,6 +475,6 @@ Player intent / NPC decision proposal
 2. 建立一个**公开可提交的原创合成 Fixture**，通过引用、条件、幂等与权限校验。
 3. 明确 Rule Engine 已有接口与缺失接口，特别是 NPC 显式 Combat Intent 和受控 Hazard 结算；给出真正的 MVP 阻塞项。
 4. 确认普通 Monster 是否强制 Sub-agent；明确 MVP 至少一条敌方 NPC Sub-agent 战斗验证链。
-5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine Commit Receipts、World Events 和 State Version 边界，避免两套权威状态。
+5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：先实现 `Adventure Package Validator + Session Initialization + Scene Persistence` 的最小闭环，再加入 NPC Knowledge Projection、World Events/Skill Challenges，最后接入经审核的规则入口与完整 Golden Adventure。未通过一次可重访且可恢复的端到端测试前，不应扩成通用世界模拟系统。

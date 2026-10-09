@@ -1,6 +1,6 @@
 # Agentic TRPG — Module Contracts（MVP）
 
-> **版本：** v0.4 / Draft for Review
+> **版本：** v0.5 / Draft for Review
 >
 > **日期：** 2026-10-10
 >
@@ -8,7 +8,7 @@
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.8、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.2、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.6、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.6
+> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.9、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.3、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.7、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.7
 >
 > **历史代码核对基线（沿用 v0.1，本轮未重审 Engine）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -16,7 +16,7 @@
 
 ## 0. 用途与冻结策略
 
-本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.4 简化 EVA 任务/提交标识、原子 NPC Meta、可靠行动交接与独立执行，明确完整授权输入及 Belief History；§2–§6 的 P0 Typed Command、RuleEvaluationRequest / Result、StateDelta、RNG、Atomic Commit 契约保持不变，示例 `module-contracts/0.1` 不是文档版本遗漏。
+本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
 
 **必须满足的不变量 `[DECIDED]`：**
 
@@ -34,7 +34,7 @@
 
 ## 1. 实际代码基线与迁移缺口
 
-| 位置（已核对 main） | 当前事实 | 对契约的影响 |
+| 位置（v0.1 历史 main 基线） | 历史事实（非当前实现声明） | 对契约的影响 |
 |---|---|---|
 | `dnd5e_engine/orchestrator.py` | `_LiveCombat` 持有 Initiative、Combatants、RNG、Round、Effects、Areas、Object State 及很多 sidecar | 需要完整状态依赖盘点，不能只迁移 HP/Turn |
 | `orchestrator.py` | 公开 `start_combat`、`submit_player_intent`、`advance_monster_turn`、`end_combat` | 目标 `evaluate(...)` 尚未实现 |
@@ -54,11 +54,11 @@
 - `session_id`：Game Session 稳定 ID。
 - `command_id`：由调用方/可信 Host 生成、在 Session 内唯一的幂等键；同一键不可用于不同命令内容。
 - `actor_id`：游戏世界中的实际行动者，与 `principal_id`（发起调用的账户、Host、NPC Agent 身份）区分。
-- `world_version`：该 Session 权威状态提交序号；每次**发生权威状态变更**的成功事务单调递增。
+- `world_version`：该 Session 权威状态版本；发生世界/机械状态变更的成功提交单调推进。仅事件或元数据提交的推进规则为 [OPEN]，不能直接等同 event_seq。
 - `component_versions`：可选的对象/Combat/Character 局部版本，用于低冲突的读写集校验；MVP 可以仅使用全局 `world_version` 进行保守 OCC。
 - `event_seq`：Session 内严格单调递增的**已提交**事件序号。
-- `ruleset_binding`：不可歧义的规则版本、数据修订/hash 以及 Evaluation Adapter 版本。
-- `schema_version`：明确的消息格式版本（例如 `module-contracts/0.1`）。
+- `ruleset_binding`：Required ruleset_id / data_revision / evaluator_version，由 SM 从 Session 固定配置提供；data_revision 区分实际生效数据（含适用 Homebrew），Engine 验证匹配（§4.3）。
+- `schema_version`：明确的消息格式版本（例如 `module-contracts/0.2`）。
 
 所有对外 ID 与关系引用都必须遵守 Type/Namespace 校验，不能由 Agent 自选数据库路径或可信身份。所有命令以稳定规范化序列化（Canonical JSON）生成 `command_fingerprint`；建议包括 `command_type`、`actor_id`、动作 payload 及必要的授权/规则上下文绑定，排除纯传输重试头。具体 canonicalization 算法与版本应在实现前冻结。
 
@@ -66,10 +66,10 @@
 
 按 `(session_id, command_id)` 在 State Machine 的**持久数据库**中去重：
 
-- **相同 Fingerprint、已提交：** 返回原 `CommitReceipt`，不重新掷骰、不重复扣资源、不重复发事件。
+- **相同 Fingerprint、已提交：** 返回原 `CommandReceipt`，不重新掷骰、不重复扣资源、不重复发事件。
 - **相同 ID、不同 Fingerprint：** `idempotency_conflict`；不执行。
 - **首次请求，尚无终态：** 可进入求值；必须解决并发重入（唯一约束 + 原子 claim / 提交校验），不能只在内存中判断。
-- **已完成的确定性拒绝：** 可记录原 `RejectionReceipt`；变更输入需要新 `command_id`。
+- **已完成的确定性拒绝：** 可记录原 `CommandReceipt`；变更输入需要新 `command_id`。
 - **网络中断，是否提交未知：** 调用 `get_command_receipt(session_id, command_id)` 查询，**不可**简单改用新 ID 重试。
 
 `principal_id` 和 `actor_id` 的绑定在可信端校验；Replay 不能突破当前授权策略。
@@ -79,7 +79,7 @@
 ### 3.1 结构 `[PROPOSED]`
 
 ```yaml
-schema_version: module-contracts/0.1
+schema_version: module-contracts/0.2
 session_id: ses.example
 command_id: cmd.example.001
 principal_id: npc-agent:guard-a        # 经 Host 认证；不能信任客户端自称
@@ -101,65 +101,101 @@ payload:
 
 ## 4. State Machine → Rule Engine：RuleEvaluationRequest（P0）
 
-### 4.1 示例结构 `[PROPOSED; NOT IMPLEMENTED]`
+本章的结构决策为 `[DECIDED]`；API、具体类型定义及示例消息版本仍为 **`[PROPOSED; NOT IMPLEMENTED]`**。以下 YAML 展示字段关系，尖括号为类型/数据占位，不是可执行 Fixture；`module-contracts/0.2` 是本轮候选消息版本，与文档版本分开。
+
+### 4.1 请求结构 `[DECIDED; NOT IMPLEMENTED]`
 
 ```yaml
-schema_version: module-contracts/0.1
-operation_id: op.example.001
+schema_version: module-contracts/0.2
 session_id: ses.example
-source_command_id: cmd.example.001
+command_id: cmd.example.001
 actor_id: npc:guard-a
 operation_kind: combat.intent
 ruleset_binding:
   ruleset_id: dnd-2024-srd-5.2.1
-  data_revision: sha256:<pinned-data-hash>
+  data_revision: sha256:<effective-rules-data-hash>
   evaluator_version: <code-or-build-revision>
 state_snapshot:
+  snapshot_kind: combat
   snapshot_schema_version: combat-snapshot/0.1
   world_version: 27
-  combat_id: cmb.example
-  character_state: { ... }     # 可信受限投影，不是 Agent 可写 JSON
-  combat_state: { ... }        # 必须覆盖本次求值的完整状态依赖
-  relevant_world_state: { ... }
-  read_set: [combat:cmb.example, actor:npc:guard-a, actor:char:hero]
+  character_states: <complete CharacterState records for relevant actors>
+  effect_states: <complete relevant EffectState records>
+  scene_state: <SceneMechanicalState including required objects and topology>
+  combat_state: <CombatState including combat_id roster initiative turn and budgets>
 rng_context:
-  algorithm: python-mt19937-v1    # 仅示例；算法和状态编码需明确冻结
+  algorithm: <PRNG algorithm and encoding version; OPEN>
   stream_id: main
   stream_version: 27
-  state_ref: <serialized-rng-state>
-typed_intent:
+  state: <explicit serialized RNG state; encoding OPEN>
+payload:
   intent_type: attack
   target_id: char:hero
   stat_block_action_id: spear
 ```
 
-**约束：** `state_snapshot` 必须包含本次规则执行需要的完整依赖闭包，或清楚地声明尚不支持该操作。不能在执行中偷偷读取 Engine 旧有权威 `_LiveCombat` 注册表。`ruleset_binding` 的 hash / revision 不匹配时 fail closed。`rng_context` 是已授权的显式输入；Engine 不得从进程级全局随机状态自行掷骰。
+上述顶层字段均 Required。SM 从经授权的 Typed Command 保留 `(session_id, command_id)` 与 actor_id，提供 Session 固定规则配置、权威 Snapshot 和独立 RNGContext。Engine 不接受 Agent 自报快照/身份，不在执行中读取旧权威 `_LiveCombat` 注册表或进程全局随机状态。标准 Required / Optional、类型与联合判别校验失败属于 Schema / 输入错误，不伪装为规则拒绝。
 
-### 4.2 Character / Combat Snapshot 最低覆盖 `[PROPOSED]`
+`operation_kind` 选择操作级 Payload Schema（如 CombatIntentPayload、AbilityCheckPayload、SavePayload、RestPayload）；`payload` 必须是对应强类型数据。CombatIntentPayload 内的 `intent_type` 区分 attack / cast / move 等动作子类；两层判别职责不同，不能合并，也不接受任意字典或自然语言代替 Payload。具体操作枚举与字段覆盖按已支持规则审阅，不因示例推定全部已实现。
 
-| 类别 | MVP 必须建模的权威语义（字段名未冻结） |
+### 4.2 StateSnapshot：CombatSnapshot / NonCombatSnapshot `[DECIDED; NOT IMPLEMENTED]`
+
+StateSnapshot 是两种明确 Schema 的判别联合，均只读、版本化，共享必要的 CharacterState、EffectState、InventoryState、SceneMechanicalState 等基础结构。RNGContext 是独立输入，不嵌入 Snapshot。
+
+| Schema | Required | Optional（仅按对应 Schema） |
+|---|---|---|
+| CombatSnapshot（snapshot_kind=combat） | snapshot_kind、snapshot_schema_version、world_version、character_states、effect_states、scene_state、combat_state | component_versions / 显式 read_set 等版本辅助信息 |
+| NonCombatSnapshot（snapshot_kind=non_combat） | snapshot_kind、snapshot_schema_version、world_version、character_states、effect_states、scene_state | component_versions / 显式 read_set 等版本辅助信息；不含 combat_state |
+
+`character_states` / `effect_states` 的集合元素使用相同基础 Schema，库存等组件按基础类型引用/组合。无相关效果时合法空集合仍须明确提供；可选字段的省略/null 规则由普通 Schema 定义，不引入额外缺失状态分类、缺失原因枚举或按 Intent 动态裁剪字段的机制。
+
+SM 可以按相关实体与 Scene 限定集合范围，但每个纳入实体的机械状态必须完整，并保留规则依赖闭包，包括会影响它的其他实体、来源、区域与生命周期账本。不能因本次只攻击而省去该角色的反应、装备或持续效果字段；不能把非战斗检定伪造成 Combat。缺 Required 字段报 Schema 错误，完整输入所需的规则路径尚未支持则显式 unsupported，不以隐藏 Engine 状态补齐。
+
+| 基础领域 | 完整机械状态必须覆盖的语义（具体字段映射仍待实施核对） |
 |---|---|
-| Character | HP / Temp HP / Death Saves、能力与必要规则投影、资源池与法术位、物品及数量、装备、可用动作来源 |
-| Combat | Combatant roster、Initiative 排序、Round / Current Turn / Phase、Alive / KO 等、行动/附赠行动/反应、每回合移动剩余、Position / Reach / Topology |
-| Effects | Conditions、Concentration、Active Effects、来源、剩余持续时间、区域/持续效果、合法撤销或过期条件 |
-| Limited Uses | 消耗型怪物动作、Recharge、Legendary Actions/Resistances、额外攻击计数、Class Feature / Item Charges 等 |
-| World context | 必需场景、对象、障碍、光照、遮蔽、环境规则、目标关系及版本 |
-| RNG | PRNG 算法/序列化版本、Stream、位置/状态、版本 |
-| Continuation | 尚未结束且合法的操作/选择窗口；若该语义不支持则必须显式 `unsupported` |
+| CharacterState / InventoryState | HP / Temp HP / Death Saves、能力与规则特性、资源池/法术位、库存/数量、装备、动作来源及有限使用次数 |
+| CombatState | Combatant roster、Initiative、Round / Turn / Phase、Action Economy、Reaction、移动预算、位置/Reach/Topology 及跨步骤账本 |
+| EffectState | Conditions、Concentration、Active Effects、来源与目标、持续时间、持续区域、过期/撤销条件，战斗内外复用 |
+| SceneMechanicalState | 必需场景、对象、障碍、光照/遮蔽、环境规则与关系及版本；不传入无关剧情秘密 |
+| Pending state（适用时） | 已支持的选择/活动引用与版本；复杂中途 Reaction Continuation 仍 [OPEN]（§8） |
 
-上述为**语义覆盖清单**而非现成 `CombatState` 类型。实际 `_LiveCombat` 包含更多 sidecar；其中可能具有规则影响的内部状态也必须纳入快照或重建为可验证的派生状态。应建立字段级映射表，并按新旧行为一致性测试验收。
+该表不是现成代码类型。实施前需盘点历史 `_LiveCombat` 的 sidecar，区分权威/派生/临时字段并验证完整依赖，不能仅迁移 HP / Turn。
+
+### 4.3 RulesetBinding `[DECIDED; NOT IMPLEMENTED]`
+
+RulesetBinding 的 Required 字段为 `ruleset_id`、`data_revision`、`evaluator_version`。SM 从 Session 固定配置提供；Engine 在求值前验证三者与实际加载规则/数据/求值器匹配，不匹配报独立绑定错误并禁止继续求值，不能静默换规则版本。
+
+`data_revision` 必须区分**实际生效的规则内容**，包括适用的 Homebrew / 数据覆盖及组合；不能只用基础 SRD 名称代替生效内容修订。具体摘要/组合编码为 [OPEN]，本轮不决定发布/热更新机制。固定 RNG seed 也不能替代此绑定。
+
+### 4.4 Action Availability Query `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
+
+独立只读查询供 UI / Agent Planning 查看候选行动的当前可用性，复用明确 Snapshot / RulesetBinding 与按 operation_kind 类型化的 payload：
+
+```text
+query_action_availability(session_id, actor_id, operation_kind,
+                          payload, state_snapshot, ruleset_binding)
+  -> ActionAvailabilityResult(status=available | unavailable | unknown,
+                              input_world_version, permitted_reasons)
+```
+
+SM 负责授权并构建完整机械快照；Engine 做只读规则查询，SM 向 UI/Agent 返回经权限过滤的结果/原因，不暴露隐藏实体或不可知限制。接口名称与具体查询字段仍 Proposed。
+
+查询不需要 command_id / RNGContext，不掷骰、不修改状态、不生成 StateDelta / ProposedEvents、不产生 CommandReceipt。unknown 表示查询能力不足或当前无法确定，不等于执行合法。available 仅针对查询时快照，不预留资源、不保证后续执行成功；正式 Typed Command 必须重新鉴权、取 Snapshot / RNG 并验证。完整技能列表和全量目标枚举不属于本轮 P0 必须实现功能。
 
 ## 5. Rule Engine → State Machine：RuleEvaluationResult（P0）
 
-### 5.1 统一结果 `[PROPOSED; NOT IMPLEMENTED]`
+### 5.1 四种结果与字段约束 `[DECIDED; NOT IMPLEMENTED]`
 
 ```yaml
-schema_version: module-contracts/0.1
-operation_id: op.example.001
-source_command_id: cmd.example.001
+schema_version: module-contracts/0.2
+session_id: ses.example
+command_id: cmd.example.001
 input_world_version: 27
-input_ruleset_revision: sha256:<pinned-data-hash>
-status: accepted       # accepted | rejected | needs_choice | unsupported
+input_ruleset_binding:
+  ruleset_id: dnd-2024-srd-5.2.1
+  data_revision: sha256:<effective-rules-data-hash>
+  evaluator_version: <code-or-build-revision>
+status: accepted
 read_set:
   - ref: actor:npc:guard-a
     version: 27
@@ -167,102 +203,122 @@ read_set:
     version: 27
 state_delta:
   operations:
-    - kind: resource.consume
-      owner_id: npc:guard-a
-      resource_id: action
-      amount: 1
+    - kind: combat.action_budget_update
+      actor_id: npc:guard-a
+      action_remaining: 0
     - kind: actor.hp_delta
       target_id: char:hero
       amount: -4
-  preconditions: [...]        # 显式、可验证的先决条件
+  preconditions: []
 proposed_events:
-  - type: combat.attack_resolved
+  - event_type: combat.attack_resolved
     actor_id: npc:guard-a
     target_ids: [char:hero]
-    mechanical_details: {...}
+    payload: <typed mechanical event details>
 rng_transition:
   stream_id: main
   input_version: 27
-  draws: [...]                # 足够审计；具体 wire format 待冻结
-  next_state_ref: <serialized-rng-state>
+  next_state: <successor explicit RNG state; encoding OPEN>
 choice: null
 error: null
 ```
 
-规范约束：
+共同 Required 字段为 schema_version、session_id、command_id、input_world_version、input_ruleset_binding、status、read_set，以及下表的 state_delta、proposed_events、rng_transition、choice、error。共同字段必须匹配请求/快照，read_set 描述实际依赖实体与版本，不是让 Engine 扩大授权范围；StateDelta 的目标必须在批准的写范围内。空集合与 null 按下表明确区分：
 
-- `accepted`：**求值已完成且可提交**，包含完整 Delta + Proposed Events + RNG Transition + 读写集。可以表达一次攻击**未命中**或豁免**成功**——这些属于已发生的合法机械尝试，不能误归类为 `rejected`。
-- `rejected`：请求在可安全拒绝的规则边界不予执行；不提交世界变化、机械事件或权威 RNG 进度。若规则允许失败后扣费/触发事件，应输出 `accepted` 并体现完整成本与事件。
-- `unsupported`：当前 Engine 未提供该规则语义；**禁止静默降级为假成功**。
-- `needs_choice`：要求调用者在执行前补充结构化选择（详见 §8）；除明确批准的 PendingOperation 记录外，不提交部分机械结果。
-- Engine 的 `proposed_events` 没有权威 `event_id` 或 `event_seq`；由 State Machine 在事务中分配。
-- State Machine 负责检查 Schema、权限、读写范围、版本和不变量。不得接受任意 JSON Patch/任意 SQL 路径更新。
+| status | state_delta | proposed_events | rng_transition | choice / error |
+|---|---|---|---|---|
+| accepted | 完整 Typed StateDelta，operations 可合法为空 | 有序候选机械事件列表，可为空 | 必须提供，可与输入状态相同 | choice=null；error=null |
+| rejected | null | [] | null | choice=null；error 必须含结构化规则拒绝码/原因 |
+| needs_choice | null | [] | null | choice 必须为结构化前置选择；error=null |
+| unsupported | null | [] | null | choice=null；error 必须含不支持的能力/规则码 |
 
-### 5.2 StateDelta：受限、原子、可测试 `[PROPOSED]`
+- accepted 是规则求值完成且可提交，**不代表命中、达到目的或已经提交**。合法攻击未命中、豁免成功、被反制且已经合法支付资源的施法等可为 accepted，Delta / 事件 / RNG 必须完整表达实际机械结果与成本。
+- rejected 是规则允许的安全拒绝，不提交机械变化/事件/RNG。合法失败仍有成本或效果时必须用 accepted，不能借 rejected 丢掉已发生的支付。
+- needs_choice 仅按 §8 的 MVP 前置选择路径返回；不提交部分伤害、资源或 RNG。SM 可另存授权 PendingOperation 元数据，不把它当机械结果。
+- unsupported 明确能力不支持，禁止静默成功或部分执行。
+- **Schema / 输入错误、RulesetBinding 不匹配、运行时异常、传输故障在四种规则结果之外处理**，使用独立错误类别/传输反馈（§11），不能改报 rejected，也不新增第五种 RuleEvaluationResult status。失败响应不携带可提交 Delta / RNG；提交状态未知仍由 SM 按命令键查持久记录。
 
-建议首版封闭 Operation Union（具体名称审阅后冻结）：
+### 5.2 StateDelta：封闭 Typed Operation Union `[DECIDED; NOT IMPLEMENTED]`
 
-| 类别 | 典型 Operation | 关键检查 |
+StateDelta.operations 必须是**封闭的 Typed Operation Union**，每个 kind 有固定强类型字段、目标/所有者与约束；未知 kind 或额外未允许字段拒绝。具体 Operation 名称/完整字段仍 Proposed，不能用任意 JSON Patch、状态路径、SQL 或**整份权威 Snapshot 覆盖**替代。
+
+| 类别 | 候选 Typed Operation | 关键检查 |
 |---|---|---|
-| HP / 战斗 | `actor.hp_delta`、`actor.temp_hp_set`、`actor.death_state_update` | 目标合法、边界、相关效果可追溯 |
-| 资源 | `resource.consume` / `resource.restore` | 资源确属 `owner_id`，数量合法，无负库存 |
-| 道具 | `inventory.consume` / `inventory.transfer` | 唯一物品/堆叠数量、来源和目标所有权 |
-| 位置 | `combat.move_actor` | 场景位置与占位不变量、与引擎结算一致 |
-| 回合 | `combat.turn_update`、`combat.action_budget_update` | 当前 Actor / Phase / Turn Serial 一致 |
-| 效果 | `effect.upsert` / `effect.expire`、`condition.update`、`concentration.update` | 生命周期与来源一致；多个目标处理完整 |
-| 特殊资源 | `combat.limited_use_update` / `combat.reaction_state_update` | Recharge/Legendary/Reaction 按规则写入 |
-| 事件/任务 | 通过受信世界操作提交 Quest / Object / Scene 变化 | 不允许 Engine 任意改写剧情秘密 |
+| HP / 死亡 | actor.hp_delta、actor.temp_hp_set、actor.death_state_update | 目标、边界及规则结果关联 |
+| 资源 | resource.consume / resource.restore | 显式 owner_id / resource_id、数量与归属 |
+| 库存 | inventory.consume / inventory.transfer / inventory.item_update | 唯一物品/堆叠、来源和目标、装备/库存一致性 |
+| 位置 | actor.position_update | 场景/网格/占位与相关状态一致 |
+| 回合 / Action Economy | combat.turn_update、combat.action_budget_update | Round / Turn / Phase、行动/附赠/移动预算及当前 Actor |
+| Condition / Effect / Concentration | condition.update、effect.upsert / effect.expire、concentration.update | 类型化生命周期、来源、目标、引用完整性 |
+| Reaction / Limited Uses | combat.reaction_state_update、actor.limited_use_update | 反应资格/次数、Recharge、Legendary、特性/物品 Charges |
+| 复杂领域组件 | 受限的类型化组件 create / update / remove（组件种类封闭） | 仅修改该类组件，固定字段/ID/来源/版本及不变量，不借组件更新覆盖整个 Actor / Snapshot |
 
-**多 Activity、多个目标与支付归属：** 一个 Evaluation 可以包含多个排序后的 Operation；所有操作构成**单个不可分割的提交单元**。每个 `consume` 必须显式 `owner_id` / `resource_id`，不能根据事件叙述猜测支付者。变化前后的组合必须满足跨实体不变量。MVP 首个黄金用例：**消耗同一 Actor 的一件药水，同时治疗 HP、消耗行动预算并生成相应事件**。
+一次求值的多目标、多 Activity、资源支付及所有连带变化必须完整表达为有序操作，构成**一个不可分割的提交单元**；任一校验失败全部不写。SM 校验类型、权限、读写范围、版本、归属和组合不变量，不重算 D&D 伤害/成本。复杂 Effect / Reaction 等组件的完整字段为 [OPEN]，不把表中候选名视为已冻结 API。Quest / 剧情秘密等世界流程仍由受信世界操作管理，不授权 Engine 任意改写。
 
-## 6. State Machine Atomic Commit 与 Receipt（P0）
+首个黄金用例仍为：同一 Actor 消耗药水、恢复 HP、支付行动预算并生成事件，在同一 SM 事务全部成功或全部失败。
 
-### 6.1 执行时序 `[DECIDED + PROPOSED]`
+### 5.3 ProposedEvents → CommittedWorldEvent `[DECIDED; NOT IMPLEMENTED]`
+
+Engine 返回有序、类型化的候选机械事件，不分配权威 event_id / event_seq。SM 在提交 StateDelta、RNG、CommandReceipt、Outbox 的**同一事务**内分配正式事件身份/序号并保存；只有 COMMIT 成功后才成为 CommittedWorldEvent，对外发布见 §7。
+
+正式事件保留 `(session_id, source_command_id)` 与命令来源；这里的 source_command_id 是事件关联字段，不是额外的规则操作标识。SM 直接应用并校验 Typed Delta，不根据 ProposedEvents 再计算 HP、伤害或资源扣减。NPC Perception、DM Narration、UI 只能获取经授权的事件/回执投影，不直接获取候选事件或全量隐藏机械细节。
+
+## 6. State Machine Atomic Commit 与 CommandReceipt（P0）
+
+### 6.1 执行时序 `[DECIDED; NOT IMPLEMENTED]`
 
 ```text
-Typed Command → authenticate/authorize/idempotency lookup
-→ obtain authoritative Snapshot + Ruleset binding + RNG
-→ Rule Engine.evaluate(request)             [no DB write transaction]
-→ begin short SQLite transaction
-   → re-check command fingerprint / existing receipt / world_version
-   → re-check read-set, permissions, ruleset pin, typed Delta invariants
-   → commit StateDelta + authoritative RNG + WorldEvents
-   → write durable CommitReceipt + idempotency record + Outbox metadata
-→ COMMIT SQLite transaction
-→ publish only committed events from Outbox
-→ return CommitReceipt / permitted views
+Typed Command -> authenticate / authorize / (session_id, command_id) lookup
+-> obtain CombatSnapshot or NonCombatSnapshot + pinned RulesetBinding + RNGContext
+-> Rule Engine.evaluate(RuleEvaluationRequest)          [outside DB write transaction]
+-> accepted result -> begin short SQLite transaction
+   -> re-check fingerprint / existing CommandReceipt / authoritative versions
+   -> re-check read set, permissions, ruleset pin, typed Delta invariants
+   -> apply all StateDelta + authoritative RNG successor
+   -> allocate event IDs / sequence and persist committed events
+   -> persist CommandReceipt + idempotency + Outbox
+-> COMMIT -> return CommandReceipt / publish only permitted committed projections
 ```
 
-**OCC：** 如快照过时则不提交；返回 `version_conflict` 或在有界、授权、完整重新取 Snapshot + RNG 的条件下重算。重新执行不能把旧 Delta 套在新世界上。SQLite 使用唯一约束防止不同执行者对同一 `command_id` 双重提交。全局版本作为保守 MVP 默认；以后再优化精细读写集。
+非 accepted 不进入上述机械提交；可持久记录结构化拒绝、冲突或前置选择元数据，但不写部分机械 Delta / RNG / 候选事件。Schema / 异常 / 传输错误分别处理，不伪造规则结果。
 
-### 6.2 CommitReceipt `[PROPOSED]`
+**OCC / 幂等**：SM 承担权威版本、Fingerprint、权限、Delta 不变量与短 SQLite 事务。过期 Snapshot 返回 version_conflict，或在授权/有界条件下重新取完整 Snapshot + RNG 重算，不能把旧 Delta 套在新状态上。持久唯一键 `(session_id, command_id)` 防双提交；相同已提交请求只查原回执，不重新求值。并发/重算的内部尝试不增加公共操作标识。
+
+### 6.2 CommandReceipt `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
+
+统一使用 `(session_id, command_id)` 关联与查询命令结果；CommandReceipt 是结构化持久结果，不新增独立回执服务、回执 ID、二次 ACK 或独立验证流程。Fingerprint 防止同命令键被不同请求复用。
 
 ```yaml
-schema_version: module-contracts/0.1
+schema_version: module-contracts/0.2
 session_id: ses.example
 command_id: cmd.example.001
 command_fingerprint: sha256:<canonical-request-hash>
 status: committed             # committed | rejected | conflict | pending_choice
 world_version_before: 27
 world_version_after: 28
-committed_event_ids: [evt.001, evt.002]
+committed_event_ids: [evt.001]
 rng_version_after: 28
 result_ref: result.cmd.example.001
 ```
 
-`committed` 只可能由 State Machine 在数据库事务成功后形成。**响应发送失败不意味着未提交**；任何查询或重试必须能找回该持久回执。`rejected` / `conflict` / `pending_choice` 的详细字段和数据库版本推进策略另行实现时固定；禁止把拒绝事件当成已发生的伤害事件。
+上述是 committed 分支字段关系。committed 必须与全部状态/RNG/正式事件/Outbox 同事务落盘，只能在 COMMIT 成功后对外报告。rejected / conflict 必须有结构化原因、不含已提交机械事件；pending_choice 仅关联获授权的 PendingOperation。各分支具体类型与字段可空性仍 [OPEN]，不能据此增加另一套回执协议。
 
-### 6.3 RNG `[DECIDED + PROPOSED]`
+RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accepted 经成功提交才对应 committed，规则 rejected / unsupported 可对应 rejected 并保留原因，needs_choice 对应 pending_choice；版本冲突对应 conflict。Schema / 异常 / 传输错误保持各自错误类别，不因此增加规则结果状态；尚未确认提交时先查询持久命令记录。
 
-- 一条 Session RNG 流足够作为 MVP 默认，可在架构上保留 `stream_id`。算法/编码及 ruleset/evaluator 版本固定，便于确定性测试。
-- 拒绝、版本冲突、未提交求值、异常中断均不得推进**权威 RNG**。
-- `accepted` 的机械尝试即使未命中，合法消耗的骰点仍随完整提交写入；不可将“动作结果失败”误判为“执行拒绝”。
-- 同一已提交 `command_id` 返回原 Receipt，不能重掷。发生重算只能从重新读取的**当前权威 RNG** 开始。
-- 不以 RNG seed 单独承诺跨 Engine 版本精确 replay；还要保留 PRNG State、Ruleset/Data hash、Evaluator 版本和命令/事件序列。
+响应丢失用 `get_command_receipt(session_id, command_id)` 查原结果；已提交不因反馈失败回滚，不更换 ID 再执行。只读 Availability Query 不走该回执。world_version 对机械/世界状态变更单调推进；**仅事件/元数据提交是否及如何推进 World Version 为 [OPEN]**，不在本轮用事件序号代替状态版本或冻结空提交策略。
+
+### 6.3 RNGContext / RNGTransition `[DECIDED; NOT IMPLEMENTED]`
+
+- RNGContext 与 StateSnapshot 是独立输入，均由 SM 提供。Context 显式包含算法/编码版本、stream_id、stream_version、可恢复的 PRNG state；具体算法和序列化编码为 [OPEN]，示例不指定 Python 随机实现。
+- Engine 只使用该显式状态在临时求值上下文计算，accepted 必须返回 RNGTransition，绑定输入流/版本及 next_state；不读全局随机源，不由 Engine 推进权威流。
+- **只有 SM 原子提交成功才推进权威 RNG**。规则拒绝、unsupported、前置 needs_choice、冲突、回滚和未提交异常都不推进。合法未命中等 accepted 结果的随机消耗随完整提交落盘。
+- 合法且无随机消耗的 accepted 操作允许 next_state 与输入完全相同；不能为了提交而制造随机调用。RNG 流版本如何表达无消耗提交仍 [OPEN]，不据示例固定为 world_version。
+- `draws` 可作为审计辅助字段，不强制完整底层随机调用轨迹。确定性验证依据显式前后状态、固定 Payload / Snapshot / RulesetBinding 与可核验机械结果，不把可选 draws 当正确性的唯一证据。
+- 一条 Session 流足够作为 MVP 默认；重算从重新读取的当前权威 RNG 开始，已提交命令只返回原 CommandReceipt。不以 seed 单独承诺跨数据/求值器版本 replay。
 
 ### 6.4 原子性与故障 `[DECIDED]`
 
-`StateDelta + RNG + Committed Events + Durable Receipt + Outbox` 同属一个 SQLite 事务。向 LLM、NPC 或 UI 发送内容是提交**之后**的派生行为，不能参与数据库事务。发出失败由 Outbox 幂等补偿，不回滚成功的游戏事实。
+`StateDelta + RNG + CommittedWorldEvent + CommandReceipt + Outbox` 同属一个 SQLite 事务，全部成功或全部失败。LLM/Rule Engine 求值及对 UI/NPC 的发送均在写事务外；提交后投递失败由 Outbox 幂等补偿，不回滚已提交世界事实。Schema 错误、求值异常、传输故障、Commit failed/unknown 与 committed response failed 必须分别报告，不能一律要求重新掷骰。
 
 ## 7. WorldEvent → Perception → NPC Evidence（P0/P1）
 
@@ -301,7 +357,7 @@ observation_schema_version: observation/0.1
 
 ## 8. Pending Choice / Reaction / Continuation（P0 语义，MVP 限制实现）
 
-**当前限制已验证：** Rule Engine 现有 Reaction 流程主要是提前 `ready`，不提供完整的“解析到一半停下并等待 NPC/PC 选择”的公共可序列化 continuation。
+**历史代码审阅限制（本轮未重审实现）：** v0.1 基线的 Reaction 主要提前 `ready`，未证明有完整的“解析到一半停下并等待 NPC/PC 选择”的公共可序列化 continuation；不得据目标契约宣称现有代码已支持。
 
 ### 8.1 MVP 首选 `[PROPOSED]`
 
@@ -423,7 +479,7 @@ SM 不判断自然语言 Memory 是否忠实于 Observation，不自动修改 Be
 - evaluation_id 是 Meta 幂等键；同一已选 Result 重复提交返回原 EvaluationReceipt，不重复认知更新或派发。
 - 已有选定结果时，同 Evaluation 提交不同 Result 拒绝；最终结果不可替换。具体稳定比较/指纹规范待冻结。
 - 选定之前的非法输出允许同一有效任务有限修正；Timeout / API Error 由 Host 在有效 EVA 内有界重试，Schema 非法重新生成，Meta 非法用结构化错误修正。
-- 重试耗尽由 SM 持久记录 failed，保留未完成 Observation，不伪装完成；取消任务一律拒绝迟到新结果。
+- 单次 Invocation Timeout / API Error / Schema 非法 / Meta 验证失败不立即使整个 EVA 最终 failed：任务有效且预算未耗尽时保持 running，允许同一 evaluation_id 使用新的 invocation_id 有界重试/修正。只有重试耗尽或明确无法继续才由 SM 持久记录最终 failed，保留未完成 Observation；模式切换为 cancelled，取消任务拒绝迟到新结果。
 - 提交响应丢失先查该 evaluation_id 已持久结果，不盲目重新生成。已提交 Meta 不因反馈丢失而回滚。
 
 ### 9.5 模式切换不等待旧 EVA `[PROPOSED; NOT IMPLEMENTED]`
@@ -436,7 +492,7 @@ Interactive → Inactive 同样由 SM 原子撤销旧有效 EVA、保留 Meta/�
 
 ### 9.6 EVA Completion、Action Execution 与 Feedback `[PROPOSED; NOT IMPLEMENTED]`
 
-Meta 合法时原子提交，Action Intent 的领域有效性和实际执行独立处理：非法 Intent 单独拒绝，不回滚 Meta；合法 Intent 交独立 Typed Command，SM 按需调用 Rule Engine 并最终提交，以独立 Command Receipt 表示成功/拒绝/失败/needs_choice。
+Meta 合法时原子提交，Action Intent 的领域有效性和实际执行独立处理：非法 Intent 单独拒绝，不回滚 Meta；合法 Intent 交独立 Typed Command，SM 按需调用 Rule Engine 并最终提交，以独立 CommandReceipt 表示提交/拒绝/冲突/pending_choice（对应规则 needs_choice）。
 
 SM 必须在完成 EVA 的事务中可靠记录每个 Action Intent 的交接（或明确拒绝/no-op），并分配/持久关联稳定 command_id（例如关联 evaluation_id 与 Intent 序号，但仍是独立命令键）。执行派发可从本地持久交接记录恢复，重复派发复用同 command_id；不建立独立服务或 Host 权威游戏队列。Meta 成功不意味着行动成功，EVA Completion **不等待 Action Execution 成功**。
 
@@ -474,15 +530,17 @@ Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回
 | 错误/状态 | 权威语义 | 状态与 RNG |
 |---|---|---|
 | `unauthorized_actor` / `forbidden` | 身份或 Actor 控制越权 | 不提交 |
-| `schema_invalid` | Typed Command 结构不合法 | 不提交 |
+| `schema_invalid` | Command / Rule Request / Result Schema 或 Required / Optional 类型校验失败，属于输入/契约错误 | 不提交；不映射为规则 rejected |
+| `ruleset_binding_mismatch` | Session 固定绑定与实际规则/数据/求值器不匹配 | 禁止求值，不提交 |
 | `unsupported_rule` | Engine 不支持操作 | 不提交 |
-| `rule_rejected` | 在合法求值前安全拒绝 | 不提交 |
+| `rule_rejected` | RuleEvaluationResult.rejected 的结构化规则拒绝 | 不提交机械变化/事件/RNG |
 | `version_conflict` | Snapshot/ReadSet 过时 | 不提交；允许有界重算 |
 | `idempotency_conflict` | 同一 command_id 不同指纹 | 不提交 |
 | `choice_pending` | 等待已授权的前置选择 | 只允许独立、明确的 PendingOperation 元数据 |
 | `committed` | State Machine 已原子提交全部效果 | RNG、状态、Event、Receipt 全部提交 |
 | `committed_response_failed` | **已提交**，但传输/叙事失败 | 保留原提交；调用方查 Receipt |
-| `internal_error` / `evaluation_failed` | Engine 或 State Machine 意外失败 | 若事务未提交则不改变权威游戏事实；若提交状态未知先查 Receipt |
+| `internal_error` / `rule_evaluation_error` | Engine / SM 运行时异常，独立于四种规则结果与 NPC EVA 状态 | 未提交不改变权威事实/RNG；提交未知先查命令键 |
+| `transport_error` / `timeout` | 求值或响应传输故障，不是规则拒绝 | 不凭错误推定提交；按 (session_id, command_id) 查 SM 记录 |
 
 **禁止混淆：** `miss`、`save_success`、`attack_failed_after_roll` 可能是**合法机械结果**（有 RNG/行动成本），不等价于 `rule_rejected`。当前 Bridge 的事件型拒绝/回执映射需逐路径核对，避免迁移时改变 D&D 语义。
 
@@ -499,9 +557,19 @@ Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回
 9. **感知隔离：** A 目击开门、B 后到只看到门打开；玩家/NPC/Narrator 不得得知无权知道的历史事件或 GM Secret。
 10. **记忆与 Context：** 重要 Observation 可持久化而不触发 Active Context 压缩；NPC Evaluation 重试不重复写认知/执行动作。
 11. **保存恢复边界：** 无活跃战斗的 Session 重启恢复；中断战斗明确标记，不将部分已提交机械变化悄悄丢弃。
-12. **迁移对照：** 与旧 API 在受支持合成用例上逐项比较合法性、目标、资源、伤害、Effect、事件顺序、RNG Draw 数量、拒绝与回滚。
+12. **迁移对照：** 与旧 API 在受支持合成用例上逐项比较合法性、目标、资源、伤害、Effect、事件顺序、显式 RNG 前后状态/机械骰点结果、拒绝与回滚；可选 draws 不要求完整底层轨迹。
 
 验收使用**公开的原创合成 Fixture**；*First Blush* 端到端场景在独立私有资产中验证。
+
+**v0.5 P0 补充验收目标（尚未执行）：**
+
+- CombatSnapshot / NonCombatSnapshot 分支及 Required / Optional 校验；实体字段不得按 Intent 裁剪，跨实体/效果依赖完整，RNGContext 不混入 Snapshot。
+- 同 command_id 经 Request / Result / CommandReceipt 关联；规则绑定不匹配（含生效 Homebrew 修订）禁止求值，operation_kind / payload.intent_type 分层校验。
+- 四种 Result 分支满足 §5.1 字段约束；合法未命中/被反制且支付成本仍 accepted；Schema、运行时、传输错误不映射成 rejected。
+- 拒绝任意路径、未知 Delta kind 或整份 Snapshot 覆盖；多目标/Effect/Reaction 连带变化完整原子提交，失败无部分状态。
+- ProposedEvents 无权威事件 ID/序号；SM 同事务保存正式事件/Delta/RNG/CommandReceipt/Outbox，失败不发布，SM 不从事件重算 HP。
+- accepted 无随机消耗可返回相同 RNG state，冲突/回滚不推进权威流；不依赖完整 draws 轨迹才允许验收。
+- Availability Query 无掷骰、状态写入、Delta、事件或回执；原因经授权投影，查询 available 后状态变化仍须正式执行重验。
 
 ### 12.1 v0.2 NPC 双模式合成验收 `[PROPOSED; NOT IMPLEMENTED]`
 
@@ -543,7 +611,7 @@ Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回
 | C-A30 | Meta 整批非法 / 取消与提交竞争 | 全部 Meta 原子写或全部不写；同事务验证 Task / NPCStateVersion 和选定结果，不依赖 Host 内存状态 |
 | C-A31 | 切换遇到不可取消模型 | 原子撤销旧有效 EVA/新建，不等旧失败回执；最新 Meta/未完成观察/玩家输入交新任务，迟到旧结果拒绝 |
 | C-A32 | 合法 Meta / 非法或失败 Action / Pending Choice | 可靠交接后 EVA 完成，不等执行成功；独立 Command Receipt，失败反馈不自动重做完整 EVA |
-| C-A33 | Timeout / API Error / Schema / Meta 错误 / 重试耗尽 / 丢响应 | 有界修正仅限有效任务，耗尽保存 failed/未完成观察，先查询已持久结果；取消资格不可复活 |
+| C-A33 | Timeout / API Error / Schema / Meta 错误 / 重试耗尽 / 丢响应 | 预算内保持 running，同 evaluation_id / 新 invocation_id 修正；仅耗尽或无法继续最终 failed，切换 cancelled；先查持久结果，不复活旧资格 |
 | C-A34 | 完整授权 Meta 与 Belief History | 六类 Meta + 新观察，Host 不语义筛选/检索/排名/智能压缩，Context 增量复用；Belief 版本追加保留历史 |
 | C-A35 | 非忠实 Memory / 错误 Belief | SM 只确定性校验引用等，不证明自然语言忠实、不改写文本、不新增 Semantic Validator LLM；不改 World Fact |
 
@@ -553,18 +621,19 @@ Adventure Package 是**静态**定义和初始化来源；RuntimeState 不写回
 |---|---|---|
 | C-01 | `_LiveCombat` 哪些字段权威、哪些可推导？ | 先做字段/读写路径 Inventory，生成快照依赖矩阵；这是任何重构前阻塞项 |
 | C-02 | Engine 对外 `evaluate(...)` 与 NPC `combat.intent` 的最小 Python Typed Schema？ | 本草案用于语义审阅，字段名称/类型待代码适配论证，禁止先行声称已实现 |
-| C-03 | PRNG 状态 wire format 与版本？ | 选定稳定显式编码和提交策略，并测定副作用边界 |
-| C-04 | Reaction / Pending Choice 是否允许 mid-resolution pause？ | MVP 默认预先声明；必须逐个黄金用例识别不能等价支持的规则 |
+| C-03 | PRNG 算法/编码及无消耗时 RNG 流版本策略？ | [OPEN]；显式状态/原子推进原则已确认，具体 wire format 与版本需实现对照和确定性测试 |
+| C-04 | 复杂中途 Reaction Continuation？ | [OPEN]；MVP 前置选择/预先声明不提交部分机械结果，中途暂停需按真实规则路径另行设计 |
 | C-05 | 每个普通怪物是否需要独立 LLM Sub-agent？ | **仍未决定**。但 MVP 必须验证至少一条真正敌方 Sub-agent 显式 Intent 路径 |
 | C-06 | 部分规则不支持时如何安全回退？ | `unsupported` 明确拒绝或人工裁决提议；严禁 Narrative 假装规则结果 |
-| C-07 | 全局 `world_version` 还是细粒度读写集？ | MVP 全局 OCC 简单安全；预留 finer-grained 版本及 Benchmark |
+| C-07 | 版本粒度及仅事件/元数据提交的 World Version 推进？ | [OPEN]；MVP 全局 OCC 保守方案，状态变更单调推进已确认，事件型提交推进细则不在本轮冻结 |
 | C-08 | 活跃战斗崩溃中断后如何避免覆盖已提交结果？ | 明确 `combat_interrupted` 与安全恢复/阻塞协议；精确续玩 Post-MVP |
-| C-09 | Schema version、Canonical JSON hash 与 Evaluation Adapter version 怎样固定？ | 测试资产与 ABI 审阅后决定 |
-| C-10 | `needs_choice` 的持久性/过期及对外 Receipt 状态？ | v0.1 先冻结正确性边界，具体数据库模型由 SM 实施设计验证 |
+| C-09 | 消息版本、Fingerprint 规范及生效规则数据修订编码？ | [OPEN]；三字段 RulesetBinding 与含适用 Homebrew 的内容可区分性已确认，具体 canonicalization/摘要组合和候选消息版本需 ABI 审阅 |
+| C-10 | PendingOperation 生命周期与 CommandReceipt 分支字段？ | [OPEN]；仅命令键查询、无独立回执 ID/ACK 已确认；具体持久性、过期与可空性由 SM 实施设计验证 |
 | C-11 | EvaluationStatus / NPCStateVersion、Work / Task、唯一 Result 与可靠交接的最小存储/编码？ | 原子撤销旧 EVA 并新建、Meta 事务内校验任务/版本；状态编码、稳定 Result 比较和恢复实现待论证 |
 | C-12 | Observation Cursor、投影水位、批次合并及内部 ProcessingStatus / Completed Cursor Schema？ | 需证明不跨越未投影/未完成项，明确必要认知处理、可靠交接及独立 Command 重入；具体类型待冻结 |
 | C-13 | Gate / 两种模式的模型、Prompt、阈值、预算与取消能力？ | Jev 仅候选；通过合成场景测定漏判/延迟/成本，不擅自固定技术选型或 SLO |
 | C-14 | NPCEvaluationResult / EvaluationReceipt 的字段类型、元素约束、版本与错误映射？ | 七字段概念结构及两模式兼容原则已确认；JSON Schema、可信运行环境绑定和持久任务编码待审阅，不把草案当成已实现 API |
+| C-15 | 完整 Effect / Reaction / 复杂组件 Delta 字段？ | [OPEN]；封闭 Typed Union、完整依赖与原子提交已确认，字段须对照现有生命周期与不变量盘点，禁止任意路径或 Snapshot 覆盖 |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 

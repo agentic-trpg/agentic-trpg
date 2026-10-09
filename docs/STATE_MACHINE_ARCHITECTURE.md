@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.6（依据 ADR-001 与 NPC Evaluation Mode 决策；具体消息 Schema 与实现仍待审阅）
+> **状态**：Draft v0.7（依据 ADR-001 与 NPC Evaluation Mode 决策；具体消息 Schema 与实现仍待审阅）
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.8；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.2；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.6；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.4 / Draft
+> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.9；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.3；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.7；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.5 / Draft
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -100,11 +100,11 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 |---|---|
 | `session_id` | 稳定、唯一、与其他 Session 隔离 |
 | `adventure_id`, `package_version`, `package_digest` | 固定加载的冒险定义版本；重载时校验，禁止静默升级 |
-| `ruleset_id`, `ruleset_digest`（如可用） | 固定机械规则及数据来源 |
+| `ruleset_binding` | 固定 ruleset_id / data_revision / evaluator_version；数据修订区分生效规则及适用 Homebrew，Engine 求值前验证匹配 |
 | `pc_actor_id` | 仅一名玩家可直接控制的 PC |
 | `current_scene_id`, `current_location_id` | 当前所在场景、地点 |
 | `phase` | `exploration` / `combat` / `challenge` / `completed` 等有限阶段（候选） |
-| `world_version` | 成功提交世界事务后单调递增的版本号；与事件流水号不同 |
+| `world_version` | 世界/机械状态变更提交时单调推进，与事件序号不同；仅事件/元数据提交的推进规则 [OPEN] |
 | `last_world_event_seq` | 本 Session 已提交事件的稳定全序序号，观察记录据此引用及排序 |
 | `last_safe_checkpoint_id` | 最近可核验的非战斗安全恢复点；不意味着活跃战斗可精确恢复 |
 | `status` | `active`、`combat_unrestorable`、`completed`、`blocked_reconciliation` 等（候选） |
@@ -150,9 +150,9 @@ Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两�
 
 ### 3.4a `CharacterState`、`CombatState` 与 RNG（统一权威）
 
-State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数、装备、Condition、持续效果；活跃 Encounter 持有 Initiative/Turn、行动经济、位置、Concentration、反应窗口、Pending Choice、RNG 流位置以及所需技能/规则生命周期账本。只存储明确规定的权威数据，不复制可由规则确定性计算的派生字段作为第二权威。
+State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数、装备、Condition、持续效果；活跃 Encounter 持有 Initiative/Turn、行动经济、位置、Concentration、反应窗口、Pending Choice 以及所需技能/规则生命周期账本。SM 另存权威 RNG 流状态/版本，以独立 RNGContext 提供给 Engine。只存储明确规定的权威数据，不复制可由规则确定性计算的派生字段作为第二权威。
 
-同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。State Snapshot 必须完整、版本化并固定 Ruleset Digest。Rule Engine 内部临时缓存及执行对象不是可持久化权威。
+同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。StateSnapshot 采用 CombatSnapshot / NonCombatSnapshot 两种 Schema，共享 CharacterState / EffectState 等基础结构；相关实体范围可限定，但每个实体机械字段及规则依赖必须完整，不按 Intent 裁剪，使用标准 Required / Optional 校验。RulesetBinding 从 Session 固定配置提供，RNGContext 独立于 Snapshot（详见 MODULE_CONTRACTS.md §4）。Rule Engine 内部临时缓存及执行对象不是可持久化权威。
 
 ### 3.5 `ChallengeInstance`：非战斗技能挑战
 
@@ -162,7 +162,7 @@ State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数
 
 ### 3.6 `WorldEvent`、感知证据与顺序
 
-`WorldEvent` 是**已提交的、不可变的世界事件记录**，最小概念字段：`session_id`、`event_id`、`event_seq`、`event_type`、`source_command_id` / `engine_operation_id`、`actor_id`、`object_ids`、`scene_id`、`occurred_at_game_time`、`payload`、`visibility_class`、`perception_evidence_ref`。字段为候选，不代表现有实现。
+`WorldEvent` 是**已提交的、不可变的世界事件记录**，最小概念字段：`session_id`、`event_id`、`event_seq`、`event_type`、`source_command_id`、`actor_id`、`object_ids`、`scene_id`、`occurred_at_game_time`、`payload`、`visibility_class`、`perception_evidence_ref`。字段为候选，不代表现有实现。
 
 - `event_seq` 由 Session 中的权威提交顺序分配，单调递增；它是**记录顺序**，不自动证明角色的生理反应速度。
 - `WorldEvent` 应记载必要的**发生时刻证据**（行动时地点、参与者位置、光照/可听性、遮挡/秘密等级、相关动作是否外显）。不能在 NPC 数分钟后苏醒时用**当前**视野倒推此前谁看到了什么。
@@ -171,7 +171,7 @@ State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数
 
 ### 3.7 `ObservationRecord`：角色实际收到的观察
 
-建议字段：`observation_id`、`session_id`、`observer_actor_id`、`source_event_id` / `source_event_seq`、`observed_at_game_time`、`perception_kind`（如 sight/hearing/self_action/report）、`observed_payload`、`visibility_basis` / `rule_check_receipt_id`（若适用）、`projection_version`、`delivery_status`。每项 Observation 必须标明**观察者**和**来源**，不能在投影中包含事件对该观察者不可知的隐藏字段。
+建议字段：`observation_id`、`session_id`、`observer_actor_id`、`source_event_id` / `source_event_seq`、`observed_at_game_time`、`perception_kind`（如 sight/hearing/self_action/report）、`observed_payload`、`visibility_basis` / `rule_check_command_id`（若适用，与 session_id 查询 CommandReceipt）、`projection_version`、`delivery_status`。每项 Observation 必须标明**观察者**和**来源**，不能在投影中包含事件对该观察者不可知的隐藏字段。
 
 - MVP 只需同场景、简单视觉/听觉、人物在场状态、明显动作与自我行动结果。遮挡、幻术、远距离声音、误认等高级机制后置；若重要剧情要求检定，不得凭普通同场景规则绕过 Rule Engine。
 - 观察投影是确定性、可去重的映射；`(observer_actor_id, source_event_id, projection_kind)` 等候选唯一键防止重试生成重复观察。结果按 `source_event_seq` 有序读取。
@@ -259,7 +259,7 @@ payload:
 
 ### 5.4 单一提交者协议：Rule Evaluation ≠ Commit
 
-**目标语义由 ADR-001 固定。** Rule Engine 不拥有独立的权威可变 Combat；调用 `evaluate(snapshot, typed_intent, pinned_ruleset, rng_context)` 返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommitReceipt.status=committed` 才代表世界已变更。
+**目标语义由 ADR-001 固定。** Rule Engine 不拥有独立的权威可变 Combat；调用 `evaluate(RuleEvaluationRequest)`（含 session_id / command_id / actor_id / operation_kind、强类型 payload、完整 Snapshot、Session 固定 RulesetBinding 与独立 RNGContext） 返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommandReceipt.status=committed` 才代表世界已变更。
 
 ```text
 Load State Snapshot + version + RNG position
@@ -267,16 +267,17 @@ Load State Snapshot + version + RNG position
   -> accepted / rejected / needs_choice / unsupported
   -> State Machine begin short transaction
   -> Validate read set, versions, authorization, delta invariants, idempotency
-  -> Apply World + Character + Combat + RNG deltas and Events + Outbox
+  -> Apply typed StateDelta + RNG + authoritative Events + CommandReceipt + Outbox
   -> Commit SQLite transaction
-  -> Return immutable CommitReceipt / publish perceptions / Narrator output
+  -> Return immutable CommandReceipt / publish perceptions / Narrator output
 ```
 
 **核心约束**：
 
 - 不能在 SQLite 写事务中等待 LLM、Rule Engine 或远程调用；提交前重新验证输入版本/关联读集；冲突时废弃未提交的规则结果，并根据稳定命令 ID 与 RNG 语义受控重试。
-- State Machine 持有权威 RNG 状态或流位置；求值使用显式 RNG Snapshot；未提交请求、规则拒绝、版本冲突均不得推进权威 RNG。重试遵守幂等回执，不得双掷骰或重复付款。
-- Accepted Delta 必须覆盖一次动作的全部机械及世界副作用（例如药水消耗、恢复 HP、行动经济），状态更新、事件、RNG 和 Receipt 原子提交；不能用 Engine 自身的最终提交回执替代状态事务。
+- State Machine 持有权威 RNG 状态或流位置；求值使用独立的显式 RNGContext；accepted 返回 RNGTransition，无随机消耗时状态可不变，draws 仅可选审计辅助；未提交请求、规则拒绝、版本冲突均不得推进权威 RNG。重试遵守幂等回执，不得双掷骰或重复付款。
+- Accepted Delta 使用封闭 Typed Operation Union，覆盖 HP/资源/库存/位置/回合/行动经济/Condition/Effect/Concentration/Reaction/Limited Uses 等全部连带变化；允许受限类型化复杂组件操作，禁止任意路径/JSON Patch/整份 Snapshot 覆盖。StateDelta、RNG、正式事件、CommandReceipt、Outbox 同事务提交，SM 不根据 ProposedEvents 重算伤害/HP。
+- Engine 的 ProposedEvents 无权威 event_id / event_seq；SM 同事务分配并持久化，提交后才向 NPC / Narrator / UI 发布授权投影。仅事件提交的 World Version 推进、完整 Effect/Reaction Delta 字段及复杂中途 Continuation 仍 [OPEN]。
 - `needs_choice` 必须返回可标识、版本绑定的待续裁决状态，不得把未完成动作误写为结果；取消、超时及失效必须明确处理。复杂 Reaction Chain 可能需要可验证的短事务级分段及安全 PendingChoice 状态，实际协议在 Module Contracts 冻结。
 - 旧 `_LiveCombat`、`CombatHandle` 和 Bridge 进程内回执属于迁移前代码，不是可继续采用的双权威设计；迁移可以有短期兼容适配，但同一实际 Session 不得出现两个最终状态持有者。
 - Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
@@ -367,7 +368,7 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 - ObservationProcessingStatus 根据必要认知处理与可靠交接维护；内部 Completed Cursor 不越过认知/交接缺口或未完成投影，不要求 Host 独立 ACK。读、追加 Context、模型返回、失败/取消本身不等于完成。
 - **EVA 完成不等待 Action Execution 成功**。稳定 command_id 与持久交接防止遗漏/重复派发；Command 的失败、needs_choice 或未执行项继续以独立 Command Receipt / PendingOperation 跟踪，不阻塞已经完成且可靠交接的 EVA / Observation。
 - 动作失败反馈可交现有 Interactive LLM 做动作交互，不自动重做完整 EVA / 重写 Meta；确需认知评估时由 SM 显式授权新任务。
-- Schema / Meta 验证失败不选最终 Result、不写半批认知，返回错误给同一有效 EVA 有限修正；重试耗尽保存 failed 与未完成观察。提交响应丢失按 evaluation_id 查持久结果，行动响应丢失按 command_id 查独立回执。
+- 单次 Invocation Timeout / API Error / Schema / Meta 验证失败不立即终止 EVA：任务有效且预算未耗尽保持 running，以同 evaluation_id / 新 invocation_id 有界修正，不选最终 Result、不写半批认知；只有耗尽或明确无法继续才最终 failed 并保留未完成观察，模式切换为 cancelled。提交响应丢失按 evaluation_id 查持久结果，行动响应丢失按 command_id 查独立回执。
 - SM 不承担自然语言语义验证，不自动修改 Belief，不新增 Semantic Validator LLM。Memory Persistence 与 Context 资源管理独立；MVP 只预算保护、释放/完整 Meta 重建，不增加语义筛选或智能压缩。
 
 ### 6.5 对话承诺、知识传播及故障
@@ -443,7 +444,9 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | `unknown_session` / `unknown_actor` | 身份未定义 | 不提交 |
 | `unauthorized_controller` / `knowledge_denied` | 越权 Actor、读取秘密 | 不提交 |
 | `state_version_conflict` | 过期 `expected_world_version` | 不提交；要求刷新视图 |
-| `rule_refused` / `unsupported_mechanic` | Engine 不接受目标、成本或机制 | 不得凭空写入机械成功；可有已发布的拒绝事件 |
+| `rule_refused` / `unsupported_mechanic` | 结构化规则拒绝/能力不支持，区别于合法未命中或被反制但已支付的 accepted | 不提交机械变化/RNG；不能把候选拒绝事件发布为已发生效果 |
+| `schema_invalid` / `ruleset_binding_mismatch` | 输入/结果 Schema 或固定规则绑定不匹配 | 求值前拒绝非法输入/绑定，非法结果不提交，不映射为规则 rejected |
+| `rule_evaluation_error` / `transport_error` | 求值运行时异常或传输故障，独立于四种规则结果 | 未提交不推进状态/RNG，提交未知按命令键查询 |
 | `commit_response_failed` | State Machine 已提交，但响应构建失败 | 查询本地稳定命令回执；不能二次执行 |
 | `evaluation_or_commit_unknown` | 网络异常或提交回执未知 | Rule Engine 评估不构成提交；查询 State Machine 命令记录，无法判定则安全阻塞 |
 | `world_transaction_failed` | 世界数据库提交异常 | 不产生部分提交；重试按命令回执/去重处理 |
@@ -475,10 +478,12 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | project_world_event（内部） | 已提交事件、事件时证据 | 私有 Observation / 持久 Outbox |
 | tick_npc_schedule（内部） | 游戏时钟、日程、稳定 Trigger | 合法活动 / 取消 / 重评估任务 |
 | submit_world_command | 可信 Actor、稳定 command_id、版本、操作 | SM Commit / Rejection / Command Receipt |
-| submit_check_request | 合法参数、GM 来源、command_id | Rule Evaluation / 最终 Commit Receipt |
+| submit_check_request | 合法参数、GM 来源、command_id | Rule Evaluation / 最终 CommandReceipt |
 | start_encounter | Encounter、Actors、Rule Binding、位置 | SM CombatState / 事件 / 拒绝 |
 | submit_combat_intent | 可信 PC/NPC 绑定、Intent、command_id | 独立 Command Receipt / 已提交事件 |
-| evaluate_rule（内部适配器） | Snapshot、Typed Intent、规则数据、RNG | 未提交 RuleEvaluationResult / StateDelta |
+| evaluate_rule（内部适配器） | RuleEvaluationRequest：session_id / command_id / actor_id / operation_kind、强类型 payload、CombatSnapshot 或 NonCombatSnapshot、RulesetBinding、独立 RNGContext | 四种 RuleEvaluationResult；accepted 含完整 Typed Delta / ProposedEvents / RNGTransition |
+| query_action_availability（SM → Engine，只读） | 可信 Actor、operation_kind / 强类型 payload、完整 Snapshot / 固定 RulesetBinding | available / unavailable / unknown；SM 过滤原因后供 UI/Agent Planning 使用，无 RNG/Delta/事件/CommandReceipt，执行仍需重新验证 |
+| get_command_receipt | session_id、command_id、可信查询主体 | 原持久 CommandReceipt 的授权投影；Fingerprint 防止同 ID 不同请求，无二次 ACK |
 | save_session / resume_session | Session、包版本 | 非战斗恢复或中断战斗安全限制 |
 
 提交入口只需 evaluation_id 与 Result；调用身份来自可信运行环境，不接受 LLM 自报。invocation_id / context_id 非必填提交信息，Evaluation ID 不是认证凭证；Action Execution 仍独立 command_id。EvaluationReceipt 是结构化反馈，不新增独立服务/复杂公共 Receipt 系统，也不增加 ACK 握手。
@@ -594,7 +599,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | SM-A48 | Memory / Goal / Plan 任一更新非法 | 整批 Meta、最终 Result 均不提交；同一有效 EVA 有界修正，任务有效性与 Meta 写入同事务核验 |
 | SM-A49 | 模式切换与 Meta 提交竞争 | 原子取消旧有效任务并新建，不等旧反馈；先成功 Meta 保留，取消后新 Invocation/迟到结果不能提交 |
 | SM-A50 | Meta 成功、Action 非法/失败/needs_choice | Meta 与 EVA 完成保留；可靠交接及独立 command_id 防漏防重，Command / PendingOperation 独立跟踪 |
-| SM-A51 | Timeout / Schema 非法 / Meta 非法 / 重试耗尽 / 反馈丢失 | 有效任务有限修正，耗尽 failed 与未完成观察持久，提交反馈丢失查原 Result / Receipt |
+| SM-A51 | Timeout / API / Schema / Meta 错误 / 重试耗尽 / 反馈丢失 | 有效且有预算保持 running，同 evaluation_id / 新 invocation_id 修正；仅耗尽或无法继续 failed，切换 cancelled；丢响应查原结果 |
 | SM-A52 | SM 提供完整 Meta、Host 构建/复用 Context | 六类完整授权 Meta + 新观察，不语义筛选/Ranking/智能压缩；复用后增量变化即可 |
 | SM-A53 | Initial / Runtime Belief 演变 | 同一 Belief 追加版本，来源/当前状态/历史保留，NPC 可修改/降低置信度/放弃，SM 不改写 |
 | SM-A54 | 自然语言错误但结构/权限/引用合法 | SM 不做忠实性语义判断或引入验证 LLM，错误 Belief 不提升为 World Fact |
@@ -627,6 +632,10 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 ## 13. 文档治理与下一步
 
+### v0.7 修订摘要
+
+同步 MODULE_CONTRACTS.md 的 P0 双 Snapshot / 强类型 payload、固定 RulesetBinding、四种规则结果、封闭 Delta、正式事件、独立 RNG 与命令键回执；新增只读 Availability Query 的候选入口。EVA 单次 Invocation 错误在有效且有预算时保持 running，仅耗尽或无法继续最终 failed；不增加 NPC 状态或改变行动隔离。新接口仍 Proposed / Not Implemented，编码、复杂 Delta / Continuation 与事件型版本推进仍 [OPEN]。
+
 ### v0.6 相对 v0.5 的修订摘要
 
 1. 简化任务标识与最小 Result 提交，SM 持久 Task / EvaluationStatus / NPCStateVersion，不依赖 Host 内存状态或模式代次计数器。
@@ -641,6 +650,6 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
 - **文档优先级**：ADR-001 是权威架构决策；旧 MVP Scope 的双权威用语为历史遗留，已在 v0.5 修正。
 
-**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.6 与 `MODULE_CONTRACTS.md` v0.4 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
+**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.7 与 `MODULE_CONTRACTS.md` v0.5 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**

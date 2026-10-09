@@ -1,16 +1,18 @@
-# Agentic TRPG — Agent Architecture（MVP，Draft v0.6）
+# Agentic TRPG — Agent Architecture（MVP，Draft v0.7）
 
-> **文档状态**：Draft v0.6；描述拟议架构，不代表已经实现、通过测试或所有接口已冻结
+> **文档状态**：Draft v0.7；描述拟议架构，不代表已经实现、通过测试或所有接口已冻结
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`ADR-001`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.8、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.6、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.2、[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.4 / Draft
+> **依据**：[`ADR-001`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.9、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.7、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.3、[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.5 / Draft
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
 > **内容边界**：本文仅使用通用概念及原创合成示例，不包含 *First Blush* 正文、地图或实质性的改编剧情数据。该剧本仅作为**私有**端到端验收来源。
+>
+> **v0.7 修订主题**：同步 P0 命令/规则结果/只读查询与回执边界；有效 EVA 的单次 Invocation 失败保持 running 并有界重试，不新增状态或 API 实现。
 >
 > **v0.6 修订主题**：简化 EVA 标识/状态与最小提交；整批 Meta 原子写入、独立行动可靠交接、完整授权输入与 Belief History。保留 SM 唯一权威、Host Runtime、双模式独占与原 MVP 范围。
 
@@ -18,7 +20,7 @@
 
 ## 0. 决策层级与需要澄清的冲突
 
-**已确认的产品原则**（来自 ADR-001、MVP Scope v0.8 与 State Machine v0.6）：
+**已确认的产品原则**（来自 ADR-001、MVP Scope v0.9 与 State Machine v0.7）：
 
 1. **DM Planner 是主持与协调决策者；DM Narrator 独立负责已确认事实呈现**：解释玩家表达、组织交互、作 GM 语义裁决、调用规则及叙述已确认结果；不代 NPC 决定个人目标和自主行为。
 2. **NPC Sub-agent 具有独立角色身份和私有上下文**：在需要时被调用；一个模型进程可服务多个角色，但每次调用只能接收该角色已获授权的信息。
@@ -226,9 +228,11 @@ Interactive 期间不另调 Gate / Background / Memory / Cognition LLM，包括�
 
 LLM 不得将尚未成功动作写成已发生 Episode，须等待提交事实/Observation；SM 只检查引用、类型和权限，不能证明自然语言忠实或替 NPC 改写 Belief。
 
+Action Execution 使用独立 (session_id, command_id)。SM → Engine 的 Request 保留该键、actor_id / operation_kind，payload 按操作类别强类型化，内部 intent_type 仅区分动作子类；合法未命中或被反制且合法支付仍可 accepted，Schema/运行时/传输错误另行反馈。UI / Agent Planning 可经 SM 查询只读 Action Availability，原因受权限限制；查询无 RNG/Delta/事件/CommandReceipt，available 不保证随后执行成功，实际命令必须重验。完整技能列表与目标枚举非本轮 P0 必须实现。
+
 ### 4.3 控制策略不是怪物类型
 
-逻辑控制器可为 `sub_agent`、`deterministic_policy`、`scripted_event`（遵循 Adventure Package v0.2）；怪物是否具有机械 Stat Block 与控制器是否由 LLM 推理是两条正交维度。
+逻辑控制器可为 `sub_agent`、`deterministic_policy`、`scripted_event`（遵循 Adventure Package v0.3）；怪物是否具有机械 Stat Block 与控制器是否由 LLM 推理是两条正交维度。
 
 - `sub_agent`：角色基于授权上下文提出自主语言、世界行动或战术 Intent。
 - `deterministic_policy`：可由固定行为树、启发式或规则策略选择动作，结果仍必须走 Engine/State 授权入口。**不可统计为 LLM Sub-agent 验收。**
@@ -438,8 +442,8 @@ Background 调用**不创建、不恢复、不激活 NPC Interactive Agent**，�
 
 - 每个 evaluation_id 最多持久选定一份最终 Result。首次通过 Schema / 整批 Meta 验证，在同一 SM SQLite 事务校验有效任务与版本，选定 Result 并原子写入全部认知更新、可靠输出交接及 completed 状态。
 - 相同 Result 重试返回原 EvaluationReceipt；已有选定结果时同任务不同 Result 拒绝。尚未选定前，Schema / Meta 验证错误由当前有效 EVA 有界修正，不留下半批 Meta。
-- Host 对 Timeout / API Error 在有效任务内有界重试；重试耗尽由 SM 记录 failed，保留未完成观察。取消任务拒绝迟到结果，新 Invocation 不能复活旧 EVA。响应丢失先查持久结果，不重新生成来猜测提交。
-- Action Intent 非法独立拒绝，不回滚合法 Meta；合法意图可靠交接独立 Typed Command，每个行动关联独立稳定 command_id，派发重试复用它。Command Receipt 单独表示动作成功/失败/needs_choice。
+- 单次 Invocation Timeout / API Error / Schema 非法 / Meta 验证失败不立即使 EVA failed；有效且预算未耗尽保持 running，以同 evaluation_id / 新 invocation_id 有界重试/修正。只有耗尽或明确无法继续才由 SM 记录最终 failed，保留未完成观察；模式切换为 cancelled。取消任务拒绝迟到结果，新 Invocation 不能复活旧 EVA。响应丢失先查持久结果，不重新生成来猜测提交。
+- Action Intent 非法独立拒绝，不回滚合法 Meta；合法意图可靠交接独立 Typed Command，每个行动关联独立稳定 command_id，派发重试复用它。CommandReceipt 单独表示动作提交/拒绝/冲突/pending_choice（对应规则 needs_choice）。
 - **EVA 完成不等待 Action Execution 成功**；SM 在完成事务中可靠记录交接或明确拒绝/no-op。动作失败可反馈现有 Interactive LLM 继续动作交互，不自动重做完整 EVA 或重写 Meta。
 - SM 内部 ObservationProcessingStatus 据必要认知处理与可靠交接维护；Command 失败/等待 choice 仍独立跟踪，不自动重新打开已完成 EVA。读、Context Append、模型返回、取消/失败本身不等于观察完成；内部 Completed Cursor 不跨认知/交接缺口和投影水位，不需要额外 ACK。
 - Dialogue 发布独立核验受众、结构化引用与叙事权限，不以台词推定动作成功；SM 不证明自然语言真实性。NPC 不得将未执行动作记为已发生，Prompt 约束与可验证来源共同使用，不能冒称有语义验证器。
@@ -547,7 +551,7 @@ Meta 整批合法才原子提交，一项非法整批不写、当前有效 EVA �
 
 ### 8.3 故障、修正与恢复
 
-Timeout / API Error、Schema 非法、Meta 验证失败分别返回必要结构化反馈，在当前有效任务中有界重试/修正；耗尽由 SM 保存 failed 与未完成 Observation。模式切换直接撤销旧有效 EVA、授权新 Task，不等待旧反馈。取消任务不能借新 Invocation 继续提交。
+Timeout / API Error、Schema 非法、Meta 验证失败分别反馈：单次 Invocation 失败不终止整个 EVA，任务有效且有预算时保持 running，同 evaluation_id 可换新 invocation_id 有界重试/修正。只有重试耗尽或明确无法继续才最终 failed，SM 保存未完成 Observation；模式切换为 cancelled。模式切换直接撤销旧有效 EVA、授权新 Task，不等待旧反馈。取消任务不能借新 Invocation 继续提交。
 
 EVA 提交响应丢失查询 evaluation_id 的持久结果；Command 响应丢失查 command_id 的独立回执，不盲目重问模型或重掷骰。动作失败反馈可以继续动作交互，不自动重做整次 EVA。
 
@@ -600,9 +604,9 @@ NPC 是持续存在的逻辑角色，不是常驻 LLM 进程。Adventure Package
 
 ### 10.1 可重复的是规则结果与提交事实，不是 LLM 发言
 
-- 保存 `invocation_id`、模型/配置标识（如需要）、NPC 身份、使用的视图版本、授权工具名、提议摘要/结构化参数、提交回执 ID 和 Observation/Memory 来源。
+- 保存 `invocation_id`、模型/配置标识（如需要）、NPC 身份、使用的视图版本、授权工具名、提议摘要/结构化参数、命令键 (session_id, command_id) / EVA evaluation_id 和 Observation/Memory 来源。
 - 避免将完整私有 NPC Prompt、秘密全文或隐藏推理直接写进普通 Player/公共日志；调试审计数据也需要访问控制。
-- Rule Engine 规则结果的可重放与 RNG 由 Engine 保证；LLM 的人格决策可能不稳定，不能要求重复模型调用逐字相同。
+- Rule Engine 基于固定 Snapshot / Payload / RulesetBinding / 显式 RNGContext 保证机械求值一致性，权威 RNG 仅由 SM 成功原子提交推进；LLM 的人格决策可能不稳定，不能要求重复模型调用逐字相同。
 - 对账与失败恢复依赖已持久化命令/回执；不得通过重新生成一次对话来推定上一动作是否成功。
 
 ### 10.2 典型故障与正确行为
@@ -747,7 +751,7 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 | AG-A50 | 未选定前 Schema / Meta 非法 | 当前有效 EVA 有界修正；任一 Meta 非法整批不写，Goal 拒绝不会留下依赖 Plan |
 | AG-A51 | Meta 合法、Action Intent 非法或执行失败 | Meta 保留、EVA 可完成，可靠交接/明确拒绝持久；独立 Command Receipt，反馈不自动重做完整 EVA |
 | AG-A52 | 切换时旧 Invocation 无法取消 | SM 原子取消旧有效 EVA 并新建、不等旧反馈；新输入含最新 Meta/未完成观察/玩家输入，新 Invocation 不复活旧任务 |
-| AG-A53 | LLM Timeout / API Error / 重试耗尽 / 响应丢失 | 有效任务内有界重试，耗尽保存 failed/未完成观察；提交响应丢失先查结果，不盲目重生成 |
+| AG-A53 | Invocation Timeout / API / Schema / Meta 错误 / 耗尽 / 丢响应 | 有效且有预算保持 running，同 evaluation_id / 新 invocation_id 重试；仅耗尽或无法继续 failed，切换 cancelled；先查持久结果 |
 | AG-A54 | 完整 Meta 首次输入、Context 复用和预算压力 | 完整授权六类 Meta + 新观察，Host 不语义筛选/检索/排名/智能压缩；后续增量追加，不每 EVA 全量重注入 |
 | AG-A55 | Initial Belief 被修改/降置信度/放弃 | 兼容结构、稳定 Belief 追加版本，来源/有效状态/旧历史保留；SM 不改写文本 |
 | AG-A56 | 合法引用却错误的主观 Belief / Memory 文本 | SM 不声称判断自然语言忠实性、不改写文本，不新增 Semantic Validator LLM；错误信念不改 World Fact |
@@ -786,7 +790,11 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 
 **冻结条件（建议）**：确认普通怪物的默认 Agent/Policy 策略；审核 State Machine Task / Status、原子 Meta、可靠交接及完整输入的 Schema；核实 Rule Engine 支持的 NPC Typed Intent 和 Hazard API；至少让原创合成场景完成一个真实的 NPC 决策 → 状态/规则裁决 → 感知 → 记忆 → 后续选择循环。本文现在仅为架构草案，不表示代码已经交付。
 
-## 13. v0.6 变更说明与文档协作边界
+## 13. 变更说明与文档协作边界
+
+### v0.7 P0 同步与 EVA 失败澄清
+
+规则执行仍由 SM 提供完整 CombatSnapshot / NonCombatSnapshot、Session 固定 RulesetBinding 与独立 RNGContext，Engine 返回四种规则结果；Schema/运行时/传输错误另行处理。Meta / EVA 与 Action Execution 继续隔离。Invocation 预算内失败不使整个 EVA 最终 failed，也不重新引入额外标识或 ACK。接口结构与只读查询见 MODULE_CONTRACTS.md §4–§6，均为目标设计。
 
 ### v0.6 相对 v0.5 的主要修订
 
@@ -799,13 +807,13 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 
 ### 与其它文档的正式分工
 
-- **`STATE_MACHINE_ARCHITECTURE.md` v0.6**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
-- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.2**：定义 NPC 初始身份、初始知识、场景初态和声明式事件；不存 NPC 的动态推理上下文或后续记忆。
-- **`AGENT_ARCHITECTURE.md` v0.6**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；SM 管领域任务与模式。
-- **`MODULE_CONTRACTS.md` v0.4 / Draft**：提出 `NPCEvaluationRequest`、`submit_npc_evaluation_result` / `EvaluationReceipt`、原子 Meta / 内部 Completion、可靠行动交接及独立 Typed Command 的语义；所有新接口 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
+- **`STATE_MACHINE_ARCHITECTURE.md` v0.7**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
+- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.3**：定义 NPC 初始身份、初始知识、场景初态和声明式事件；不存 NPC 的动态推理上下文或后续记忆。
+- **`AGENT_ARCHITECTURE.md` v0.7**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；SM 管领域任务与模式。
+- **`MODULE_CONTRACTS.md` v0.5 / Draft**：统一 P0 Snapshot / Request / Result、Typed Delta、ProposedEvents、RNG、CommandReceipt、只读 Availability Query，以及 NPC Evaluation / 原子 Meta / 内部 Completion 与独立行动交接；所有新接口 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
 
 ### 仍应保持开放的技术问题
 
 NPC/普通怪物控制器的默认 LLM 策略、NPC 战斗 Intent 的 Engine 公共入口、Current View 的缓存 TTL/证据化方式、Memory Check 重要性阈值、上下文压力指标/压缩算法、NPC 自动反应的深度预算、长时记忆合并/冲突消解等都需实测或下一文档再决定。不得把这些未验证细节写成已经交付的能力。
 
-**v0.6 的核心不变量：NPC 拥有唯一权威持久状态；当前模式的 LLM 只提出可选更新/意图；Interactive 活跃时不额外启动 Background 认知；合法 Perception、Memory 与 Context 各有生命周期；世界事实只由 State Machine 提交。**
+**v0.7 的核心不变量：NPC 拥有唯一权威持久状态；当前模式的 LLM 只提出可选更新/意图；Interactive 活跃时不额外启动 Background 认知；合法 Perception、Memory 与 Context 各有生命周期；世界事实只由 State Machine 提交。**
