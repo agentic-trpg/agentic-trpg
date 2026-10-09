@@ -4,7 +4,7 @@
 > **日期**：2026-10-09  
 > **级别**：项目级跨模块文档  
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`  
-> **相关文档**：`MVP_SCOPE.md` v0.5；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`  
+> **相关文档**：`MVP_SCOPE.md` v0.6；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`\
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
 ## 1. 目的与非目标
@@ -225,12 +225,12 @@ MVP 候选 `trigger.type`：
 | `scene.entered` / `scene.exited` | State Machine | 首次进入、离开 |
 | `object.interacted` | State Machine 经授权的交互提交 | 检查/操作机关 |
 | `check.resolved` | State Machine 最终提交的 Rule Engine 检定求值结果 | 通过 DC、失败 |
-| `npc.decision_accepted` | 经 Host 审核的 NPC 意图 | NPC 发言/承诺或采取行动 |
+| `npc.decision_accepted` | State Machine 已合法执行并提交的 NPC 决定/对应事件 | 已发布话语、已确认承诺或已执行行动；Host 接受 Proposal 本身不触发 |
 | `combat.event_committed` / `combat.ended` | State Machine 提交的机械规则求值事件/结果 | 指定回合、离场、结算 |
 | `world.flag_changed` | State Machine 事务 | 线索、门、任务标志改变 |
 | `challenge.updated` | State Machine | 技能挑战计数变化 |
 
-**未经审核的 LLM 输出文字不是 Trigger。** 对话谜题可通过 `npc.decision_accepted` 中的结构化 `utterance` 或 `fact_revealed` 意图，再由场景合法性判定器验证是否满足条件。不得将任意文本直接解释为可执行脚本。
+**LLM Proposal / Action Intent 不是已提交 Trigger。** 对话谜题须先对结构化 `utterance` / `fact_revealed` 提议进行权限与场景合法性验证，实际执行提交后才可通过 `npc.decision_accepted` 事件触发条件。Interactive / Background 或经审查的策略复用同一 Typed Command 路径；不将任意文本解释为脚本。
 
 ### 7.2 条件表达式：MVP 用封闭词汇，不支持 `eval`
 
@@ -341,22 +341,20 @@ actors:
 
 ```yaml
 # events.yaml
-# Agent dialogue is not enough. Only an authorized, validated NPC decision
-# with a specific structured intent can satisfy this event.
+# Agent dialogue is not enough. Only a State Machine committed object interaction
+# after authorized execution can satisfy this event; Host acceptance is insufficient.
 events:
   - event_id: event.warden_opens_gate
     trigger:
-      type: npc.decision_accepted
-      npc_id: npc.gate_warden
-      decision_kind: operate_object
+      type: object.interacted
+      actor_id: npc.gate_warden
       object_id: object.harbor_gate
       operation: open
     conditions:
       all:
-        - {object_state_equals: {object_id: object.harbor_gate, value: closed}}
+        - {object_state_equals: {object_id: object.harbor_gate, value: open}}
         - {actor_present: {actor_id: npc.gate_warden, scene_id: scene.harbor_gate}}
     effects:
-      - {set_object_state: {object_id: object.harbor_gate, value: open}}
       - {set_flag: {key: gate_open, value: true}}
     repeat: once_per_session
 ```
@@ -392,10 +390,10 @@ Player intent / NPC decision proposal
     -> validate controller identity, visible facts, scene version
     -> decide: world operation / Engine rule invocation / narrative-only
     -> prepare unique command_id, expected_state_version
-    -> invoke authoritative executor
+    -> State Machine obtains snapshot; Rule Engine evaluates if required
+    -> State Machine validates and atomically commits changes/events/receipt once
     -> receive typed committed result (or structured refusal)
-    -> commit corresponding world changes once
-    -> append committed event and memory updates
+    -> Perception persists authorized Observations; optional NPC updates validated separately
     -> DM narrates from the committed state
 ```
 
