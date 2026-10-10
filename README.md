@@ -20,8 +20,8 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
     Planner --> SM[State Machine<br/>Authoritative Runtime]
-    SM -->|Snapshot + Typed Intent + RNG| RE[Rule Engine]
-    RE -->|Evaluation + Proposed Delta| SM
+    SM -->|Typed Snapshot + Intent + Pinned RulesetBinding + Explicit RNGContext| RE[Stateless Rule Evaluation Engine]
+    RE -->|Uncommitted RuleEvaluationResult| SM
     SM -->|Committed World Events| Perception[NPC Perception<br/>Authorized Observations]
     Perception --> NPC[NPC Sub-agents<br/>via Agent Host]
     NPC -->|Dialogue / Action Intents / Meta Proposals| SM
@@ -36,11 +36,20 @@ flowchart TD
 | **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
 | **NPC Sub-agents** | Maintain character-specific perspectives and propose dialogue, actions, beliefs, memories, and goals. They do not directly mutate game state. |
 | **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
-| **State Machine** | Own and atomically commit session, world, character, combat, RNG, and persistent NPC state. Enforce permissions, versions, idempotency, and observation delivery. |
-| **Rule Engine** | Evaluate supported mechanical rules against explicit inputs and return typed, *uncommitted* outcomes. It does not own persistent authoritative combat state in the target architecture. |
+| **State Machine** | Exclusively own all authoritative runtime state, including world, character, combat, inventory, effects, reactions, RNG, and persistent NPC state. Enforce authorization, versions, idempotency, atomic commits, persistence, and observation delivery; do not recalculate D&D mechanics. |
+| **Rule Engine** | Deterministically evaluate supported action legality, attacks, damage, checks, saves, action economy, movement, spells, effects, and reactions. Return typed, *uncommitted* results without independent authoritative runtime state. |
 | **Visual Presentation** | Future presentation of maps, tokens, scenes, and animations. It is outside the first MVP. |
 
-The ownership model is established by [ADR-001: Unified Authoritative Runtime State Ownership](docs/ADR-001-UNIFIED-STATE-OWNERSHIP.md).
+[Module Contracts](docs/MODULE_CONTRACTS.md) is the highest authority for cross-module target interfaces and state ownership. The standard evaluation boundary is:
+
+```text
+StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext
+    → RuleEvaluationResult
+```
+
+Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. Only the State Machine atomically commits state, RNG, authoritative events, receipts, and Outbox records; `accepted` does not mean committed.
+
+The final goal is to refactor the Stateful Combat Engine into a Stateless Rule Evaluation Engine. Supported execution must not depend on legacy `_LiveCombat`, `CombatHandle`, `_REGISTRY`, or the Stateful Combat Orchestrator, including rebuilding them behind a permanent adapter. Correct Nat20 algorithms, resolvers, and declarative rules data may be reused with explicit state dependencies; local evaluation variables and temporary calculation contexts are allowed. Legacy Stateful APIs may remain briefly for isolated regression comparison, subject to the [migration completion criteria](docs/MODULE_CONTRACTS.md#141-stateful--stateless-完成标准-decided-not-implemented). Project specifications define the target; legacy code does not define the architecture.
 
 ### Events, perception, and NPC knowledge
 
@@ -67,6 +76,8 @@ The initial milestone is a **locally runnable, text-first, single-player adventu
 - The adventure is loaded from a manually prepared and reviewed Adventure Package.
 - A complete, repeatable end-to-end experience takes priority over broad ruleset coverage or visual polish.
 
+The MVP can support a selected rules subset, but every selected mechanism must use the stateless evaluation boundary. Passing that subset does not establish that the entire Stateful Engine migration is complete.
+
 The selected private integration scenario is *First Blush* (D&D Duet), subject to content rights and manual rules adaptation. **The original adventure text, maps, and unauthorized derivative content are not distributed in this repository.** D&D SRD 5.2.1 is the proposed initial mechanical baseline; final compatibility is governed by the relevant specifications and implementation tests.
 
 **Not part of the first MVP:** multiplayer, permanent AI companions, automatic adventure-document ingestion / World Creation Agent, interactive tactical visualization, or guaranteed exact restoration of an interrupted active combat.
@@ -84,15 +95,14 @@ Other components are described in the architecture but are not represented here 
 
 ## Documentation
 
-The design documents are currently written primarily in Chinese. Start with the MVP scope and the accepted architecture decision before reading the detailed contracts.
+The design documents are currently written primarily in Chinese. Start with MVP Scope for product boundaries and Module Contracts for the authoritative target architecture and interfaces.
 
 | Document | Purpose |
 | --- | --- |
 | [MVP Scope](docs/MVP_SCOPE.md) | Product goals, first playable milestone, acceptance boundaries, and deferred features. |
-| [ADR-001 — Unified State Ownership](docs/ADR-001-UNIFIED-STATE-OWNERSHIP.md) | Accepted decision defining the State Machine as the sole authoritative runtime state owner. |
+| [Module Contracts](docs/MODULE_CONTRACTS.md) | Highest cross-module target interface specification: final stateless architecture, state ownership, requests/results, atomic commits, and migration completion criteria. Detailed ABI proposals remain subject to review. |
 | [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Session lifecycle, persistence, world events, NPC perception, authorization, and atomic commits. |
 | [Agent Architecture](docs/AGENT_ARCHITECTURE.md) | DM Planner/Narrator separation, NPC Sub-agents, Host responsibilities, and evaluation modes. |
-| [Module Contracts](docs/MODULE_CONTRACTS.md) | Proposed cross-module requests, results, typed commands, receipts, observations, and failure semantics. |
 | [Adventure Package Schema](docs/ADVENTURE_PACKAGE_SCHEMA.md) | Static adventure content, validation, initialization, and runtime separation. |
 
 ### Design status and terminology
@@ -104,18 +114,18 @@ The architecture documents distinguish the status of individual decisions:
 - **`[OPEN]`** — Unresolved design or implementation decision.
 - **`[NOT IMPLEMENTED]`** — Documented target behavior, not a claim of working code.
 
-An accepted ADR establishes architectural intent; it does **not** certify that every module already conforms to it. For the actual implementation status, refer to the code and tests in the relevant repository.
+The agreed invariants in Module Contracts establish architectural intent; draft ABI fields remain proposed or open. Neither status certifies implementation. Refer to actual code and executed tests for conformance evidence, while keeping the project specifications as the source of the target design.
 
 ## Development direction
 
 The current emphasis is to turn the documented contracts into a working vertical slice:
 
-1. Compare documented interfaces with existing implementations and identify concrete integration gaps.
-2. Integrate typed commands, rules evaluation, version checks, and atomic state commits.
+1. Map existing rules capabilities to the target contract, complete snapshot dependencies, and remaining Stateful execution dependencies.
+2. Migrate selected existing rules into Stateless Evaluation, remove their legacy execution dependencies, and integrate typed commands, version checks, and State Machine atomic commits.
 3. Connect committed events to authorized NPC observations, evaluations, and reliable output delivery.
 4. Run an end-to-end text-based adventure and validate persistence, error handling, and recovery.
 
-The priority is a correct, testable execution loop—not additional agents, services, or abstraction layers without a demonstrated need.
+Measure refactor progress first by removed Stateful dependencies and migrated existing rules capabilities. Track new rules coverage separately; added adapters or files are not evidence of architecture migration.
 
 ## Contributing
 

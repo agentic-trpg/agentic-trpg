@@ -1,6 +1,6 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.6（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
+> **状态**：Draft v0.6（遵循 Module Contracts 的统一权威状态与 Stateless 目标，具体 Schema 尚未冻结为代码契约）
 >
 > **日期**：2026-10-10
 >
@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：`MVP_SCOPE.md` v0.11；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md)（跨模块目标接口最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -46,10 +46,12 @@
 | NPC Profile、动机、角色可知事实 | Adventure Package | State Machine 管理内容实例、知识与记忆 | NPC 只收到自身允许访问的数据 |
 | NPC 对话或行动选择 | 对应 NPC Sub-agent / 经审查的非 LLM 策略 | 仅为提议；不直接获得状态写权限 | Agent DM 不替需要独立决策的 NPC 直接编造行为 |
 | Scene、Quest、物体归属、剧情标志、世界时间 | Adventure Package 初始模板 | State Machine | 经过授权的结构化事件更新 |
-| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Rule Engine 返回未提交的 Delta / Events；State Machine 验证并原子提交，不重写规则 |
+| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Stateless Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Engine 返回未提交的 Typed Delta / ProposedEvents / RNGTransition；SM 验证并原子提交，不重写规则 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
 
-**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令统一 submit_command(TypedCommand)，携带 session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按具体类型适用的 actor_id（AP-15，见 §6.3 / MODULE_CONTRACTS.md §3）；创建前的幂等键见 §9.1a。规则求值无权威副作用，由 SM 按单个命令原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 冻结。
+**静态 / 动态边界**：Package 可以定义静态规则数据、规则绑定和初始状态模板；经审核的规则数据版本由 Session 的 Pinned RulesetBinding 固定。模板只在合法初始化时应用，后续 Inventory / Equipment、Effect、Reaction、Combat、RNG 等动态状态均以 SM 的已提交 Runtime State 为准，不从 Package 重置或补写，不使 Package 成为第二权威来源。Engine 接收 SM 的完整 Typed Snapshot 与显式 RNG，不从 Package 推断当前状态；规则求值目标遵循 MODULE_CONTRACTS.md §4–§6，不依赖 Legacy LiveCombat。
+
+**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令统一 submit_command(TypedCommand)，携带 session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按具体类型适用的 actor_id（AP-15，见 §6.3 / MODULE_CONTRACTS.md §3）；创建前的幂等键见 §9.1a。规则求值无权威副作用，由 SM 按单个命令原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 评审冻结。
 
 ---
 

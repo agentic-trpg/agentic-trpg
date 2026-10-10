@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.10（依据 ADR-001、TypedCommand / AP-15 与 Perception 决策；具体消息 Schema 与实现仍待审阅）
+> **状态**：Draft v0.10（遵循 Module Contracts 的最终 Stateless 目标、TypedCommand / AP-15 与 Perception 决策；具体消息 Schema 与实现仍待审阅）
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`ADR-001-UNIFIED-STATE-OWNERSHIP.md`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.6；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.9；[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.8 / Draft
+> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.8（跨模块目标接口最高规范，具体 ABI 仍 Draft）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) Draft v0.6；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.9
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -34,7 +34,7 @@ State Machine 是**一次具体游戏 Session 的游戏领域逻辑管理者、�
 | **Mechanical Combat State** | 战斗中的 HP、位置、Action Economy、RNG、Conditions、集中、回合等 | **可变** | **State Machine（唯一权威）** |
 | **LLM Evaluation Context** | DM Context；NPC 可复用 Interactive / 一次性 Background Context | **临时派生视图** | Agent Host 管生命周期；State Machine 提供授权状态与证据 |
 
-**不变量（ADR-001）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则计算结果。World、Character、Combat 和 RNG 只有 State Machine 一份持久权威；Rule Engine 只计算而不提交，可使用单次求值内的临时可变对象。
+**不变量（MODULE_CONTRACTS.md §0、§4–§6）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则计算结果。全部 Runtime State，包括 World、Character、Combat、Inventory / Equipment、Effect、Reaction、RNG 与 NPC 持久认知，都只有 State Machine 一份权威；Rule Engine 只计算而不提交。单次求值临时计算对象不构成独立状态所有者，也不能使 Legacy 执行器成为最终依赖。
 
 ### 1.2 行动、观察与记忆的认识论边界
 
@@ -77,7 +77,9 @@ Human Player / DM Planner -> State Machine domain request / authorization
                                   v
                       State Machine atomic Meta / sole Result / EVA completion
                 |- reliable Dialogue / Action Intent handoff
-                '- independent command_id -> Rule Engine -> SM Commit
+                '- independent command_id -> SM validated Snapshot / Typed Intent
+                   + pinned RulesetBinding + explicit RNGContext
+                   -> Stateless Rule Evaluation -> uncommitted Result -> SM Atomic Commit
                                   |
                     EvaluationReceipt / cognitive completion + reliable handoff
                     committed WorldEvent -> Perception
@@ -86,11 +88,11 @@ Human Player / DM Planner -> State Machine domain request / authorization
 
 统一逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Host 仅做模型运行、Context、预算、重试取消、Tool 适配传输及运行时可观测性；不持久管理游戏状态或任务完成结果。
 
-DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。MVP 为 Python + SQLite WAL；Jev 为可替换候选。Engine `_LiveCombat` 是迁移前基线，不能成为另一权威存储。
+DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。MVP 为 Python + SQLite WAL；Jev 为可替换候选。旧 Stateful Engine 仅为历史基线或隔离回归对照，最终执行路径及 SM 均不依赖 `_LiveCombat` 等 Legacy 对象。
 
 ## 3. 运行时数据模型与状态所有权
 
-依据 ADR-001，CharacterState、CombatState、RNGState 及其版本与 WorldState 在同一权威提交域内；Rule Engine 输入是经验证的只读状态快照，输出只是待提交结果。
+依据 MODULE_CONTRACTS.md，Character、Combat、Inventory / Equipment、Effect、Reaction、RNG 及其版本与 WorldState 在同一权威提交域内；Rule Engine 输入是经验证的只读状态快照、Typed Intent、固定规则绑定与显式 RNG，输出只是待提交结果。
 
 建议把 Session 存储划分为少量聚合（aggregate）；下面是**概念数据结构**，不是已经冻结的 JSON/Python Schema。
 
@@ -152,7 +154,7 @@ Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两�
 
 State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数、装备、Condition、持续效果；活跃 Encounter 持有 Initiative/Turn、行动经济、位置、Concentration、反应窗口、Pending Choice 以及所需技能/规则生命周期账本。SM 另存权威 RNG 流状态/版本，以独立 RNGContext 提供给 Engine。只存储明确规定的权威数据，不复制可由规则确定性计算的派生字段作为第二权威。
 
-同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。StateSnapshot 采用 CombatSnapshot / NonCombatSnapshot 两种 Schema，共享 CharacterState / EffectState 等基础结构；相关实体范围可限定，但每个实体机械字段及规则依赖必须完整，不按 Intent 裁剪，使用标准 Required / Optional 校验。RulesetBinding 从 Session 固定配置提供，RNGContext 独立于 Snapshot（详见 MODULE_CONTRACTS.md §4）。Rule Engine 内部临时缓存及执行对象不是可持久化权威。
+同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。StateSnapshot 采用 CombatSnapshot / NonCombatSnapshot 两种 Schema，共享 CharacterState / InventoryState / EquipmentState / EffectState 等类型化基础组件，不按规则操作增加 Snapshot 情境；相关实体范围可限定，但每个实体机械字段及规则依赖必须完整，不按 Intent 裁剪，使用标准 Required / Optional 校验。RulesetBinding 从 Session 固定配置提供，RNGContext 独立于 Snapshot（详见 MODULE_CONTRACTS.md §4）。SM 不负责创建或恢复 Engine 内部对象；Engine 的临时计算上下文只服务于单次求值，不能依赖旧 `_LiveCombat` 的完整内部结构。
 
 ### 3.5 `ChallengeInstance`：非战斗技能挑战
 
@@ -265,11 +267,12 @@ Planner 可通过有限 Typed World Operations 提出简单 Object / World Fact 
 
 ### 5.4 单一提交者协议：Rule Evaluation ≠ Commit
 
-**目标语义由 ADR-001 固定。** Rule Engine 不拥有独立的权威可变 Combat；调用 `evaluate(RuleEvaluationRequest)`（含 session_id / command_id / operation_kind、按具体操作类型适用的真实 actor_id 或可信机械来源（AP-15；来源权限字段仍 Proposed / OPEN）、强类型 payload、完整 Snapshot、Session 固定 RulesetBinding 与独立 RNGContext） 返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommandReceipt.status=committed` 才代表世界已变更。
+**目标语义遵循 MODULE_CONTRACTS.md §4–§6。** State Machine 只向 Stateless Rule Engine 提供经过验证的 Typed Snapshot、Intent、Session 固定 RulesetBinding 和显式 RNGContext；候选 `evaluate(RuleEvaluationRequest)` 还保留 session_id / command_id / operation_kind 及按具体操作类型适用的真实 actor_id 或可信机械来源（AP-15；来源权限字段仍 Proposed / OPEN）。Engine 负责 D&D 机械合法性与规则求值，返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommandReceipt.status=committed` 才代表世界已变更。
 
 ```text
-Load State Snapshot + version + RNG position
-  -> Rule Engine evaluate（不得提交）
+Load validated CombatSnapshot / NonCombatSnapshot + Typed Intent
+  + pinned RulesetBinding + explicit RNGContext
+  -> Stateless Rule Engine evaluate（不得提交，无 Legacy 执行器依赖）
   -> accepted / rejected / needs_choice / unsupported
   -> State Machine begin short transaction
   -> Validate read set, versions, authorization, delta invariants, idempotency
@@ -285,7 +288,7 @@ Load State Snapshot + version + RNG position
 - Accepted Delta 使用封闭 Typed Operation Union，覆盖 HP/资源/库存/位置/回合/行动经济/Condition/Effect/Concentration/Reaction/Limited Uses 等全部连带变化；允许受限类型化复杂组件操作，禁止任意路径/JSON Patch/整份 Snapshot 覆盖。StateDelta、RNG、正式事件、CommandReceipt、Outbox 同事务提交，SM 不根据 ProposedEvents 重算伤害/HP。
 - Engine 的 ProposedEvents 无权威 event_id / event_seq；SM 同事务分配并持久化，提交后才向 NPC / Narrator / UI 发布授权投影。仅事件提交的 World Version 推进、完整 Effect/Reaction Delta 字段及复杂中途 Continuation 仍 [OPEN]。
 - `needs_choice` 必须返回可标识、版本绑定的待续裁决状态，不得把未完成动作误写为结果；取消、超时及失效必须明确处理。复杂 Reaction Chain 可能需要可验证的短事务级分段及安全 PendingChoice 状态，实际协议在 Module Contracts 冻结。
-- 旧 `_LiveCombat`、`CombatHandle` 和 Bridge 进程内回执属于迁移前代码，不是可继续采用的双权威设计；迁移可以有短期兼容适配，但同一实际 Session 不得出现两个最终状态持有者。
+- SM 不创建、管理、传入或恢复 `_LiveCombat`、`CombatHandle`、`_REGISTRY` 或 Stateful Combat Orchestrator；最终 Engine 求值也不依赖它们。旧 Stateful API 仅可短期作为 Transitional / Legacy，在隔离状态上回归对照，退出条件见 MODULE_CONTRACTS.md §14.1；同一生产 Session 不得出现双权威或未迁移规则的隐式旧执行回退。
 - Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
 
 本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
@@ -493,7 +496,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 | project_world_event（内部） | 已提交 Event / Signals、事件时证据与可靠工作 | Scope Discovery → 确定性 / 受限 JEV 判断 → 授权 Observation / Inbox；沿用持久 Outbox |
 | tick_npc_schedule（内部） | 游戏时钟、日程、稳定 Trigger | 合法活动 / 取消 / 重评估任务 |
 | submit_command | TypedCommand：session_id / command_id、可信 principal_id、按类型适用的 actor_id、command_type、expected_world_version、强类型 payload | 内部 world.* / rules.* / combat.* 分派；授权 CommandReceipt / 结构化原因，规则部分复用统一求值 |
-| evaluate_rule（内部适配器） | RuleEvaluationRequest：session_id / command_id / operation_kind、按操作类型适用的 actor_id / 可信机械来源、强类型 payload、CombatSnapshot 或 NonCombatSnapshot、RulesetBinding、独立 RNGContext | 四种 RuleEvaluationResult；accepted 含完整 Typed Delta / ProposedEvents / RNGTransition |
+| evaluate_rule（内部调用边界） | RuleEvaluationRequest：session_id / command_id / operation_kind、按操作类型适用的 actor_id / 可信机械来源、强类型 payload、CombatSnapshot 或 NonCombatSnapshot、RulesetBinding、独立 RNGContext | 四种 RuleEvaluationResult；accepted 含完整 Typed Delta / ProposedEvents / RNGTransition |
 | query_action_availability（SM → Engine，只读） | 可信 Actor、operation_kind / 强类型 payload、完整 Snapshot / 固定 RulesetBinding | available / unavailable / unknown；SM 过滤原因后供 UI/Agent Planning 使用，无 RNG/Delta/事件/CommandReceipt，执行仍需重新验证 |
 | get_command_receipt | session_id、command_id、可信查询主体 | 原持久 CommandReceipt 的授权投影；Fingerprint 防止同 ID 不同请求，无二次 ACK |
 | save_session / resume_session | Session、包版本 | 非战斗恢复或中断战斗安全限制 |
@@ -527,12 +530,12 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 - SM 双模式独占、持久 EvaluationStatus / NPCStateVersion、每 EVA 唯一 Result、原子 Meta 与可靠行动交接、内部 Completed Cursor；Host 执行模型与 Context；新接口均待实现。
 - **完成证据**：NPC A 无法读到 B 私有 Intent 或秘密；可见争抢各自形成正确 Observation；相同事件重试不重复投影；无论模型认为谁故意抢钱，都不能修改客观世界事实。
 
-### Batch SM-4：Rule Evaluation Adapter + Unified Atomic Commit
+### Batch SM-4：Stateless Rule Evaluation Integration + Unified Atomic Commit
 
-- 受控战斗开启、战前安全 Checkpoint、版本化 CombatState/CharacterState/RNG 快照、RuleEvaluationResult、完整 Delta 原子提交、资源归属、不可续战退出与错误回执。
+- 受控战斗开启、战前安全 Checkpoint、完整版本化 CombatSnapshot / NonCombatSnapshot、独立 RNGContext、RuleEvaluationResult、完整 Delta 原子提交、资源归属、不可续战退出与错误回执；集成不构造旧 Engine 内部对象。
 - 必要外部 Hazard 和 NPC 显式 Combat Intent 通过统一命令/规则求值路径与 Rule Engine 团队联合验收。
-- Action Availability Query 可与早期 Rule Evaluation Adapter 同步开发，先查询基础战斗操作，与正式求值共享规则逻辑；无 RNG/状态写入/Delta/事件/回执，不等待 Visual Presentation。文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮仅更新计划。
-- **完成证据**：战斗中每条动作均恰好产生至多一次 State Machine 权威提交；失败、版本冲突或响应异常不产生重复消耗或推进 RNG；不支持的能力明确报告。
+- Action Availability Query 可与早期 Stateless Rule Evaluation 实现同步开发，先查询基础战斗操作，与正式求值共享规则逻辑；无 RNG/状态写入/Delta/事件/回执，不等待 Visual Presentation。文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮仅更新计划。
+- **完成证据**：已选择支持的战斗/非战斗机械操作从 Stateless 路径求值并提供无 Legacy 执行依赖的证据；每条动作至多一次 SM 权威提交；失败、版本冲突或响应异常不产生重复消耗或推进 RNG；不支持的能力明确报告。MVP 纵切通过不等于完整 Engine 迁移完成。
 
 **节奏约束**：上述 Batch 是推荐依赖序列，不是 Codex 可以未经审阅连续开发的授权。在每批次完成后根据实际测试和模块接口重新评估下一批；优先减少影响真实端到端场景的缺口。
 
@@ -628,7 +631,7 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 | **SM-01** | 持久化语言与数据库 | Python + SQLite WAL、单进程优先、短事务、强持久化默认、Repository/Adapter 边界 | **已确认** |
 | **SM-02** | 战斗中途精确恢复 | **MVP 不支持**，列入 Post-MVP；须有明确安全检查点、不可伪恢复及战后可靠结算 | **已确认** |
 | **SM-03** | 多 Agent 共同感知与记忆 | WorldEvent → SM Perception / Reliable Observation → SM Task / Mode Routing → Host Runtime → 可选 NPC Evaluation；State Machine 保存和验证 | **已确认基础架构，v0.5 明确 SM 领域任务与 Host Runtime** |
-| **SM-04** | 统一权威状态 | State Machine 持有并提交 World/Character/Combat/RNG，Rule Engine 只计算 StateDelta；遵守 ADR-001 | **已确认** |
+| **SM-04** | 统一权威状态 | State Machine 持有并提交全部 Runtime State，Stateless Rule Engine 只求值并返回未提交结果；遵守 MODULE_CONTRACTS.md §0、§4–§6 | **已确认** |
 | **SM-05** | 非交互 NPC 状态 | 简单游戏时钟日程；Inactive Lightweight Gate / Background Evaluation 可产生行动；不要求 Interactive Agent 激活或常驻 LLM | **已确认逻辑设计，具体阈值待实验** |
 | **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务/模式、EvaluationStatus / NPCStateVersion、原子 Meta 与可靠交接；切换直接取消旧有效 EVA 并新建、不等旧反馈；Host 管 Context / 模型 | **已确认原则；具体协议 Proposed / Not Implemented** |
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
@@ -671,13 +674,13 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 3. 非法 Meta 整批不写，当前有效任务有限修正；SM 仅确定性验证，不做自然语言语义判断、不改写 Belief、不新增验证模型。
 4. Action Execution 独立 command_id / Command Receipt，EVA 完成不等动作成功，可靠交接防漏防重，Command 失败/needs_choice 独立跟踪。
 5. 模式切换原子取消旧有效任务、保留 Meta、移交 Work 并新建，不等旧调用或失败反馈；取消任务不能靠新 Invocation 恢复资格。
-6. 提供完整授权 Meta，Belief 与 Initial Belief 兼容且追加版本保留历史，Host 只组装/增量复用，不新增语义筛选/检索/排名/智能压缩。保留 ADR-001、P0 规则契约、双模式独占及原 MVP 范围。
+6. 提供完整授权 Meta，Belief 与 Initial Belief 兼容且追加版本保留历史，Host 只组装/增量复用，不新增语义筛选/检索/排名/智能压缩。保留统一权威状态、P0 规则契约、双模式独占及原 MVP 范围。
 
-- 此文档只给出 State Machine 运行时架构与状态权威边界；**不替代**项目总架构 `ARCHITECTURE.md`、Agent 内部设计 `AGENT_ARCHITECTURE.md` 或正式跨模块消息契约 `MODULE_CONTRACTS.md`。
+- 此文档只给出 State Machine 运行时架构与状态权威边界；在 `MODULE_CONTRACTS.md` 的最高跨模块契约内细化实现设计，不重定义 Agent 内部设计 `AGENT_ARCHITECTURE.md` 或 MVP 产品范围。
 - 发现本架构与 `MVP_SCOPE.md` 已确认决定冲突时，以已确认的 MVP Scope 为准，并在审阅中提出修改，不擅自改动产品范围。
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
-- **文档优先级**：ADR-001 是权威架构决策；旧 MVP Scope 的双权威用语为历史遗留，已在 v0.5 修正。
+- **文档优先级**：MODULE_CONTRACTS.md 是跨模块目标接口与所有权的最高规范；MVP Scope 约束产品范围，本文细化 SM 内部职责。历史代码与旧双权威用语不能覆盖这些目标约束，具体 ABI 的 Proposed / OPEN 状态保持不变。
 
-**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.9 与 `MODULE_CONTRACTS.md` v0.8 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。总体架构审阅后再整理根目录 `README.md`。
+**下一步建议**：审阅 `AGENT_ARCHITECTURE.md` v0.9 与 `MODULE_CONTRACTS.md` v0.8 / Draft 的模式、EvaluationStatus / 原子 Meta / 可靠交接 / EvaluationReceipt 契约，再验证最小接口与故障场景；不将目标设计视为已完成实现。根目录 `README.md` 作为正式文档入口，不承担接口细节。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**

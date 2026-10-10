@@ -39,7 +39,9 @@
 - **[已确认] World Creation Agent 后置：** MVP **不开发** PDF/HTML/Markdown 自动剧本解析、跨剧本通用编译器、World Creation Agent，亦不要求兼容 Gamebook-style Adventure。首个冒险采用**人工整理、人工审核**的本地 Adventure Package（也可以先用最小化结构化配置）驱动，作为未来 World Builder 的参考样本。
 - **[已确认] 视觉引擎后置：** 可交互的 Visual Representation / Presentation Engine、自动地图资产管线、实时视觉状态同步均在 MVP 后开发。少量不影响游戏状态的 AI 插画仍可选；本地 Golden Adventure 无插画也须可通关。
 
-**已批准的顶层架构变更（ADR-001）**：State Machine 是 World / Character / Combat / RNG 的单一权威运行状态拥有者和最终提交者；Rule Engine 仅执行确定性规则求值，返回尚未提交的状态转换。既有文档中 迁移前 Rule Engine 持有 Combat State 的文字是迁移前遗留描述，不代表产品意图。
+**已批准的目标架构**：以 [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) 为跨模块目标接口的最高规范，State Machine 独占全部权威 Runtime State 与提交责任；Rule Engine 最终重构为 Stateless Rule Evaluation Engine。项目架构定义目标，旧 Nat20 / Stateful Combat Engine 是待重构实现，不能反向约束目标，也不能通过不断增加 Stateful Adapter 宣称完成迁移。
+
+**长期重构与 MVP 分期**：MVP 不要求实现全部 SRD 5.2.1 规则，但已经选择支持的机制必须按 `StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext → RuleEvaluationResult` 求值并由 SM 原子提交；不能落回依赖 Legacy `_LiveCombat` / `CombatHandle` / `_REGISTRY` / Stateful Combat Orchestrator 的路径。长期目标是将计划保留的原有规则能力统一迁入 Stateless 体系并退出旧执行器（MODULE_CONTRACTS.md §14.1）。增加 Stateless 规则覆盖、完成 MVP 子集与完成整个执行架构迁移是不同的验收结论，均须有实际证据。
 
 **[已确认] DM 职责隔离**：DM Planner 负责游戏规划/主持与结构化提议；DM Narrator 只依据玩家可见的已提交结果进行叙事，不共享未经授权的 GM Secret/其他 NPC 私有认知，可使用同一 LLM 但需隔离上下文和权限。
 
@@ -104,7 +106,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 ### 2.1 状态所有权原则
 
-**[已确认的目标原则] 一份权威状态只能有一个计算/写入所有者。**
+**[已确认的目标原则] 一份权威状态只能有一个持有/提交所有者，机械规则计算由 Rule Engine 负责。**
 
 - 战斗中的 HP、临时 HP、Condition、行动预算、集中、持续效果、战斗位置及 RNG：由 **State Machine** 统一持有并提交；由 **Rule Engine** 负责合法性判断和机械 State Delta 计算。玩家 PC 与敌方 NPC 走相同的规则正确性标准。
 - Session、Scene、任务、NPC 唯一身份/人格、已知事实、Memory、Belief、Relationship、Goal、Plan、Runtime State、观察证据、场景物体、权限和世界时间：由 **State Machine** 保存权威版本。
@@ -343,13 +345,13 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 - 规则求值采用 CombatSnapshot / NonCombatSnapshot，共享 CharacterState / EffectState 等完整机械基础结构，不按 Intent 裁剪实体字段。SM 提供 Session 固定 RulesetBinding 与独立 RNGContext，Engine 返回强类型 Delta / 候选事件，SM 原子提交状态、RNG、正式事件、CommandReceipt、Outbox；不能用 DM/NPC 文本或事件重算 HP/伤害。
 - **MVP 已决定不支持活跃战斗跨进程精确续玩**，只要求非战斗安全恢复与正常战斗结束；不能将 State Machine 持久保存 CombatState 等同于已具备精确中途恢复。
 
-### 6.4 适配现有 Rule Engine
+### 6.4 历史 Rule Engine 基线与 Stateless 迁移
 
 现有仓库：<https://github.com/agentic-trpg/trpg-rules-engine>。
 
-根据 2026-10-09 审计基准（`main`：`64dd920`），已有 `PlayerIntent`、`CombatEvent`、`LiveCombatView`、`CombatOutcome`、HTTP Bridge 等。上述接口仍是候选对接面，不代表所有 NPC Sub-agent 决策都能直接运行。
+2026-10-09 历史审阅基准（当时 `main`：`64dd920`）包含 `PlayerIntent`、`CombatEvent`、`LiveCombatView`、`CombatOutcome`、HTTP Bridge 等；这不是本轮对最新实现的审计或最终接口定义。可以复用正确的规则算法、Resolver、声明式数据与独立回归用例，但须改造状态依赖与执行架构，旧 View / Handle / Stateful API 只属 Transitional / Legacy。
 
-**[必须优先验证的集成缺口]** 现有玩家行动主要经 `submit_player_intent`，怪物通过 `advance_monster_turn` 使用内部行为选择。若 MVP 要求**NPC Sub-agent 而非 Engine 内置 AI 决定敌人行动**，必须提供受 State Machine 授权、Host 适配传输、可表达目标/能力选择的 NPC 显式 Intent 执行契约（或证明已有公共入口能实现同等效果）。它必须复用共享合法性、资源、事件、RNG 与回滚，不能绕过到 `_LiveCombat`，也不能把 NPC 临时冒充为 Player Character。
+**[必须优先验证的集成缺口]** 该历史基线的玩家行动主要经 `submit_player_intent`，怪物通过 `advance_monster_turn` 使用内部行为选择。MVP 要求**NPC Sub-agent 而非 Engine 内置 AI 决定至少一名敌人的行动**，必须提供受 State Machine 授权、Host 适配传输、可表达目标/能力选择的 NPC 显式 Intent，并从统一 Stateless Evaluation 契约执行。旧公共 API 能执行动作不足以证明达标；求值须显式表达共享合法性、资源、事件和 RNG，原子提交由 SM 负责，不能绕过到 `_LiveCombat` 或把 NPC 临时冒充为 Player Character。
 
 ### 6.5 NPC EVA / Action Execution / DM 分离（目标协议摘要）
 
@@ -361,7 +363,7 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 - SM 不做自然语言语义验证、不改写 Belief、不增加 Semantic Validator LLM。Belief 版本追加并保留来源/有效状态/历史，错误主观信念不改变世界；LLM 不得将未执行动作记为已发生，SM 只核验结构化来源而不证明文本忠实。
 - Memory Persistence 与 Context 资源管理独立，MVP 只预算保护/安全释放和完整 Meta 重建；LLM 调用在写事务外。SM 管简单游戏时钟日程、证据、承诺与安全政策，Intent 不等于行动。
 - DM Planner / Narrator 的 Context / 权限隔离，Narrator 只消费玩家获准已提交事实。SM 持续不可用停止权威推进，Host 无影子状态/独立游戏队列，按 SM 持久 Task / Result / Meta / 交接与回执恢复非战斗，战斗精确续玩仍后置。
-- P0 规则接口按 MODULE_CONTRACTS.md §4–§6 统一：command_id / operation_kind / 强类型 payload，四种规则结果与 Schema/异常/传输故障分离，封闭 Typed Delta，CommandReceipt 按 (session_id, command_id) 查询。只读 Availability Query 供 UI/Planning，不掷骰/写状态/生成回执，不保证执行成功；完整技能列表/目标枚举非本轮必需实现。查询允许与早期 Rule Evaluation Adapter 同步开发，与正式求值共享规则逻辑，不等待 Visual Presentation；文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮不实现。World / Character / Combat / RNG 仍只有 SM 权威提交，新接口均 Proposed / Not Implemented。
+- P0 规则接口按 MODULE_CONTRACTS.md §4–§6 统一：command_id / operation_kind / 强类型 payload，四种规则结果与 Schema/异常/传输故障分离，封闭 Typed Delta，CommandReceipt 按 (session_id, command_id) 查询。只读 Availability Query 供 UI/Planning，不掷骰/写状态/生成回执，不保证执行成功；完整技能列表/目标枚举非本轮必需实现。查询允许与早期 Stateless Rule Evaluation 实现同步开发，与正式求值共享规则逻辑，不等待 Visual Presentation；文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮不实现。World / Character / Combat / RNG 仍只有 SM 权威提交，新接口均 Proposed / Not Implemented。
 
 ## 7. MVP 验收标准（End-to-End）
 
@@ -429,12 +431,12 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | 阶段 | 目标 | 完成标准 |
 | --- | --- | --- |
 | **M0：Scope 冻结** | 确认 First Blush、NPC Sub-agent 自主性、精选规则、人工内容录入及非视觉/无 World Builder 范围 | 文档状态升级为 Approved，待定项收敛，产品决策记录齐全 |
-| **M1：Rule Engine Evaluation/State Cutover + Correctness Closure** | 依据 ADR-001 抽离 Rule Engine 规则求值与权威状态持有，并修复单人战斗核心正确性问题 | Snapshot/Evaluation/Delta 与 State Machine 原子提交有测试，Activity 选择、支付归属、拒绝回滚、重复请求均被验证 |
+| **M1：MVP Stateless Evaluation / State Cutover + Correctness Closure** | 按 MODULE_CONTRACTS.md 将 MVP 选定的原有规则能力迁入无 Legacy 执行依赖的求值路径，修复单人战斗核心正确性问题 | 完整 Snapshot / Typed Intent / Pinned RulesetBinding / Explicit RNG → Result 与 SM 原子提交有执行证据；Activity 选择、支付归属、拒绝回滚、重复请求均被验证，并列明仍未迁移的旧能力；不宣称全 Engine 迁移完成 |
 | **M2：Cross-module Contracts / NPC Intent** | 定义 Session、Scene、NPC Role Memory、Command、Event、统一权威 State/Delta/Commit 和**NPC 战斗显式求值入口** | NPC Sub-agent 不访问 Engine 私有状态也能合法选取敌方动作；非战斗 NPC 能做独立对话决定 |
 | **M3：First Blush Text-first Vertical Slice** | 人工整理剧本数据，加载场景初始状态，打通 NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
 | **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A40 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
 
-只读 Action Availability Query 可随 M1 的 Evaluation Adapter 早期开发，先覆盖基础战斗操作并共享合法性逻辑，无 RNG/写状态/Delta/事件/回执；不依赖视觉阶段，也不作为当前文字入口发布条件。
+只读 Action Availability Query 可随 M1 的 Stateless Evaluation 早期开发，先覆盖基础战斗操作并共享合法性逻辑，无 RNG/写状态/Delta/事件/回执；不依赖视觉阶段，也不作为当前文字入口发布条件。
 
 **后续阶段（不阻塞 MVP）：** `World Creation Agent` 自动从合法输入剧本生成多类型 Adventure Package；`Visual Presentation Engine` 消费已有的权威状态和事件进行视觉呈现。二者是未来方向，不要提前作为当前 Milestone 的依赖。
 
@@ -443,8 +445,8 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 - `trpg-rules-engine/BACKLOG.md` 是**技术缺口清单**，不是跨项目的 MVP 任务清单；不必清空 Deferred 才宣布 MVP 完成。
 - 每项新规则需求都要对应明确的单人冒险场景及可独立验证的机械结果。
 - **新增优先级依赖：** 因敌方 NPC 行动需要来自 NPC Sub-agent 而不是默认 Monster AI，必须验证 Rule Engine 的无权威状态 NPC 显式求值入口能否使用；若不具备，应在基础正确性修复之后优先补足，而不是继续拓展冷门法术。
-- Batch 的有效进度应由规则正确性、可执行场景、跨模块状态一致性和 NPC Agent 独立行为证明，而非新增行数、Commit 数或测试数量决定。
-- 当前已审阅 Engine 的 Invocation 多 Activity 误执行和 `CombatOutcome` 支出归属错误，仍是优先正确性工作。
+- Refactor 进度首先由**已消除的 Stateful 执行依赖和真正迁移的原有规则能力**证明，再结合规则正确性、可执行场景、跨模块一致性与 NPC Agent 独立行为；新增规则、Adapter、文件、Commit 或测试数量不能代表完成迁移。
+- 历史审阅记录的 Invocation 多 Activity 误执行和 `CombatOutcome` 支出归属问题须在当前代码中核对处理状态，并作为独立正确性回归；不把旧代码事实当作最新完成情况。
 
 ## 9. 决策登记（Decision Register）
 
@@ -496,7 +498,7 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 
 **v0.9 修订范围**：同步 P0 Snapshot / Payload / Ruleset / Typed Delta / RNG / 事件 / 命令键回执及只读查询的目标语义，澄清预算内 Invocation 错误保持 EVA running；不修改 MVP 产品范围、不要求本轮实现接口。
 
-**v0.8 修订范围**：简化 EVA 最小提交和任务状态，原子 Meta、独立 Action Execution / 可靠交接、完整授权 Meta 输入与 Belief 历史；保留 First Blush、一名 PC、无 AI 队友、敌方 NPC Sub-agent 自主战斗、文字交互、简单日程与非战斗存档恢复要求。ADR-001 与 Rule Engine 核心契约不在本轮重设计。
+**v0.8 修订范围**：简化 EVA 最小提交和任务状态，原子 Meta、独立 Action Execution / 可靠交接、完整授权 Meta 输入与 Belief 历史；保留 First Blush、一名 PC、无 AI 队友、敌方 NPC Sub-agent 自主战斗、文字交互、简单日程与非战斗存档恢复要求。当时的统一权威状态与 Rule Engine 核心契约未作重设计。
 
 ---
 
