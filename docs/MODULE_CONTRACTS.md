@@ -1,6 +1,6 @@
 # Agentic TRPG — Module Contracts（MVP）
 
-> **版本：** v0.7 / Draft for Review
+> **版本：** v0.8 / Draft for Review
 >
 > **日期：** 2026-10-10
 >
@@ -8,7 +8,7 @@
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.11、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.5、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.9、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.8
+> **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.11、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.10、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.9
 >
 > **历史代码核对基线（沿用 v0.1，本轮未重审 Engine）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -16,7 +16,7 @@
 
 ## 0. 用途与冻结策略
 
-本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
+本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。v0.8 将 PER-01～PER-08 接入既有事件/可靠工作协议（§7），区分 Signal、察觉判断、授权观察与 NPC 认知。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
 
 **必须满足的不变量 `[DECIDED]`：**
 
@@ -133,9 +133,11 @@ Planner 可在 TypedCommand 中提出受限的候选成功条件及对应世界�
 
 需要机械计算时复用 §4–§6 的 RuleEvaluationRequest / Result；尽可能在掷骰前确认操作及后果均有受支持的表达路径，不先掷骰再用自由文本补写状态。一个命令提交前能够完整求值时，SM 同事务提交世界效果、机械 Delta、RNG、正式事件、CommandReceipt 和 Outbox；已提交事件才引发的后续效果沿用 §10 的可靠幂等独立命令，不虚构跨已提交事务原子性。
 
+Planner 可随 Action Intent 提出按可能执行结果分类的候选 observable_signals，预定义事件/标准规则行为优先复用模板。SM 根据可信结构化执行结果选择匹配 Signals，并与实际事件原子提交，不接受 LLM 自报成功；Schema / 条件字段仍 [PROPOSED / OPEN]，具体边界见 §7.1，不增加 Event Generation Agent。
+
 ### 3.5 授权视图、反馈与叙事 `[DECIDED]`
 
-复用 get_scene_view 等既有查询入口，按可信主体投影 DMView / PlayerView / NPCView：Planner 获取主持范围内完整授权 GM 信息；Player / Narrator 只读玩家可知事实；NPC 通过独立 NPCView / Perception 获取自身授权信息。动态创建且已提交的对象进入后续授权查询，未提交对象或隐藏信息不能泄漏；不新增冗余查询服务。
+复用 get_scene_view 等既有查询入口，按可信主体投影 DMView / PlayerView / NPCView：Planner 获取主持范围内完整授权 GM 信息；Player / Narrator 只读玩家可知事实；NPC 通过独立 NPCView / Perception 获取自身授权信息；get_scene_view 面向 NPC 时也必须经过 NPC Perception / 授权投影，不能绕过感知权限（DOC-02）。动态创建且已提交的对象进入后续授权查询，未提交对象或隐藏信息不能泄漏；不新增冗余查询服务。
 
 反馈映射沿用 §5 / §6 / §11：rejected 是规则/世界拒绝，unsupported 是不支持的能力/操作原因，合法机械失败可为 accepted 并提交实际成本；version_conflict 对应 CommandReceipt.conflict，needs_choice 对应 pending_choice。RuleEvaluationResult 四态不变，CommandReceipt 不增加 unsupported 状态，能力不支持可用 rejected + 授权结构化原因表达。Schema/运行时/传输错误与规则拒绝分开，提交未知先查询 (session_id, command_id)。结构化原因经权限过滤供 Planner 使用，拒绝不会强制再调 LLM；重试/重规划按 §2.2。
 
@@ -367,34 +369,93 @@ RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accept
 
 ## 7. WorldEvent → Perception → NPC Evidence（P0/P1）
 
-### 7.1 事件事实与可见性 `[DECIDED + PROPOSED]`
+### 7.1 CommittedWorldEvent 与 Observable Signals `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
-`CommittedWorldEvent` 建议字段：`session_id`、`event_id`、`event_seq`、`source_command_id`、`event_type`、`actor_id`、`participants`、`state_version`、`game_time`、可信事件时刻的 `occurrence_context`（Scene、位置、遮挡/光照/可听性、可见信息等级等）、受限事件 payload。
+本节整合 PER-01～PER-08：CommittedWorldEvent + Observable Signals → Scope Discovery → Deterministic / JEV Perception Judgment → Authorized ObservationRecord → 既有 NPC Inbox。不新增模块、感知状态机或独立认知流程。
 
-- `proposed_events` **不是** WorldEvent；只有 Atomic Commit 后才获得 event_id/event_seq。
-- `Affected NPC Discovery` 使用事件发生时的位置及足够的证据元数据，生成每个 NPC 的 `ObservationRecord`；不能以 NPC 当前所在位置倒推历史目击。
-- `EventObservation`（过去亲眼看到/听到事件）与 `CurrentPerceptualView`（现在能看到的世界）是两个不同 API；一个 NPC 看到门开着不代表知道谁开门。
-- Projection 必须按调用主体的可见性和秘密级别过滤。NPC/玩家/Narrator **绝不可**收到全量世界真相。
+CommittedWorldEvent 沿用 session_id、event_id / event_seq、source_command_id、event_type、适用 Actor/参与者、状态版本/游戏时间、受限 payload 和可信事件时证据/历史引用，可包含 **observable_signals[]**。ProposedEvents 未提交前不是 WorldEvent，没有权威事件身份；SM 不从事件或 Signal 重算机械效果。
 
-### 7.2 最小消息 `[PROPOSED]`
+| Signal 最小候选字段 | 约束 |
+|---|---|
+| signal_id | 在所属 Event 内唯一；不是独立全局 Task ID |
+| channel | 感知渠道，使用已支持的类型，不从自然语言猜测 |
+| content | 该 Signal 的可感知内容；向 Observer 投影时仍受授权限制，不等于完整事件 payload |
+| scope | SM 能确定性计算的受限类型化感知范围；不另存重复 perception_scope，与机械 Effect Scope 独立 |
+
+Scope 可候选支持 actor / scene / radius / connected_scenes / region / world 等类型；枚举、复杂空间关系、单位/传播参数与完整 Schema **[OPEN]**。仅声明/使用已支持的计算能力，不能让 SM 根据自然语言补传播范围。如下为 evt.001 的候选 Signals 形状示例（非完整 WorldEvent），不代表已冻结或实现的 Schema：
+
+```yaml
+observable_signals:
+  - signal_id: signal.impact
+    channel: hearing
+    content: {description: "近处传来一声金属碰响。"}
+    scope: {kind: scene, scene_id: scene.synthetic.workshop}
+  - signal_id: signal.glimmer
+    channel: sight
+    content: {description: "门边闪过一道微光。"}
+    scope: {kind: scene, scene_id: scene.synthetic.workshop}
+```
+
+Planner 的候选 Signals 按可能执行结果分类，预定义事件/标准规则行为优先复用已有模板；SM 根据可信结构化结果选取匹配内容，与实际 WorldEvent、事件时证据和可靠处理任务同事务提交。SM / RE rejected 或 unsupported 不产生该未执行行为的 Signals；accepted 即使未达成目标，也可有合法执行产生的声音/动作 Signals，仍须 SM 提交成功。模板、结果条件/绑定字段 **[PROPOSED / OPEN]**，不新增 Event Generation Agent、不采信模型自报成功。
+
+### 7.2 Discovery、判断与 Observation `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
+
+**事件时证据与 Discovery：** SM 在事件提交事务内保存足以恢复 NPC/位置/感官/环境/相关状态的证据或稳定历史引用，以及可靠待处理工作；不要求保存完整 World Snapshot。Discovery 先按每个 Signal 的类型化 Scope 找候选 NPC，再按事件时状态确定性检查感官能力、位置、明确遮挡及已支持的机械约束。不能用异步处理时的当前状态倒推历史，也不能只发现在线 NPC。全局/大型事件允许可靠分批 Discovery，沿用持久任务/Outbox、去重和恢复，不强制一次枚举全部 NPC。
+
+**JEV Perception Judgment：** 只有确定性条件无法判断的情境才交 JEV，明确可判定的 Signal 不必提交。SM 授权、Host 运行，提供最小必要的事件时可信 Observer 状态、相关环境及待判断 Signals；JEV 只逐项判断是否察觉，不生成 Signal、Observation 文本、Belief / Goal / Plan 或世界变化，也不替代 NPC Gate / EVA。具体模型/传输仍为候选；调用在写事务外。
+
+候选请求可批量携带**同一 Observer / Event** 的多个待判断 Signals，返回按 Signal ID 给出明确 Boolean。以下两个 JSON 为原创内部请求/返回的形状示例，字段仍 [PROPOSED; NOT IMPLEMENTED]：
+
+```json
+{
+  "observer_id": "npc:guard-a",
+  "source_event_id": "evt.001",
+  "occurrence_context": {
+    "observer_state": "<trusted event-time senses, position and relevant state>",
+    "environment": "<minimal trusted event-time environment>"
+  },
+  "signals": [
+    {"signal_id": "signal.impact", "channel": "hearing", "content": {"description": "近处传来一声金属碰响。"}},
+    {"signal_id": "signal.glimmer", "channel": "sight", "content": {"description": "门边闪过一道微光。"}}
+  ]
+}
+```
+
+```json
+{
+  "judgments": [
+    {"signal_id": "signal.impact", "perceived": true},
+    {"signal_id": "signal.glimmer", "perceived": false}
+  ]
+}
+```
+
+SM 校验请求 Signal 均且仅有一个结果，无未知/重复 ID，perceived 必须为 Boolean；缺失、超时、Schema 错误不得默认为 false。复用既有可靠工作/重试机制，未完成判断不冒充已完成处理，不新增 Signal Task ID / ACK。JEV 输出只是候选判断，由 SM 验证、持久记录并形成观察；重投复用已保存判断/Observation，不重新推理改写历史。涉及正式 D&D 感知检定仍交 Rule Engine；复杂检定与异步处理的 RNG / 命令 / 事务编排 **[OPEN]**，JEV 不替代规则掷骰。
+
+**Observation 聚合与投影：** SM 汇总该 Observer / Event 的确定性与已验证 JEV 判断后形成观察，未完成判断不提前标完成。同一 NPC / WorldEvent 的多个已察觉 Signals 默认聚合为一条 ObservationRecord，perceived_signals[] 保存 Signal ID、渠道及授权 Content；全部未察觉可完成处理而不生成 Observation，但缺失/错误判断不能走此路径。持续事件在不同时刻产生的新观察不强行合并。以下是 SM **内部记录**示例，不可原样传给 NPC：
 
 ```yaml
 observation_id: obs.npc.guard-a.0005
 observer_id: npc:guard-a
-source_event_id: evt.001
+source_event_id: evt.001           # 内部来源追溯，不是 NPC 可见事件语义
 source_event_seq: 35
-perception_kind: witnessed_event   # witnessed_event | heard_event | other_evidence
-observed_content: {...}            # 经 Projection 脱敏的事实，不是完整 WorldEvent
+perceived_signals:
+  - signal_id: signal.impact
+    channel: hearing
+    content: {description: "近处传来一声金属碰响。"}
 perceived_at_game_time: 1023
 observation_schema_version: observation/0.1
 ```
 
-`CurrentPerceptualView` 则应有 `observer_id`、`view_world_version`、`view_time`、经权限投影的实体/环境/不确定性描述，但不伪造 `source_event_id`。
+投影仍按调用主体的可见性和秘密等级过滤，NPC / 玩家 / Narrator 不接收全量世界真相。source_event_id / source_event_seq 用于 SM 内部审计/排序，不赋予 NPC 对事件类型、真实行动者、隐藏目标等秘密的知识。NPC Context 的事件内容只来自被感知且授权的 Signal Content，不带内部来源语义；既有 observation_id 等证据引用保留用途。听见声音不等于理解其真实原因，是否理解/形成 Belief 交 NPC EVA。
+
+EventObservation 是过去事件的授权感知证据；CurrentPerceptualView 是查看时的授权当前状态（observer_id、view_world_version、view_time 等仍为候选），不伪造历史 source_event_id、不补未目击历史。观察持久化后走既有 Inbox / Gate / Mode Routing，感知判断不等于唤醒 NPC、修改关系或行动成功。
 
 ### 7.3 Reliable Observation Delivery `[PROPOSED; NOT IMPLEMENTED]`
 
-在 Commit 同事务内记录待投递 Event / Projection Job；投递至少一次，State Machine Perception 按 `(observer_id, event_id, projection_version)`（或等价唯一键）幂等写 Observation。NPC 不在线时仍保存应收到的 Event Observation 或可靠重放证据。**原始事实、感知记录、角色信念三者分别持久存储**；`Belief` 不等于 World Fact。
+在 Commit 同事务内记录事件时证据/稳定历史引用与待处理 Discovery / Projection 工作；投递至少一次。默认聚合按 `(observer_id, event_id, projection_version)`（或等价唯一键）幂等写 Observation；持续事件分时新观察的时刻区分/等价键编码 [OPEN]，不强制合并。NPC 不在线时仍保存应收到的 Event Observation 或可靠重放证据。**原始事实、感知记录、角色信念三者分别持久存储**；`Belief` 不等于 World Fact。
 
+- 分批 Discovery / 判断未完成时不能越过投影水位；全部未察觉也须可靠记录处理完成，不用空 Observation 冒充感知。具体分页、历史保留和索引字段 [OPEN]，沿用既有工作机制。
 - `observation_id` 稳定，按 NPC 提供顺序可核验的 Delivery Cursor；相同事件多个 Observation 的次序需有稳定 tie-break。分页返回投影完成水位/等价完整性证明，不能因较早事件还在 Outbox 而让消费跳过它。
 - 读取 Cursor / Host 已追加 Context 位置与 SM 内部 Processing / Completed Cursor 分离。读取、追加或模型返回不等于处理完成；SM 仅按必要认知处理与可靠输出交接的持久完成状态推进连续前缀，见 §9.6，不要求 Host 额外 ACK。
 - SM 为待处理 Observation 批次建立稳定 `observation_work_id`、任务及幂等处理记录；重复投递不创建第二份逻辑工作。合并批次不能重复占用尚有任务的同一观察；具体索引/表结构未冻结。
@@ -641,6 +702,14 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 - Conditional World Effect 使用可信规则结果/世界状态，不靠模型自报成功；完整同命令效果原子提交，已提交事件的后续命令可靠幂等，不重复伤害/领奖/已提交骰点。
 - unsupported 不新增 CommandReceipt 状态，合法机械失败不误报 rejected；确定性拒绝不强制重调 LLM，响应未知先查回执，Narrator 不泄漏内部错误或编造世界事实。
 
+**v0.8 Perception 补充验收目标（尚未执行；原创合成场景）：**
+
+- accepted 未达目标仍可提交实际 Signals；rejected / unsupported 或未提交行为不产生对应 Signals；Signal ID 在 Event 内唯一、Scope 可确定计算。
+- NPC 移动/感官变化后仍按事件时证据处理；大型 world Scope 分批 Discovery 可恢复、去重且覆盖 Inactive NPC，不跳过未完成投影。
+- 同 Observer / Event 的 JEV 批量结果必须完整且逐项 Boolean；缺失/未知/重复 ID、超时或 Schema 错误不转 false，也不触发 EVA。
+- 多个已察觉 Signals 默认一条 Observation；全 false 可无 Observation 完成；分时新观察保留。仅听到声音的 Context 不泄漏事件类型/真实行动者/隐藏目标。
+- get_scene_view 的 NPC 投影与既有感知入口等价受限；正式感知检定仍交 RE，既有 Gate / EVA / Cursor / Completion 不被感知判断替代。
+
 ### 12.1 v0.2 NPC 双模式合成验收 `[PROPOSED; NOT IMPLEMENTED]`
 
 下列是待实现的验收目标，本轮未运行模型或数据库故障测试；对应 Agent §11.3、State Machine §11.2。
@@ -706,6 +775,8 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-15 | 完整 Effect / Reaction / 复杂组件 Delta 字段？ | [OPEN]；封闭 Typed Union、完整依赖与原子提交已确认，字段须对照现有生命周期与不变量盘点，禁止任意路径或 Snapshot 覆盖 |
 | C-16 | combat.start / combat.create、rules.effect 与触发后续命令？ | AP-15 按操作类型校验 Actor 已 [DECIDED]；source_ref / 来源权限、具体字段与可靠编排仍 [OPEN]，见 §3.1 / §10 和 Adventure Package §11；不扩张为独立服务 |
 | C-17 | 动态 World Operations 与 Conditional World Effect Proposal 的具体 Schema？ | [OPEN]；受限类型、SM 稳定身份、授权投影和提交边界已确认，完整 Object / Connection 字段、结果关联及复杂 Scene / 战斗地形生成未冻结 |
+| C-18 | Observable Signal / Scope、结果条件与传播 Schema？ | [OPEN]；最小四字段/事件内 ID 与确定性范围原则已确认，具体枚举、复杂空间关系/传播参数、模板绑定与分时观察键仍待设计 |
+| C-19 | 正式感知检定与异步处理的事务编排？ | [OPEN]；RE 负责规则掷骰，事件时历史引用/保留、可靠批处理与 RNG / command / 事务衔接须实施设计，不由 JEV 替代 |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 

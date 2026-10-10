@@ -1,6 +1,6 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.5（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
+> **状态**：Draft v0.6（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
 >
 > **日期**：2026-10-10
 >
@@ -233,6 +233,8 @@ Skill Challenge 由 SM 保存成功/失败计数与状态，每次检定经统�
 ### 7.1 静态 EventDefinition 与权威触发事件（AP-12）
 
 **[DECIDED]** Package 的 EventDefinition（候选 event_definition_id、trigger / condition / effect / repeat / scope 字段）是静态声明，不是已经发生的 CommittedWorldEvent。后者由 SM 经受控命令提交后分配 event_id / event_seq，保留 source_command_id；动态交互也可生成实际世界事件，不要求它们都预定义在 Package。SM 管理定义的作用域、触发条件、历史和执行，Package 不运行脚本，不新增独立 Event Engine 服务。字段编码仍 [PROPOSED; NOT IMPLEMENTED]。
+
+预定义 EventDefinition / 标准行为可提供按可能执行结果分类的候选 Observable Signal 模板，Planner 也可随 Intent 提议；SM 只按可信结构化结果选择并与实际 WorldEvent 原子提交。Signal 的最小四字段、察觉与授权规则以 MODULE_CONTRACTS.md §7 为准；EventDefinition 的触发/重复作用域、机械 Effect Scope 和 Signal 感知 Scope 各有独立职责，不另存 perception_scope。模板/条件/Scope Schema [PROPOSED / OPEN; NOT IMPLEMENTED]，不由静态 Package 执行传播或新增 Event Generation Agent。
 
 MVP 候选 `trigger.type`：
 

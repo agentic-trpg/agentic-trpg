@@ -1,16 +1,18 @@
-# Agentic TRPG — Agent Architecture（MVP，Draft v0.8）
+# Agentic TRPG — Agent Architecture（MVP，Draft v0.9）
 
-> **文档状态**：Draft v0.8；描述拟议架构，不代表已经实现、通过测试或所有接口已冻结
+> **文档状态**：Draft v0.9；描述拟议架构，不代表已经实现、通过测试或所有接口已冻结
 >
 > **日期**：2026-10-10
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`ADR-001`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.9、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.5、[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.7 / Draft
+> **依据**：[`ADR-001`](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.10、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.8 / Draft
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
 > **内容边界**：本文仅使用通用概念及原创合成示例，不包含 *First Blush* 正文、地图或实质性的改编剧情数据。该剧本仅作为**私有**端到端验收来源。
+>
+> **v0.9 修订主题**：将 Observable Signals / Discovery / 受限 JEV 察觉判断接入既有 Perception / Inbox；内部事件追溯与 NPC 可见内容分离，Gate / EVA / Memory 生命周期不变，候选接口未实现。
 >
 > **v0.8 修订主题**：普通游戏命令统一 submit_command / TypedCommand；明确 GM 裁决、有限动态世界创造、条件式效果与授权反馈；同步 AP-15 和只读查询开发计划，候选字段尚未实现。
 >
@@ -22,7 +24,7 @@
 
 ## 0. 决策层级与需要澄清的冲突
 
-**已确认的产品原则**（来自 ADR-001、MVP Scope v0.11 与 State Machine v0.9）：
+**已确认的产品原则**（来自 ADR-001、MVP Scope v0.11 与 State Machine v0.10）：
 
 1. **DM Planner 是主持与协调决策者；DM Narrator 独立负责已确认事实呈现**：解释玩家表达、组织交互、作 GM 语义裁决、调用规则及叙述已确认结果；不代 NPC 决定个人目标和自主行为。
 2. **NPC Sub-agent 具有独立角色身份和私有上下文**：在需要时被调用；一个模型进程可服务多个角色，但每次调用只能接收该角色已获授权的信息。
@@ -237,7 +239,7 @@ Action Execution 使用独立 (session_id, command_id)。SM → Engine 的 Reque
 
 ### 4.3 控制策略不是怪物类型
 
-逻辑控制器可为 `sub_agent`、`deterministic_policy`、`scripted_event`（遵循 Adventure Package v0.5）；怪物是否具有机械 Stat Block 与控制器是否由 LLM 推理是两条正交维度。
+逻辑控制器可为 `sub_agent`、`deterministic_policy`、`scripted_event`（遵循 Adventure Package v0.6）；怪物是否具有机械 Stat Block 与控制器是否由 LLM 推理是两条正交维度。
 
 - `sub_agent`：角色基于授权上下文提出自主语言、世界行动或战术 Intent。
 - `deterministic_policy`：可由固定行为树、启发式或规则策略选择动作，结果仍必须走 Engine/State 授权入口。**不可统计为 LLM Sub-agent 验收。**
@@ -264,11 +266,17 @@ NPC 战术 Sub-agent 通过统一 NPCEvaluationResult 的 action_intents 只选�
 | NPC Sub-agent | `NPCView(npc_id)` 私有身份、知识、记忆以及**经 Perception 过滤的 Event Observations / Current Perceptual View** | 完整 WorldState、其他 NPC 私有 Context、DM-only 真相、不可见的他人 Intent |
 | Rule Engine Adapter | 合法 Actor/Target/RuleSet/动作参数及可信引用 | NPC 私人思考链、用剧本文字直接取代规则参数 |
 
+get_scene_view 给 NPC 返回信息时也必须经过 NPC Perception / 授权投影，不能绕过 get_npc_view / get_current_perceptual_view 等既有入口的感知边界（DOC-02）；不新增查询服务。内部 source_event_id / source_event_seq 只供追溯/排序，不能将事件类型、真实行动者或隐藏目标随引用泄漏给 NPC。
+
 上下文安全边界应在**检索、投影与工具授权**阶段实现，不能将全量世界状态送进 Prompt 后仅靠“不要泄漏”约束。玩家输入、其他 NPC 发言和剧本文本均视为低信任数据，不具有系统级指令权限。
 
 ### 5.2 统一的 Perception 输入：事件与当前状态
 
-**Event Observation**：WorldEvent 发生时，Perception Projection 根据**事件时刻**的地点、在场、可见性、可听性和必要的规则检定，为该 NPC 生成的有序 `ObservationRecord`。例如「你看到旅人将门打开」；NPC 未激活也要保存应归属于它的 Observation，不能在之后用当前场景视野倒推过去的目击。
+**Event Observation [DECIDED]**：SM 从已提交 WorldEvent 的 Observable Signals 形成事件时察觉证据。先按每个 Signal 的可计算 Scope Discovery 候选 NPC，再依据事件时感官、位置、明确遮挡及已支持机械约束确定性判断；未激活 NPC 同样可靠保存，不能用当前状态倒推历史。SM 在事件提交时已保存足够证据/稳定历史引用及可靠工作，无需完整 Snapshot；大型/全局事件允许分批、去重和恢复。Signal 最小候选 signal_id / channel / content / scope、模板/结果条件与传播字段见 MODULE_CONTRACTS.md §7，[PROPOSED / OPEN; NOT IMPLEMENTED]；感知 Scope 与机械 Effect Scope 独立，不另存重复 perception_scope。
+
+只有不能确定性判断的 Signals 才由 SM 授权、Host 运行 **JEV Perception Judgment**：输入同 Observer / Event 的最小必要事件时可信上下文及待判断 Signals，可批量；输出按 Signal ID 的 Boolean。SM 校验请求项均且仅一个结果，无未知/重复 ID 或错误类型；缺失、超时、Schema 错误保留既有未完成工作，不能默认为 false，不新增 Signal Task ID / ACK。JEV 只判断察觉，不生成 Signal、Observation 文本或 Belief / Goal / Plan / 世界状态，不承担 NPC Gate 或 EVA；正式 D&D 感知检定仍交 Rule Engine，复杂 RNG / 命令 / 异步事务编排 [OPEN]。
+
+同一 NPC / Event 的多个已察觉 Signals 默认聚合为一条 ObservationRecord，perceived_signals[] 仅含 Signal ID、渠道与授权 Content；全未察觉可无观察完成，分时新观察不强并。NPC Context 的事件内容仅是已感知且授权的 Signal Content；听见金属声不自动知道谁做了什么，是否理解或形成 Belief 仍由 NPC EVA 决定。感知完成不等于唤醒 NPC、改关系或行动成功，后续使用既有 Inbox / Gate / Mode Routing。
 
 **Current Perceptual View**：NPC 在**本次查看/激活时**实际能感知到的环境快照。例如「你眼前这扇门现在敞开着」。它由同一 Perception Projection 从最新世界状态计算并过滤，**不是未过滤的 Authoritative World View**。其时间点、观察者、可感知范围和必要的不确定性需可追溯。MVP 可在激活、移动到新场景、明确环顾或拟执行依赖环境状态的动作前按需获取，而不是每个 Token 生成前刷新。
 
@@ -297,7 +305,7 @@ NPC Context (session_id + npc_id scoped)
 ### 5.4 动态追加实例：角色发现门已打开
 
 1. T1：NPC A 看见门关闭，其 Context 中保留「T1 门关闭」的观察。
-2. T2：玩家在 A 面前实际打开门；WorldEvent 已提交，Perception 投影出 A 可以看到的 `door.opened` Observation。Host 在 A 的后续调用中按序**追加**观察，无须清空已有对话。
+2. T2：玩家在 A 面前实际打开门；WorldEvent 及视觉 Signal 已提交，Perception 投影出 A 确实察觉的授权 Content「旅人将门打开」，不原样传递内部事件类型。Host 在 A 的后续调用中按序**追加**观察，无须清空已有对话。
 3. T3：A 再次观察门时，Current Perceptual View 告诉它「门当前打开」，避免旧的 T1 记录被误认为实时状态。
 4. NPC B 在 T2 不在场，因此不会收到「玩家打开门」的 Event Observation；T3 才进房的 B 仅被告知「门当前打开」。B 可推断期间有人开过门，但不能将某人身份冒充亲眼所见。
 5. 所有世界动作仍由 State Machine 按提交时版本与实际条件重验；**NPC 的当前观察也可能在模型推理期间过期**。
@@ -801,6 +809,10 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 
 ## 13. 变更说明与文档协作边界
 
+### v0.9 NPC Perception 契约同步
+
+事件 Signals 经事件时 Discovery 与确定性/受限 JEV 判断，SM 验证形成授权 Observation；内部来源不成为 NPC 全知信息，通用查询也不能绕过感知。沿用既有 Context / Inbox / Gate / EVA，完整字段和检定编排仍待设计。
+
 ### v0.8 世界命令与 GM 裁决同步
 
 统一 TypedCommand 信封与普通提交入口；明确三个验证领域、有限动态创造、条件式效果和授权反馈，AP-15 按操作类型核验 Actor / 来源。查询允许早期同步开发，NPC 模式、Meta / EVA 与 Action Execution 隔离原则不变，具体字段仍待设计。
@@ -820,13 +832,13 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 
 ### 与其它文档的正式分工
 
-- **`STATE_MACHINE_ARCHITECTURE.md` v0.9**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
-- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.5**：定义 NPC 初始身份、初始知识、场景初态和声明式事件；不存 NPC 的动态推理上下文或后续记忆。
-- **`AGENT_ARCHITECTURE.md` v0.8**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；SM 管领域任务与模式。
-- **`MODULE_CONTRACTS.md` v0.7 / Draft**：统一 P0 Snapshot / Request / Result、Typed Delta、ProposedEvents、RNG、CommandReceipt、只读 Availability Query，以及 NPC Evaluation / 原子 Meta / 内部 Completion 与独立行动交接；所有新接口 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
+- **`STATE_MACHINE_ARCHITECTURE.md` v0.10**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
+- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.6**：定义 NPC 初始身份、初始知识、场景初态和声明式事件；不存 NPC 的动态推理上下文或后续记忆。
+- **`AGENT_ARCHITECTURE.md` v0.9**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；SM 管领域任务与模式。
+- **`MODULE_CONTRACTS.md` v0.8 / Draft**：统一 P0 Snapshot / Request / Result、Typed Delta、ProposedEvents、RNG、CommandReceipt、只读 Availability Query，以及 NPC Evaluation / 原子 Meta / 内部 Completion 与独立行动交接；所有新接口 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
 
 ### 仍应保持开放的技术问题
 
 NPC/普通怪物控制器的默认 LLM 策略、NPC 战斗 Intent 的 Engine 公共入口、Current View 的缓存 TTL/证据化方式、Memory Check 重要性阈值、上下文压力指标/压缩算法、NPC 自动反应的深度预算、长时记忆合并/冲突消解等都需实测或下一文档再决定。不得把这些未验证细节写成已经交付的能力。
 
-**v0.8 的核心不变量：NPC 拥有唯一权威持久状态；当前模式的 LLM 只提出可选更新/意图；Interactive 活跃时不额外启动 Background 认知；合法 Perception、Memory 与 Context 各有生命周期；世界事实只由 State Machine 提交。**
+**v0.9 的核心不变量：NPC 拥有唯一权威持久状态；当前模式的 LLM 只提出可选更新/意图；Interactive 活跃时不额外启动 Background 认知；合法 Perception、Memory 与 Context 各有生命周期；世界事实只由 State Machine 提交。**
