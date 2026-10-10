@@ -1,6 +1,6 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.10（依据 ADR-001、TypedCommand / AP-15 与 Perception 决策；具体消息 Schema 与实现仍待审阅）
+> **状态**：Draft v0.10（依据 ADR-001、TypedCommand / AP-15、Perception 与 Player Input Routing 决策；具体消息 Schema 与实现仍待审阅）
 >
 > **日期**：2026-10-10
 >
@@ -60,7 +60,11 @@ State Machine 是**一次具体游戏 Session 的游戏领域逻辑管理者、�
 ## 2. 总体运行架构
 
 ```text
-Human Player / DM Planner -> State Machine domain request / authorization
+Player UI -> Player Input Gateway -> server-side Schema / Permission Validation -> SM
+Player Chat -> Player Input Gateway -> Agent Host -> DM Planner
+   |- dialogue / information / clarification -> existing authorized presentation
+   '- executable Action Intent / TypedCommand -> SM
+State Machine -> Rule Engine (when needed) -> SM atomic State / RNG / Events / Receipt / Outbox
    SM owns World / Character / Combat / RNG / Persistent NPC State
    SM Perception / Evidence -> reliable Observation
    SM Gate / Schedule / Mode coordinator -> authorized Evaluation Task
@@ -84,7 +88,7 @@ Human Player / DM Planner -> State Machine domain request / authorization
                     player-visible receipts -> DM Narrator -> Text UI
 ```
 
-统一逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Host 仅做模型运行、Context、预算、重试取消、Tool 适配传输及运行时可观测性；不持久管理游戏状态或任务完成结果。
+NPC Evaluation 的统一逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库。Player Host / Gateway 的可信输入边界与两条路径集中定义于 [Agent Architecture §3.1](./AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path)，目标契约见 MODULE_CONTRACTS.md §3.0。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Agent Host 调度 Planner / Narration / NPC / Background EVA 的模型运行，管理 Context、预算、重试取消、Tool 适配传输及运行时可观测性；不持久管理游戏状态或任务完成结果。
 
 DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。MVP 为 Python + SQLite WAL；Jev 为可替换候选。Engine `_LiveCombat` 是迁移前基线，不能成为另一权威存储。
 
@@ -221,6 +225,8 @@ ObservationProcessingStatus 根据必要认知处理与可靠输出交接维护�
 
 ### 5.1 统一 submit_command 与命令信封（概念字段）
 
+**两路共用入口 [DECIDED; NOT IMPLEMENTED]：** 经服务端输入边界验证的 Structured Action，以及 Agent Path 需要执行的 Action Intent，均转换为既有 TypedCommand 进入 SM。Gateway 的 Schema / 权限初检不替代本章的权威命令验证，客户端自报类型或 JSON 不是合法性证明。非法结构化操作向 Player Host 返回明确拒绝/错误，不自动调用 Planner 或 JEV Router；未产生可执行意图的自然语言继续按既有授权对话/查询等路径处理。
+
 ```yaml
 schema_version: module-contracts/0.2
 command_id: cmd.demo.0007
@@ -287,6 +293,8 @@ Load State Snapshot + version + RNG position
 - `needs_choice` 必须返回可标识、版本绑定的待续裁决状态，不得把未完成动作误写为结果；取消、超时及失效必须明确处理。复杂 Reaction Chain 可能需要可验证的短事务级分段及安全 PendingChoice 状态，实际协议在 Module Contracts 冻结。
 - 旧 `_LiveCombat`、`CombatHandle` 和 Bridge 进程内回执属于迁移前代码，不是可继续采用的双权威设计；迁移可以有短期兼容适配，但同一实际 Session 不得出现两个最终状态持有者。
 - Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
+
+两种玩家输入路径均复用本节提交及 §5.5 / §6 的事件后处理。Fast Path 只跳过不必要的 Planner，不跳过规则验证、事件生成或 NPC 感知；提交后按需执行既有 NPC Perception、JEV Gate / 重新规划判断、Background EVA 与 DM Narration，仍遵守 Interactive 独占、可靠工作和独立命令生命周期。
 
 本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
 
@@ -400,7 +408,7 @@ combat.start / 候选 Typed Delta combat.create 均 **[PROPOSED; NOT IMPLEMENTED
 
 ### 7.2 战斗期间
 
-- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。Host 传输受控身份关联，State Machine 核验权限、获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
+- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。可信输入适配层 / Agent Host 传输受控身份关联，State Machine 核验权限、获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
 - CombatState 包括回合顺序、行动预算、位置、Active Effects、Concentration、待处理 Reaction/Choice 等。State Machine **持有和持久化**这些字段但不自行计算规则；Rule Engine 不维护跨调用的私有战斗权威。
 - 战斗中打开门、拾取物品、喝药、触发机关等，若世界/机械效果能够在同一命令提交前完整求值，则同事务提交完整副作用，Engine 不提前扣费；已提交事件才触发的后续机械效果使用可靠、幂等的独立命令，不声称跨已提交事务原子（§5.5）。
 - 已提交的 Combat/World Events 经事件时 Perception 分发，可供 DM Narrator 叙述；未提交的规则求值或 LLM 提议不能被叙述为已发生。
@@ -471,7 +479,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 特别区分 rejected、unsupported、合法机械失败（可为 accepted 并提交成本）、version_conflict、pending_choice，以及传输/提交未知。保持 RuleEvaluationResult 四态及 CommandReceipt committed / rejected / conflict / pending_choice 模型，unsupported 作为 rejected 的授权结构化原因，不新增回执状态。Schema/异常另行处理，不能一律映射为“失败，请重新掷骰”。
 
-确定性拒绝不强制调用 LLM，仅新语义判断需要有界重规划；原样重试用原 command_id，修改内容后用新 ID，响应丢失先查询原回执。原因按权限供 DM Planner 使用。Narrator 使用玩家可知投影并保持世界内叙事，不直接暴露 API/Schema/unsupported 错误，也不因系统能力限制编造墙壁永久不可摧毁、骰点失败或未提交世界变化；必要能力/运行时提示由文字入口合理表达。
+确定性拒绝反馈原调用方（Player Host 或 DM Planner）；Fast Path 拒绝不自动转给 Planner，Agent Path 仅新语义判断需要有界重规划。原样重试用原 command_id，修改内容后用新 ID，响应丢失先查询原回执；原因按权限过滤。Narrator 使用玩家可知投影并保持世界内叙事，不直接暴露 API/Schema/unsupported 错误，也不因系统能力限制编造墙壁永久不可摧毁、骰点失败或未提交世界变化；必要能力/运行时提示由文字入口合理表达。
 
 ## 10. 最小公共接口（仅候选名称）
 

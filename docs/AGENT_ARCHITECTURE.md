@@ -12,6 +12,8 @@
 >
 > **内容边界**：本文仅使用通用概念及原创合成示例，不包含 *First Blush* 正文、地图或实质性的改编剧情数据。该剧本仅作为**私有**端到端验收来源。
 >
+> **本轮补充**：Player Input Routing 采用 Deterministic Fast Path；按可信输入通道分发，复用既有命令、提交与事件生命周期。路由原则已确认，Gateway 传输协议及实现尚未完成。
+>
 > **v0.9 修订主题**：将 Observable Signals / Discovery / 受限 JEV 察觉判断接入既有 Perception / Inbox；内部事件追溯与 NPC 可见内容分离，Gate / EVA / Memory 生命周期不变，候选接口未实现。
 >
 > **v0.8 修订主题**：普通游戏命令统一 submit_command / TypedCommand；明确 GM 裁决、有限动态世界创造、条件式效果与授权反馈；同步 AP-15 和只读查询开发计划，候选字段尚未实现。
@@ -50,6 +52,8 @@ Agent 模块负责有意义的**非确定性认知工作**，而不是成为第�
 | 参与者 | 可以决定 | 不能自行宣布或修改 |
 |---|---|---|
 | 真人玩家（PC 控制者） | 自己的角色想说、想做什么；接受/拒绝建议 | 不可声明未经结算的命中、伤害、事件成功 |
+| Player Host | 玩家 UI、输入提交与交互入口，呈现授权结果和拒绝信息 | 客户端不能授予操作权限、认定动作合法或提交权威状态 |
+| Player Input Gateway | 识别可信输入通道、基础格式验证、确定性分发 | 不作语义规划或 GM 裁决，不拥有权威状态，不是新的 Agent |
 | Agent DM | 如何理解玩家表达、应查看何种事实、是否需要 GM 语义裁决/检定、可**请求**激活哪位 NPC、如何呈现已提交结果 | 不可代替 NPC 作个人选择；不可未经授权修改 HP/Slot/道具归属；不可把叙事等于提交 |
 | NPC Sub-agent | 该 NPC 的发言、主观解释、目标驱动决策、允许范围内的下一步行动及记忆更新**提议** | 不可读取别人的秘密/未外显 Intent；不可越权提交状态；不可替自己决定骰点成功 |
 | Agent Host / Orchestrator | 模型执行队列、调用、Context / Prompt / Cache、资源预算、超时重试取消、工具适配传输、运行时日志 | 不拥有或持久管理游戏状态、NPC 认知、领域任务完成或行为结果 |
@@ -71,7 +75,13 @@ Agent 模块负责有意义的**非确定性认知工作**，而不是成为第�
 ## 2. 逻辑架构与组件
 
 ```text
-Human Player -> DM Planner -> submit_command(TypedCommand) / SM authorization
+Player Host / Player UI -> Player Input Gateway
+   -> server-side Schema / Permission Validation -> submit_command(TypedCommand) -> SM
+Player Host / Player Chat -> Player Input Gateway -> Agent Host -> DM Planner
+   |- dialogue / information / clarification -> existing authorized presentation
+   '- executable Action Intent -> submit_command(TypedCommand) -> SM
+
+State Machine -> Rule Engine (when needed) -> SM atomic State / RNG / Events / Receipt / Outbox
                                     |
                    Persistent NPC State / Perception / Evidence
                    EvaluationStatus / NPCStateVersion / Gate / Schedule
@@ -96,12 +106,13 @@ Human Player -> DM Planner -> submit_command(TypedCommand) / SM authorization
                       Perception / player-visible DM Narrator
 ```
 
-统一逻辑信息流为 **State Machine → Agent Host → NPC LLM → State Machine**；这是责任与信任边界，不要求多个进程/服务。MVP 可使用单一 Python 运行时与本地 SQLite，模型厂商及传输形式仍待选择。
+NPC Evaluation 的统一逻辑信息流为 **State Machine → Agent Host → NPC LLM → State Machine**；玩家入口的两条路径见 §3.1。这是责任与信任边界，不要求多个进程/服务。MVP 可使用单一 Python 运行时与本地 SQLite，模型厂商及传输形式仍待选择。
 
 ### 2.1 Agent Host
 
 Agent Host 严格是 **LLM Runtime / Orchestration Infrastructure**，属于 Agent DM 内部基础设施，不是游戏领域的权威调度中心。负责：
 
+- 调度 DM Planner、DM Narration（DM Narrator）、NPC Agent 与 Background EVA 的模型调用，管理各自隔离的上下文与生命周期；NPC 领域任务与模式授权仍由 SM 决定。
 - 接收 SM 创建或批准的 Evaluation Task、授权 NPC View / Observation 与可信身份绑定，按角色构建 System Prompt / Context，禁止未经筛选的完整 Package 进入 NPC Prompt。
 - 模型调用、超时、有限重试、尽力取消；分配每次尝试的 `invocation_id`，记录日志、延迟、Token Usage 和模型配置。
 - Interactive Context 的创建、复用、按序追加、预算保护、释放/重建（MVP 不新增智能压缩）；Background One-shot Context 的创建与释放，不隐式激活 Interactive Agent。
@@ -128,13 +139,36 @@ DM Planner 可取得主持范围内完整授权 DMView / GM 信息来正确主�
 
 Narrator 可以收到**受控公开的叙事提示**，不必拥有 Planner 的完整 GM 视角。主持涉及的原始知识可帮助 Planner 安排线索，但 Narrator 对玩家的呈现受 PlayerView 和已确认事件约束。Narrator 输出失败可安全重试生成表达，不可重复提交动作。
 
-**调用闭环**：Player Input → Planner 生成结构化计划/候选 TypedCommand → Host 可信身份绑定 / submit_command(TypedCommand) → State Machine 鉴权并执行（必要时调用 Rule Engine evaluate）→ CommandReceipt / Perception → Narrator 生成最终对玩家可见的叙事。NPC 的个人对话/行动来自其独立 Sub-agent 或经批准的确定性行为策略，不能由 Planner 直接代写并冒充。
+**Agent Path 的执行闭环**：Player Chat → Player Input Gateway → Agent Host → Planner；仅在需要执行 Action Intent 时，生成候选 TypedCommand，经 Host 可信身份绑定 / submit_command(TypedCommand) → State Machine 鉴权并执行（必要时调用 Rule Engine evaluate）→ CommandReceipt / Perception → Narrator 生成最终对玩家可见的叙事。无需执行的对话、信息请求或澄清沿用授权查询/发布与既有呈现职责，不强制生成命令，Planner 的 GM Context 不直接交给 Narrator 或玩家。Structured Action 采用 §3.1 的 Fast Path。NPC 的个人对话/行动来自其独立 Sub-agent 或经批准的确定性行为策略，不能由 Planner 直接代写并冒充。
 
-## 3. Agent DM 的一次玩家回合
+## 3. 玩家输入路由与 Agent DM 处理
 
-### 3.1 输入与分流
+### 3.1 Player Input Routing：Deterministic Fast Path
 
-`PlayerUtterance` 附带可信 `session_id`、PC 身份、输入 ID 和源界面。DM 先查询经授权的当前 Scene/Session/PlayerView，并将玩家自然语言拆解成下列一种或多种候选：
+**[DECIDED; NOT IMPLEMENTED]** Player Input Gateway 按**可信输入通道**确定性分发，不使用 LLM 判断输入该走哪条路径。Player Host 负责玩家 UI、输入提交和交互入口；Gateway 负责通道识别、基础格式验证与分发，是可放在现有服务端输入适配层的逻辑职责，不要求独立仓库、独立服务或新的 Agent。具体传输协议与输入封装仍 [OPEN]，本文不新增已实现 API 的声明。
+
+**路径 A — Structured Action（Fast Path）：**
+
+```text
+Player UI -> Player Input Gateway -> Schema / Permission Validation
+          -> State Machine -> Rule Engine (when needed) -> State / Events
+```
+
+- 结构化操作由游戏 UI 或受信任的交互协议生成，使用已支持、受限的命令类型及明确参数；**不调用 DM Planner，也不调用 JEV Router**。
+- 若 Player Host 是前端客户端，可信的权限、Schema 和命令验证必须在**服务端边界**执行。服务端验证输入通道/协议、认证主体、Session 与 PC 控制绑定及允许操作；不能仅凭客户端声明的输入类型、源界面、`actor_id` 或 JSON 内容认定为合法操作。
+- Gateway 的入口检查不替代 SM 的权威动作合法性验证。SM 仍统一接收 TypedCommand，重验权限、世界前置条件、版本、幂等与提交不变量；D&D 机械合法性与计算按需交 Rule Engine。
+- 非法、越权、不支持或缺少必要裁决依据的结构化操作返回明确的授权拒绝/错误结果，**不自动转交 DM Planner**。玩家可以另行通过聊天提出自由行动；这不是失败操作的隐式回退。
+
+**路径 B — Natural Language（Agent Path）：**
+
+```text
+Player Chat -> Player Input Gateway -> Agent Host -> DM Planner
+           -> State Machine (only when an Action Intent needs execution)
+```
+
+玩家自由输入的自然语言经基础格式与会话访问检查后直接交给 DM Planner，由其负责语义理解、开放式行动规划及必要的 GM 裁定。聊天中即使包含 JSON 或动作关键词，也不能因此提升为可信 Structured Action。自然语言不一定产生 Action Intent，也可能产生对话、信息请求、澄清或其他允许的结果；DM Planner 不直接修改权威世界状态。
+
+`PlayerUtterance` 的 Session、PC 身份、输入引用和通道关联由可信输入边界核验/绑定，不采信玩家自报权限。Planner 查询经授权的当前 Scene/Session/GM View，按用途取得 PlayerView，并将玩家自然语言拆解成下列一种或多种候选：
 
 1. **对话行为**：玩家向哪个 NPC 说了什么；NPC 是否在场、是否能听到。
 2. **世界交互**：取物、开门、转移、揭示、调查、交付物品等；生成 command_type=world.* 的待验证 TypedCommand。
@@ -142,9 +176,11 @@ Narrator 可以收到**受控公开的叙事提示**，不必拥有 Planner 的�
 4. **信息请求/叙事动作**：查看房间、回顾已知信息、询问背景或说明行动意图，可能只需要读取事实和描述。
 5. **需要澄清/不支持**：目标不唯一、GM 判定依据不足、规则能力尚未实现或 Actor 无权限时，不得虚构成功结果。
 
-**[DECIDED] 三个验证领域**：Planner 根据可信 GM View 和适用规则判断情境语义与 GM 裁决，SM 验证世界事实、可信身份/权限、结构/引用和版本，Rule Engine 验证 D&D 机械合法性并计算结果。Planner 可提出是否检定、能力/技能、DC 与成功/失败后果，优先使用规则或 Package 的规定；未规定时允许 GM 裁决，但须在掷骰前确定并保留可追溯依据。SM 仅检查可确定性验证的内容，不新增语义审核 LLM、不重算 D&D 规则；不要求模型私有推理链作为依据。
+**[DECIDED] 三个验证领域**：需要语义理解或 GM 裁决时，Planner 根据可信 GM View 和适用规则判断；SM 验证世界事实、可信身份/权限、结构/引用和版本，Rule Engine 验证 D&D 机械合法性并计算结果。Fast Path 使用已确定的操作语义及可信规则/Package 依据，不把玩家自填 DC、后果或权限当作 GM 裁决。Planner 可提出是否检定、能力/技能、DC 与成功/失败后果，优先使用规则或 Package 的规定；未规定时允许 GM 裁决，但须在掷骰前确定并保留可追溯依据。SM 仅检查可确定性验证的内容，不新增语义审核 LLM、不重算 D&D 规则；不要求模型私有推理链作为依据。
 
 普通游戏命令统一 submit_command(TypedCommand)，包含 session_id / command_id、可信 principal_id、适用操作的 actor_id、command_type、expected_world_version、强类型 payload，按 MODULE_CONTRACTS.md §3 定义，不新增 Adjudication API。Actor 行动须真实 actor_id；受信系统/世界事件的 combat.start / rules.effect 等可无行动 Actor，但须验证 principal、机械来源与目标（AP-15）。强类型联合、source_ref / 来源权限字段仍 [PROPOSED / OPEN; NOT IMPLEMENTED]；不是将 actor_id 全局无约束可空。创建、NPC Evaluation、查询/回执入口继续独立。
+
+**JEV 边界 [DECIDED]：** 不新增 JEV Player Input Router，JEV 不参与玩家输入的常规路由。保留既有轻量语义分类职责：不确定情境的 Perception Judgment、NPC 事件认知价值评估、Inactive NPC 的 Background EVA 触发判断及相关重新规划 Gate。这里的认知评估/Gate 只判断是否需要后续处理，不替 NPC EVA 形成 Memory / Belief / Goal / Plan 或自主行动。SM 管 Gate 领域政策、授权与分类采用，Host 运行可选轻量推理；Interactive 独占、Background EVA、NPC Perception 和 DM Narration 职责均不变，Jev 仍是可替换候选。
 
 ### 3.2 场景主持与自由行动
 
@@ -163,23 +199,25 @@ Narrator 可以收到**受控公开的叙事提示**，不必拥有 Planner 的�
 
 **调度与人格决策分离**：DM 可以请求开始 Interactive Mode；SM 依据交互请求、权限、游戏时序和领域预算批准模式与任务；Host 执行 Context / 模型运行。已活跃 NPC 复用 Interactive Context；Inactive NPC 的非交互选择可以由 Background One-shot LLM 完成，无须激活 Interactive Agent。NPC 自己决定如何回应；DM 不为推进剧情强迫其说出秘密。Scripted Event 的已审核前提与 NPC 自由选择仍需明确区分。
 
-### 3.4 一个可重试的结果路径
+### 3.4 两路执行后的统一流程与重试
 
 ```text
-User input (input_id)
-  → DM interprets candidate(s)
-  → Host reads current authorized snapshot (world_version)
-  → State Machine creates/approves Task -> Host runtime -> NPC LLM Result
-  → Host transports Result + trusted task binding
-  → State Machine validates identity, scope, versions and idempotency
-  → Rule Engine evaluates when needed -> State Machine commits
-  → committed receipts + WorldEvents
-  → Perception Projection writes per-actor Observations
-  → DM renders from committed result + PlayerView
-  → optional bounded follow-up NPC Evaluation (respect mode exclusivity)
+Fast Path validated Structured Action / Agent Path executable Action Intent
+  -> submit_command(TypedCommand)
+  -> State Machine validates identity, scope, preconditions, versions and idempotency
+  -> Rule Engine evaluates when needed -> SM atomic State / RNG / Events / Receipt / Outbox
+  -> committed receipts + WorldEvents
+     |- Perception / Discovery / optional JEV Perception Judgment
+     |  -> reliable authorized NPC Observations / Inbox
+     |  -> existing Mode Routing / Inactive Lightweight Gate (optional JEV)
+     |  -> authorized Interactive EVA or Background EVA (bounded, when needed)
+     |  -> existing Meta / reliable Dialogue and independent Action Intent handoff
+     '- authorized PlayerView / receipts -> DM Narrator (when needed) -> Player Host
 ```
 
-若世界版本在 NPC 推理期间发生变化，应**刷新 View 并重新校验**；不能把几秒前的 LLM 决策直接当作当前命令执行。拒绝后的重新决策次数必须有上限；不得把拒绝解释为骰子失败，除非 Engine 明确返回了对应已执行结果。
+两路复用既有权威状态处理机制。Fast Path 仅跳过不必要的 DM Planner 调用，不绕过规则验证、事件生成、NPC 感知、Gate / Background EVA 或其他必要处理；提交后的 JEV 调用属于既有感知/Gate 职责，不是玩家输入路由。以上后处理均按需且遵守既有模式与事件生命周期，不要求每次动作调用所有 Agent。Agent Path 没有可执行命令时不制造动作事件；对话等若需发布或产生世界副作用，仍走既有授权发布/提交路径。
+
+两路均遵守 MODULE_CONTRACTS.md §2、§6、§11 的回执、版本、幂等与失败语义。若世界版本在 Agent 推理期间发生变化，应**刷新 View 并重新校验**；不能把几秒前的 LLM 决策直接当作当前命令执行。Fast Path 拒绝直接反馈 Player Host；Agent Path 必要的重新决策有界，不得把拒绝解释为骰子失败，除非 Engine 明确返回了对应已执行结果。
 
 ## 4. NPC Sub-agent：身份、决策与控制方式
 
@@ -274,7 +312,7 @@ get_scene_view 给 NPC 返回信息时也必须经过 NPC Perception / 授权投
 
 **Event Observation [DECIDED]**：SM 从已提交 WorldEvent 的 Observable Signals 形成事件时察觉证据。先按每个 Signal 的可计算 Scope Discovery 候选 NPC，再依据事件时感官、位置、明确遮挡及已支持机械约束确定性判断；未激活 NPC 同样可靠保存，不能用当前状态倒推历史。SM 在事件提交时已保存足够证据/稳定历史引用及可靠工作，无需完整 Snapshot；大型/全局事件允许分批、去重和恢复。Signal 最小候选 signal_id / channel / content / scope、模板/结果条件与传播字段见 MODULE_CONTRACTS.md §7，[PROPOSED / OPEN; NOT IMPLEMENTED]；感知 Scope 与机械 Effect Scope 独立，不另存重复 perception_scope。
 
-只有不能确定性判断的 Signals 才由 SM 授权、Host 运行 **JEV Perception Judgment**：输入同 Observer / Event 的最小必要事件时可信上下文及待判断 Signals，可批量；输出按 Signal ID 的 Boolean。SM 校验请求项均且仅一个结果，无未知/重复 ID 或错误类型；缺失、超时、Schema 错误保留既有未完成工作，不能默认为 false，不新增 Signal Task ID / ACK。JEV 只判断察觉，不生成 Signal、Observation 文本或 Belief / Goal / Plan / 世界状态，不承担 NPC Gate 或 EVA；正式 D&D 感知检定仍交 Rule Engine，复杂 RNG / 命令 / 异步事务编排 [OPEN]。
+只有不能确定性判断的 Signals 才由 SM 授权、Host 运行 **JEV Perception Judgment**：输入同 Observer / Event 的最小必要事件时可信上下文及待判断 Signals，可批量；输出按 Signal ID 的 Boolean。SM 校验请求项均且仅一个结果，无未知/重复 ID 或错误类型；缺失、超时、Schema 错误保留既有未完成工作，不能默认为 false，不新增 Signal Task ID / ACK。此 Perception Judgment 调用只判断察觉，不生成 Signal、Observation 文本或 Belief / Goal / Plan / 世界状态，不替代后续 NPC Gate 或 EVA；正式 D&D 感知检定仍交 Rule Engine，复杂 RNG / 命令 / 异步事务编排 [OPEN]。
 
 同一 NPC / Event 的多个已察觉 Signals 默认聚合为一条 ObservationRecord，perceived_signals[] 仅含 Signal ID、渠道与授权 Content；全未察觉可无观察完成，分时新观察不强并。NPC Context 的事件内容仅是已感知且授权的 Signal Content；听见金属声不自动知道谁做了什么，是否理解或形成 Belief 仍由 NPC EVA 决定。感知完成不等于唤醒 NPC、改关系或行动成功，后续使用既有 Inbox / Gate / Mode Routing。
 
@@ -727,7 +765,7 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 | AG-A28 | Inactive NPC 目击朋友遇袭 | Gate 可触发一次 Background Evaluation，生成本人可选认知/行动提议，不创建 Interactive Agent |
 | AG-A29 | Jev / 轻量 Trigger 漏判或服务不可用 | 保守确定性保底保护关键事件；不会丢失重要观察或强制依赖专有模型 |
 | AG-A30 | NPC 日程在建筑被毁后到期 | 条件重验证拒绝不可能活动，不错误移动 NPC 或形成虚假事件 |
-| AG-A31 | 玩家见闻由 DM Planner 处理 | Narrator 仅看可向玩家公开的已提交结果；GM-only/其他 NPC 内心不泄漏 |
+| AG-A31 | 玩家见闻由授权 PlayerView 呈现 | 两路共用可见性约束；Narrator 仅看可向玩家公开的已提交结果，GM-only/其他 NPC 内心不泄漏 |
 | AG-A32 | Rule Evaluation 已接受但 State Machine 提交失败 | DM Narrator 不得叙述已成功；Agent 不获得未提交世界状态 |
 | AG-A33 | 背景 Behavior Trigger 重复到达 | 不重复派发 Evaluation、不重复关系更新、不无限事件循环 |
 

@@ -6,6 +6,8 @@
 >
 > **性质：** 跨仓库目标接口契约草案；**不是已实现 API**
 >
+> **本轮补充：** Player Host / Player Input Gateway 的 Deterministic Fast Path 交接边界见 §3.0；复用现有 TypedCommand，不新增公共执行 API。
+>
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
 > **依据：** [ADR-001](./ADR-001-UNIFIED-STATE-OWNERSHIP.md)（Accepted）、[MVP Scope](./MVP_SCOPE.md) v0.11、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.10、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.9
@@ -78,6 +80,25 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 
 ## 3. Player / DM Planner / NPC Agent → State Machine：TypedCommand（P0）
 
+### 3.0 Player Input Gateway 与可信输入通道 `[DECIDED; NOT IMPLEMENTED]`
+
+Player Host 负责玩家 UI、输入提交与交互入口；Player Input Gateway 负责可信通道识别、基础格式验证和确定性分发，不要求独立仓库、服务或新的 Agent。完整路由设计集中于 [Agent Architecture §3.1](./AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path)，本节仅定义与既有契约的交接。
+
+| 输入通道 | 交接路径 | 契约约束 |
+|---|---|---|
+| 游戏 UI / 受信任交互协议的 Structured Action | Gateway → 服务端 Schema / Permission Validation → SM submit_command(TypedCommand) → 按需 Rule Engine → SM State / Events | 不调用 DM Planner / JEV Router；非法操作明确拒绝，不自动转交 Planner |
+| Player Chat 的 Natural Language | Gateway → Agent Host → DM Planner；仅可执行 Action Intent 转为 TypedCommand → SM | Planner 负责语义、开放式规划与必要裁定，也可产生对话、信息请求或澄清；不直接修改权威状态，不强制生成命令 |
+
+**可信边界：** 若 Player Host 是前端客户端，权限、Schema 和命令验证必须在服务端执行。可信适配层核验通道/协议、认证主体、Session / PC 控制关联及允许操作；输入类型标签、客户端源界面、JSON 形状或自报 principal_id / actor_id 均不构成授权。聊天里的 JSON 仍是聊天数据。Gateway 不做 LLM 语义路由；无法验证的通道或非法格式明确拒绝，不据内容猜测路径。
+
+**复用命令与结果：** Fast Path 使用已支持操作的确定语义与可信规则/Package 依据，不能自行提供 GM 权限或任意 DC/后果。Gateway 初检不替代 SM 的身份/权限、世界前置条件、版本、幂等和提交验证，规则合法性仍交 Engine；信封与生命周期沿用 §2–§6，不新增路由 ID、命令类型字段或回执状态。Schema 错误、领域拒绝、冲突、needs_choice 与提交未知分别沿用 §11 / §8 / §6；前置输入错误不伪造 CommandReceipt 或规则结果。授权反馈返回原调用方，Fast Path 不隐式调用 Planner 重试。
+
+**提交后的共同流程：** 两路的可执行命令均由 SM 原子提交状态、RNG、正式事件、CommandReceipt 与 Outbox；后续按 §7 / §9 继续 NPC Perception、既有 Mode Routing / JEV Gate、Background EVA、相关重新规划判断与 DM Narration。Fast Path 跳过不必要的 Planner，不绕过规则、事件、感知或其他必要处理。JEV 保留既有轻量语义分类职责，不新增 JEV Player Input Router；Perception Judgment 不替代 Gate / EVA，Interactive 独占与各自完成语义不变。
+
+Fast Path 的事件/Signals 复用既有已审核行为或 Package 模板，由 SM 按可信执行结果选择，不依赖 Planner 临时补写。非行动结果沿用授权查询/发布与 PlayerView / Narrator 呈现边界，不将 Planner 的 GM Context 直接交给 Narrator 或玩家。
+
+**[OPEN]** Gateway 的传输绑定、输入封装与 UI 操作到现有 TypedCommand 的具体映射尚未冻结，见 C-20。这里确定的是目标责任与信任边界，不是已存在的 endpoint、类或函数。
+
 ### 3.1 统一公开入口与命令信封 `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
 所有普通游戏命令只经公开逻辑入口 **submit_command(TypedCommand)**，内部以 command_type 分派 world.* / rules.* / combat.*。create_session、NPC Evaluation 提交、只读查询和回执查询保留独立生命周期，不塞入此信封。不要求 submit_world_command / submit_check_request / submit_combat_intent 等独立公开入口；旧名最多描述内部处理路径，不是额外服务。
@@ -121,6 +142,8 @@ payload:
 
 优先采用规则或 Package 已规定的机制/DC；未规定时允许可信 GM 裁决，但能力/技能、DC、成功/失败后果必须在掷骰前确定并可追溯。SM 只验证能确定性检查的内容，机械规则交 Engine；依据记录不要求模型私有推理链。GM 裁决复用 TypedCommand / 受限 payload，不增加 Adjudication API。Planner 不能提交骰点/伤害或任意状态修改，也不能替独立 NPC Agent 决定私人意图。
 
+上述 Planner 职责在需要语义理解/GM 裁决时适用，不要求每个 Structured Action 先经过 Planner；Fast Path 的准入与缺少裁决依据时的拒绝按 §3.0。
+
 ### 3.3 有限动态世界操作 `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
 Package 是静态初始定义，不是 DM 创造力的上限。Planner 可提出原先不存在的简单 Object、World Fact、Scene Connection，通过 SM 已支持的封闭 Typed World Operations 验证并持久化到 Runtime World State，不修改 Package。已有对象优先引用可信 GM View 的 ID；新对象由 SM 分配稳定身份，提交后经既有授权查询可见，重试通过原回执返回同一结果。
@@ -139,7 +162,7 @@ Planner 可随 Action Intent 提出按可能执行结果分类的候选 observab
 
 复用 get_scene_view 等既有查询入口，按可信主体投影 DMView / PlayerView / NPCView：Planner 获取主持范围内完整授权 GM 信息；Player / Narrator 只读玩家可知事实；NPC 通过独立 NPCView / Perception 获取自身授权信息；get_scene_view 面向 NPC 时也必须经过 NPC Perception / 授权投影，不能绕过感知权限（DOC-02）。动态创建且已提交的对象进入后续授权查询，未提交对象或隐藏信息不能泄漏；不新增冗余查询服务。
 
-反馈映射沿用 §5 / §6 / §11：rejected 是规则/世界拒绝，unsupported 是不支持的能力/操作原因，合法机械失败可为 accepted 并提交实际成本；version_conflict 对应 CommandReceipt.conflict，needs_choice 对应 pending_choice。RuleEvaluationResult 四态不变，CommandReceipt 不增加 unsupported 状态，能力不支持可用 rejected + 授权结构化原因表达。Schema/运行时/传输错误与规则拒绝分开，提交未知先查询 (session_id, command_id)。结构化原因经权限过滤供 Planner 使用，拒绝不会强制再调 LLM；重试/重规划按 §2.2。
+反馈映射沿用 §5 / §6 / §11：rejected 是规则/世界拒绝，unsupported 是不支持的能力/操作原因，合法机械失败可为 accepted 并提交实际成本；version_conflict 对应 CommandReceipt.conflict，needs_choice 对应 pending_choice。RuleEvaluationResult 四态不变，CommandReceipt 不增加 unsupported 状态，能力不支持可用 rejected + 授权结构化原因表达。Schema/运行时/传输错误与规则拒绝分开，提交未知先查询 (session_id, command_id)。结构化原因经权限过滤反馈原调用方（Player Host 或 Planner），Fast Path 拒绝不自动转交 Planner；Agent Path 重试/重规划按 §2.2。
 
 Narrator 保持游戏世界内的沉浸叙事，不把内部 API、Schema 或 unsupported 错误直接作为玩家叙事。但能力限制不能成为“墙壁永久不可摧毁”“骰点已失败”或“世界已改变”的无依据世界事实；Planner 可以提出合理情境解释，权威效果仍须正式提交。必要的能力/运行时提示由文字入口以可理解方式表达，不伪造机械结果。Narrator 没有写权限。
 
@@ -402,7 +425,7 @@ Planner 的候选 Signals 按可能执行结果分类，预定义事件/标准�
 
 **事件时证据与 Discovery：** SM 在事件提交事务内保存足以恢复 NPC/位置/感官/环境/相关状态的证据或稳定历史引用，以及可靠待处理工作；不要求保存完整 World Snapshot。Discovery 先按每个 Signal 的类型化 Scope 找候选 NPC，再按事件时状态确定性检查感官能力、位置、明确遮挡及已支持的机械约束。不能用异步处理时的当前状态倒推历史，也不能只发现在线 NPC。全局/大型事件允许可靠分批 Discovery，沿用持久任务/Outbox、去重和恢复，不强制一次枚举全部 NPC。
 
-**JEV Perception Judgment：** 只有确定性条件无法判断的情境才交 JEV，明确可判定的 Signal 不必提交。SM 授权、Host 运行，提供最小必要的事件时可信 Observer 状态、相关环境及待判断 Signals；JEV 只逐项判断是否察觉，不生成 Signal、Observation 文本、Belief / Goal / Plan 或世界变化，也不替代 NPC Gate / EVA。具体模型/传输仍为候选；调用在写事务外。
+**JEV Perception Judgment：** 只有确定性条件无法判断的情境才交 JEV，明确可判定的 Signal 不必提交。SM 授权、Host 运行，提供最小必要的事件时可信 Observer 状态、相关环境及待判断 Signals；此调用只逐项判断是否察觉，不生成 Signal、Observation 文本、Belief / Goal / Plan 或世界变化，也不替代 NPC Gate / EVA。具体模型/传输仍为候选；调用在写事务外。
 
 候选请求可批量携带**同一 Observer / Event** 的多个待判断 Signals，返回按 Signal ID 给出明确 Boolean。以下两个 JSON 为原创内部请求/返回的形状示例，字段仍 [PROPOSED; NOT IMPLEMENTED]：
 
@@ -777,6 +800,7 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-17 | 动态 World Operations 与 Conditional World Effect Proposal 的具体 Schema？ | [OPEN]；受限类型、SM 稳定身份、授权投影和提交边界已确认，完整 Object / Connection 字段、结果关联及复杂 Scene / 战斗地形生成未冻结 |
 | C-18 | Observable Signal / Scope、结果条件与传播 Schema？ | [OPEN]；最小四字段/事件内 ID 与确定性范围原则已确认，具体枚举、复杂空间关系/传播参数、模板绑定与分时观察键仍待设计 |
 | C-19 | 正式感知检定与异步处理的事务编排？ | [OPEN]；RE 负责规则掷骰，事件时历史引用/保留、可靠批处理与 RNG / command / 事务衔接须实施设计，不由 JEV 替代 |
+| C-20 | Player Input Gateway 的可信通道绑定、输入封装与操作映射？ | [OPEN]；路由原则见 §3.0，服务端须验证认证主体 / Session / PC 与允许操作，具体传输和 UI → TypedCommand 映射待实施审阅；不新增 Agent、仓库或执行 API |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 

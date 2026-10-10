@@ -18,25 +18,37 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 
 ```mermaid
 flowchart TD
-    Player[Human Player] --> Planner[DM Planner]
-    Planner --> SM[State Machine<br/>Authoritative Runtime]
-    SM -->|Snapshot + Typed Intent + RNG| RE[Rule Engine]
+    Player[Human Player] --> PH[Player Host<br/>UI / Chat]
+    PH --> Gateway[Player Input Gateway<br/>Trusted-channel dispatch]
+    Gateway -->|Structured Action| Validation[Server-side Schema / Permission Validation]
+    Validation --> SM[State Machine<br/>Authoritative Runtime]
+    Gateway -->|Natural Language| Host[Agent Host]
+    Host --> Planner[DM Planner]
+    Planner -->|Action Intent when execution is needed| SM
+    Planner -->|Non-action reply using authorized facts| Narrator
+    SM -->|When needed: Snapshot + Typed Intent + RNG| RE[Rule Engine]
     RE -->|Evaluation + Proposed Delta| SM
     SM -->|Committed World Events| Perception[NPC Perception<br/>Authorized Observations]
-    Perception --> NPC[NPC Sub-agents<br/>via Agent Host]
+    Perception -->|Existing mode routing / Gate; when needed| NPC[NPC Sub-agents<br/>via Agent Host]
     NPC -->|Dialogue / Action Intents / Meta Proposals| SM
     SM -->|Committed, authorized facts| Narrator[DM Narrator]
-    Narrator --> Player
+    Narrator --> PH
 ```
+
+Player input uses a **Deterministic Fast Path**: trusted UI/protocol actions go through server-side validation to the State Machine; free-form chat goes directly through the Agent Host to the DM Planner. Invalid structured actions receive an explicit refusal or error and are not automatically forwarded to the Planner. Client labels or JSON alone do not establish trust. The Gateway is a logical input boundary, not a new agent or required repository; its protocol and implementation remain open. See [Player Input Routing](docs/AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path) and [Module Contracts](docs/MODULE_CONTRACTS.md#30-player-input-gateway-与可信输入通道-decided-not-implemented).
+
+Both execution paths share authoritative validation and commits, followed by the existing event, NPC Perception, mode/Gate, Background EVA, and DM Narration processing as needed. JEV retains lightweight perception/cognition classification and replanning Gate duties; there is no JEV Player Input Router. Skipping an unnecessary Planner call does not skip rules, events, or NPC perception.
 
 ### Main responsibilities
 
 | Component | Responsibility |
 | --- | --- |
-| **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
+| **Player Host** | Provide player UI, input submission, and interaction entry points; present authorized results. |
+| **Player Input Gateway** | Identify trusted input channels, validate basic format, and dispatch deterministically. Server-side checks and State Machine validation establish permission and legality. |
+| **Agent DM** | Interpret natural language, plan open-ended actions, coordinate the adventure and NPCs, make authorized GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
 | **NPC Sub-agents** | Maintain character-specific perspectives and propose dialogue, actions, beliefs, memories, and goals. They do not directly mutate game state. |
-| **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
-| **State Machine** | Own and atomically commit session, world, character, combat, RNG, and persistent NPC state. Enforce permissions, versions, idempotency, and observation delivery. |
+| **Agent Host** | Schedule DM Planner, DM Narration, NPC Agent, and Background EVA calls; manage contexts, lifecycles, retries, and inference resources. It does not own authoritative game state. |
+| **State Machine** | Receive executable commands, validate legality and permissions, and atomically commit session, world, character, combat, RNG, events, and persistent NPC state. Enforce versions, idempotency, and observation delivery. |
 | **Rule Engine** | Evaluate supported mechanical rules against explicit inputs and return typed, *uncommitted* outcomes. It does not own persistent authoritative combat state in the target architecture. |
 | **Visual Presentation** | Future presentation of maps, tokens, scenes, and animations. It is outside the first MVP. |
 
