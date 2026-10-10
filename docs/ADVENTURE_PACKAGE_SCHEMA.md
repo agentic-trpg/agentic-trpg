@@ -1,6 +1,6 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.4（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
+> **状态**：Draft v0.5（与 ADR-001 统一状态模型对齐，尚未冻结为代码契约）
 >
 > **日期**：2026-10-10
 >
@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：`MVP_SCOPE.md` v0.10；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：`MVP_SCOPE.md` v0.11；`ADR-001-UNIFIED-STATE-OWNERSHIP.md`；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -49,7 +49,7 @@
 | 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Rule Engine 返回未提交的 Delta / Events；State Machine 验证并原子提交，不重写规则 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
 
-**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令携带 session_id、command_id、actor_id、expected_world_version；创建前的幂等键见 §9.1a。规则求值无权威副作用，由 SM 按单个命令原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 冻结。
+**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令统一 submit_command(TypedCommand)，携带 session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按具体类型适用的 actor_id（AP-15，见 §6.3 / MODULE_CONTRACTS.md §3）；创建前的幂等键见 §9.1a。规则求值无权威副作用，由 SM 按单个命令原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 冻结。
 
 ---
 
@@ -222,7 +222,7 @@ adapter_notes: "Synthetic example; not an assertion that this ID exists."
 
 候选 operation_kind=`rules.effect`，复用统一 RuleEvaluationRequest / RuleEvaluationResult、当前适用的 CombatSnapshot / NonCombatSnapshot、Session 固定 RulesetBinding 与显式 RNGContext。该操作及具体 Payload / Effect Schema 均 **[PROPOSED; NOT IMPLEMENTED]**，复杂字段与编排为 [OPEN]；必要机制无可验证支持时阻止 Package 批准，不能直接写 PC HP。
 
-**[OPEN] 无实际 Actor 的环境效果来源如何兼容必填 actor_id**：本轮不指定虚构 Actor、不将所有请求的 actor_id 改成 Optional。需在来源/权限语义确定后设计受控映射；未解决路径不能假装已支持。事务组合与可靠后续命令边界见 §7.3。
+**AP-15 [DECIDED]**：TypedCommand / RuleEvaluationRequest 的 actor_id 是否必填由具体操作类型决定。Actor 行动必须有真实 actor_id；受信系统/世界事件发起的 combat.start、rules.effect 等可以没有行动 Actor，但必须验证可信 principal、机械来源和目标，不虚构 NPC，也不将全部操作无约束可空。按操作类型区分的强类型联合、source_ref / 来源权限与具体 Schema 字段仍 **[PROPOSED / OPEN; NOT IMPLEMENTED]**，以 MODULE_CONTRACTS.md §3.1 / §4.1 为准；本轮不实现。事务组合与可靠后续命令边界见 §7.3。
 
 Skill Challenge 由 SM 保存成功/失败计数与状态，每次检定经统一 Rule Evaluation 和 (session_id, command_id) 关联的已提交结果去重。剧情威胁不必伪造成可战斗怪物；其机械后果仍须受控规则求值，非机械世界效果仅使用允许列表。
 
@@ -523,7 +523,7 @@ Player intent / NPC decision proposal
 | T08 | 世界事件条件 AST 的精确编码与限制 | 固定少量 Operator，默认拒绝未知类型 | 待实现确认 |
 | T09 | 来源及许可元数据的自动发布检查 | 首版可结合人工审查 + CI 中的限制路径检查 | 待设计 |
 | T10 | World Builder 与 Visual Schema 未来如何扩展 | 只留 `schema_version` 与可选 Assets，不提前实现 | MVP 后 |
-| T11 | 无 Actor 的环境效果来源与 actor_id 必填约束 | 保持 P0 actor_id 必填；不预设虚构 Actor，受控来源/授权映射待设计 | [OPEN] |
+| T11 | AP-15 Actor / 系统来源的具体字段 | 按操作类型校验 Actor 已确认；Actor 行动必填，受信系统/世界事件操作须验证 principal / 机械来源 / 目标；source_ref / 来源权限编码待设计 | 原则 [DECIDED]；字段 [PROPOSED / OPEN] |
 | T12 | combat.start / combat.create、rules.effect 与复杂编排/Effect Schema | 复用统一规则求值和单命令提交，可靠后续命令不虚构跨事务原子性；具体类型/存储须实施验证 | [OPEN] |
 
 ---

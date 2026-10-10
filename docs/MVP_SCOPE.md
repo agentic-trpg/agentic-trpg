@@ -2,11 +2,11 @@
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**
 >
-> **版本：v0.10**
+> **版本：v0.11**
 >
 > **初稿日期：2026-10-09**
 >
-> **修订日期：2026-10-10；Adventure Package / State Machine 接口边界同步，非实现完成声明**
+> **修订日期：2026-10-10；统一世界命令、GM 裁决、AP-15 与只读查询计划同步，非实现完成声明**
 >
 > **文档级别：项目级（跨 Repository）**
 >
@@ -269,7 +269,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 ### 4.4 不支持规则时的行为
 
-1. **机械规则不支持：** 在任何资源扣减、RNG 消耗或不可逆状态变化前返回结构化拒绝/能力不支持信息（若该执行路径支持 Preflight）；Agent DM 明确告知玩家限制或提供合法替代方案。
+1. **机械规则不支持：** 在任何资源扣减、RNG 消耗或不可逆状态变化前返回结构化拒绝/能力不支持信息（若该执行路径支持 Preflight）；能力限制经授权结构化反馈给 Planner，由文字入口提供可理解说明或合法替代方案；Narrator 不直接暴露 API/Schema/unsupported 错误，也不伪造成骰点失败或墙壁永久不可摧毁等世界事实。
 2. **需要 GM 裁决：** 明确切换为叙事/世界操作路径；仅在经过授权和验证后提交世界状态，不冒充 Rule Engine 的机械结算。
 3. **混合型效果：** 将可执行的机械部分和需要 GM 语义裁决的部分清楚拆开；不得因一个规则的某个 Activity 可解析，就宣称整个规则效果已实现。
 4. **不得静默变更规则：** 若要采用简化、Homebrew 或 DM Override，应留有操作来源与审计记录，并与正式 SRD 机制区分。
@@ -318,12 +318,14 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 
 ### 6.1 Command / NPC Decision
 
-- 每个改变权威状态的请求都能追踪 Session、Scene、Actor、调用源及请求身份。
+- **[DECIDED]** 普通游戏命令统一 submit_command(TypedCommand)：session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按操作类型适用的 actor_id；创建、NPC Evaluation、查询/回执保持独立。AP-15：Actor 行动必填真实 Actor，受信系统/世界事件操作可无行动 Actor，但须核验 principal / 机械来源 / 目标；具体来源字段 [PROPOSED / OPEN; NOT IMPLEMENTED]。
 - 真人玩家仅能直接代表唯一 PC；NPC 的行为选择由对应 `npc_id` 的 NPC Sub-agent 提出，State Machine 校验 NPC 身份、控制权、状态版本与可见信息；Agent DM 只做合法协调，不代其直接下决定。
 - 原始 `NPCEvaluationResult` 使用统一七字段；提交只需 evaluation_id + result，SM 从 Task 恢复可信关联，Meta 整批验证原子写入、每任务至多一个最终结果；Action Intent 映射为统一 Typed Command 的世界/规则操作，最终 Schema 为 Proposed / Not Implemented。
 - NPC 决策不能直接携带“成功造成多少伤害”“把某目标 HP 改成多少”之类最终机械结论。含攻击模式、目标、法术效果和资源的命令必须明确选择。
 - PC 和 NPC 可以共享 Engine 机械语义，Controller 权限在 State Machine 执行，不能通过伪造 `actor_id` 越权。
 - State Machine 返回自身验证或 Engine 求值的可解释拒绝，Host 传输回模型，NPC Sub-agent 可以在受限预算内重新选择；异常不能制造已提交的假象。
+
+DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷骰前确定 DC/后果并可追溯）；SM 负责确定性世界事实/身份/结构/版本验证，Engine 负责 D&D 机械合法性与计算。有限动态 Object / Fact / Connection 及 Conditional World Effect 复用 TypedCommand / Package 受限语义，运行态由 SM 提交，不改静态包、不增加 World Creation Agent；复杂字段/生成仍 [OPEN]，详见 MODULE_CONTRACTS.md §3。
 
 ### 6.2 Result / Event
 
@@ -359,7 +361,7 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 - SM 不做自然语言语义验证、不改写 Belief、不增加 Semantic Validator LLM。Belief 版本追加并保留来源/有效状态/历史，错误主观信念不改变世界；LLM 不得将未执行动作记为已发生，SM 只核验结构化来源而不证明文本忠实。
 - Memory Persistence 与 Context 资源管理独立，MVP 只预算保护/安全释放和完整 Meta 重建；LLM 调用在写事务外。SM 管简单游戏时钟日程、证据、承诺与安全政策，Intent 不等于行动。
 - DM Planner / Narrator 的 Context / 权限隔离，Narrator 只消费玩家获准已提交事实。SM 持续不可用停止权威推进，Host 无影子状态/独立游戏队列，按 SM 持久 Task / Result / Meta / 交接与回执恢复非战斗，战斗精确续玩仍后置。
-- P0 规则接口按 MODULE_CONTRACTS.md §4–§6 统一：command_id / operation_kind / 强类型 payload，四种规则结果与 Schema/异常/传输故障分离，封闭 Typed Delta，CommandReceipt 按 (session_id, command_id) 查询。只读 Availability Query 供 UI/Planning，不掷骰/写状态/生成回执，不保证执行成功；完整技能列表/目标枚举非本轮必需实现。World / Character / Combat / RNG 仍只有 SM 权威提交，新接口均 Proposed / Not Implemented。
+- P0 规则接口按 MODULE_CONTRACTS.md §4–§6 统一：command_id / operation_kind / 强类型 payload，四种规则结果与 Schema/异常/传输故障分离，封闭 Typed Delta，CommandReceipt 按 (session_id, command_id) 查询。只读 Availability Query 供 UI/Planning，不掷骰/写状态/生成回执，不保证执行成功；完整技能列表/目标枚举非本轮必需实现。查询允许与早期 Rule Evaluation Adapter 同步开发，与正式求值共享规则逻辑，不等待 Visual Presentation；文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮不实现。World / Character / Combat / RNG 仍只有 SM 权威提交，新接口均 Proposed / Not Implemented。
 
 ## 7. MVP 验收标准（End-to-End）
 
@@ -432,6 +434,8 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | **M3：First Blush Text-first Vertical Slice** | 人工整理剧本数据，加载场景初始状态，打通 NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
 | **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A40 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
 
+只读 Action Availability Query 可随 M1 的 Evaluation Adapter 早期开发，先覆盖基础战斗操作并共享合法性逻辑，无 RNG/写状态/Delta/事件/回执；不依赖视觉阶段，也不作为当前文字入口发布条件。
+
 **后续阶段（不阻塞 MVP）：** `World Creation Agent` 自动从合法输入剧本生成多类型 Adventure Package；`Visual Presentation Engine` 消费已有的权威状态和事件进行视觉呈现。二者是未来方向，不要提前作为当前 Milestone 的依赖。
 
 ### 8.1 与 Rule Engine Backlog 的关系
@@ -485,6 +489,8 @@ A22–A40 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 4. 最新实现是否已具备能力，始终以对应模块的实际代码、测试及审核清单为准。本文件的历史实现快照不作为持续更新的完成状态表。
 5. 每完成若干开发 Batch，应回看 MVP 场景是否更接近可玩状态；如果只是扩大规则条目但没有改善场景体验，需要重新考虑优先级。
 6. 文件审批人、文档维护流程以及决策记录位置：**[待决策]**。
+
+**v0.11 修订范围**：同步统一 TypedCommand、GM 裁决/有限世界创造边界、AP-15 类型化 Actor 约束及只读查询的早期开发计划；没有实现 API 或扩张视觉/多人范围。
 
 **v0.10 修订范围**：统一内置 PC Templates、可信创建幂等与 Scene 按需一次初始化；保持单人和既有恢复范围，候选接口不代表实现。
 
