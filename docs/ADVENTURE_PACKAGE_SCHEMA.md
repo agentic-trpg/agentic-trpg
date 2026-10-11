@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md)（跨模块目标接口最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.11；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md)（跨模块目标接口最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.12；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -184,7 +184,7 @@ adventure-pack/
 5. `memory_policy`：哪些**已提交**的重要互动才允许成为记忆，谁有权读取；原始私有推理轨迹不作为世界事实存储。
 6. `secrets`：只有具该角色权限的上下文可见；不能以一个 `dm_only` 密文的引用自动授权给 NPC。
 
-NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。MVP 首次构建/重建 Context 提供完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 和新 Observation，Host 只组装、不语义筛选；已有 Interactive Context 后续可增量追加已提交变化，不要求每次全量重注入。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
+NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。MVP 首次构建/重建 Context 提供完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 和有效 Recent OB（含 Completed），待处理 Work 单独关联，Host 只组装、不语义筛选；已有 Interactive Context 后续增量追加，不要求每次全量重注入。OB 直接承担短期感知记忆；Game Time TTL、Processing / Retention、引用归档与 Pending Work 恢复均为 SM 运行时契约，见 MODULE_CONTRACTS.md §7.4 / §9，不新增 Package 短期 Memory 或冻结 TTL 字段。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
 
 ---
 

@@ -1,14 +1,14 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
-> **版本：** v0.8 / Draft for Review
+> **版本：** v0.9 / Draft for Review
 >
-> **日期：** 2026-10-10
+> **日期：** 2026-10-11
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.11、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.10、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.9
+> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.12、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.11、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.10
 >
 > **历史代码核对基线（沿用 v0.1，本轮未重审 Engine）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -16,7 +16,7 @@
 
 ## 0. 用途与冻结策略
 
-本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。v0.8 将 PER-01～PER-08 接入既有事件/可靠工作协议（§7），区分 Signal、察觉判断、授权观察与 NPC 认知。已确认的所有权、NPC 架构与 MVP 范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
+本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。优先冻结**最小可实施的 State Machine ↔ Rule Engine 垂直闭环**；其余模块先定义最小跨模块契约和安全边界，避免过早扩大实现面。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。v0.8 将 PER-01～PER-08 接入既有事件/可靠工作协议（§7），区分 Signal、察觉判断、授权观察与 NPC 认知。v0.9 明确 OB 短期记忆、独立 Processing / Retention、Game Time TTL / 引用归档、JEV 双职责和有界 EVA 调度；本轮不修复 Event-time Perception P1，也不改 Signal / Event Evidence 计算。既有状态所有权、Rule Engine 架构与 MVP 产品范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
 
 **规范层级 `[DECIDED]`：** 本文是跨模块目标接口与状态所有权的最高权威规范；MVP Scope 定义产品范围，State Machine / Agent Architecture 和 Adventure Package Schema 在此契约内细化各自职责，README 提供入口。项目目标约束实现，旧 Nat20 / Rule Engine 代码只作为待重构的实现和回归证据，不能反过来限定目标架构。本文中的 [DECIDED] 约束持续有效；文档整体 Draft 不撤销这些决定，也不把 [PROPOSED] / [OPEN] 的具体 ABI 字段或实现选择升级为已批准。
 
@@ -419,7 +419,7 @@ Planner 的候选 Signals 按可能执行结果分类，预定义事件/标准�
 
 **事件时证据与 Discovery：** SM 在事件提交事务内保存足以恢复 NPC/位置/感官/环境/相关状态的证据或稳定历史引用，以及可靠待处理工作；不要求保存完整 World Snapshot。Discovery 先按每个 Signal 的类型化 Scope 找候选 NPC，再按事件时状态确定性检查感官能力、位置、明确遮挡及已支持的机械约束。不能用异步处理时的当前状态倒推历史，也不能只发现在线 NPC。全局/大型事件允许可靠分批 Discovery，沿用持久任务/Outbox、去重和恢复，不强制一次枚举全部 NPC。
 
-**JEV Perception Judgment：** 只有确定性条件无法判断的情境才交 JEV，明确可判定的 Signal 不必提交。SM 授权、Host 运行，提供最小必要的事件时可信 Observer 状态、相关环境及待判断 Signals；JEV 只逐项判断是否察觉，不生成 Signal、Observation 文本、Belief / Goal / Plan 或世界变化，也不替代 NPC Gate / EVA。具体模型/传输仍为候选；调用在写事务外。
+**JEV Perception Judgment：** 只有确定性条件无法判断的情境才交 JEV，明确可判定的 Signal 不必提交。SM 授权、Host 运行，提供最小必要的事件时可信 Observer 状态、相关环境及待判断 Signals；此 JEV Perception 职责只逐项判断是否察觉，不生成 Signal、Observation 文本、Belief / Goal / Plan 或世界变化，与独立的 Memory Gate Judgment（§9.8）/ NPC EVA 分开。具体模型/传输仍为候选；调用在写事务外。
 
 候选请求可批量携带**同一 Observer / Event** 的多个待判断 Signals，返回按 Signal ID 给出明确 Boolean。以下两个 JSON 为原创内部请求/返回的形状示例，字段仍 [PROPOSED; NOT IMPLEMENTED]：
 
@@ -478,6 +478,36 @@ EventObservation 是过去事件的授权感知证据；CurrentPerceptualView �
 - SM 为待处理 Observation 批次建立稳定 `observation_work_id`、任务及幂等处理记录；重复投递不创建第二份逻辑工作。合并批次不能重复占用尚有任务的同一观察；具体索引/表结构未冻结。
 - Mode Routing、Gate 领域策略、证据保留和任务完成由 SM 管理；Host 按授权请求执行 Context 追加或模型调用。失败不随 Context 释放而丢失证据。
 
+### 7.4 Recent Observation、Processing 与 Retention `[DECIDED; NOT IMPLEMENTED]`
+
+**Observation（OB）直接承担短期感知记忆职责**，不再另设 Short-term Memory 概念或与 Inbox 重复的短期存储。OB 保存 NPC 已实际察觉且获授权的 Signals，是真实感知证据；Long-term Episodic Memory 由 NPC EVA LLM 提议、SM 验证持久化，Belief / Relationship / Goal / Plan 仍为 NPC Meta。OB 不自动转化为长期 Memory，合法 EVA 也可以不产生任何 Meta。
+
+每条 OB 有两个独立生命周期；下表是**概念状态，不要求照搬为数据库枚举**。ObservationProcessingStatus 继续表示必要认知工作，不兼任 Retention 状态：
+
+| 生命周期 | 概念状态 | 权威语义 |
+|---|---|---|
+| Processing | Pending | 尚有认知工作；创建 Task、启动 Invocation、读取/追加 Context、模型返回未提交结果均不完成 |
+| Processing | Completed | 合法 EVA Result 及必要可靠交接已提交，或 SM 已持久采用获准 Safe Retention / No-op；不重新排入同一认知工作 |
+| Retention | Recent | 仍在游戏时间有效期内，可作为短期信息；既包括 Pending，也包括 Completed OB |
+| Retention | Expired | 不再作为 Recent Observation 提供给新的 NPC Context 输入；Pending 工作仍须保护 |
+| Retention | Archived | 为长期 Meta 来源追溯保留必要原始证据与来源关联，不因此向 NPC 提供近期信息 |
+| Retention | Discardable | 到期、认知工作完成且所有保护条件解除后，允许安全清理；不是到期立即删除 |
+
+Retention 描述有效性与保留用途：Expired OB 可以同时需要归档或待处理证据保护，不要求编码成互斥线性状态机。**Completed + Recent 仍可用于后续决策，但不是待处理队列项；Pending + Expired 仍有工作，但不是新的近期信息。** 已完成 OB 可作新任务的近期背景，不能借此重做同一 Work、重复 Meta 或行动交接。
+
+**Game Time `[DECIDED]`：** SM 管理的权威游戏时间决定 OB 有效期；`expires_at_game_tick` 只是候选字段 `[PROPOSED]`。真实墙钟可供 Host 超时/性能计量，不能作为 OB 游戏生命周期的权威来源。TTL 数值、起算点、时间编码及是否按事件类型区分 TTL 均 `[OPEN]`，不从自然语言或模型输出推定。正常认知调度在到期前进行，不能把 TTL 当作唯一 EVA 触发器（§9.9）。
+
+**SourceReference 与清理 `[DECIDED; PROPOSED]`：** 沿用既有 Observation / Memory 来源引用，以合法 SourceReference 关联 observation_id，不建立第二套来源系统；`source_observation_ids` 等现有示例可表达此关联，完整联合类型仍待评审。一条 OB 可被多个 Long-term Memory / Belief / Relationship / Goal / Plan 记录引用。SM 在 Meta 提交与清理的事务边界核验引用和保护条件，避免引用提交与清理竞争造成悬空来源。
+
+到期时 SM 按既有 Inbox / Work / Cursor 协议处理：
+
+1. 从 NPC 可用 Recent Observation 投影移除；Completed OB 不因到期重新触发 EVA。
+2. Pending Work 保留必要原始证据、原始时序和任务关联，等待合法重试、移交或获准安全处理；TTL 本身不构成 No-op 批准。
+3. 长期 Meta 仍引用的 OB 归档必要证据与关联；多记录及历史版本引用均受保护。内部保存不代表 NPC 仍记得事件，也不将归档原文自动送回 Context。
+4. 无需保护的引用且认知工作全部完成时，才可进入安全清理；未完成任务/输出交接、历史版本、审计、Receipt、去重键及幂等关系不能被破坏。具体保留粒度、索引/引用计数、归档位置与清理算法 `[OPEN]`。
+
+到期前已授权任务的未完成证据仍可按原 Work 的受限恢复输入处理，须明确其已过期及原始时序；这不是 Recent OB 回注或历史全量读取权限。新建/重建普通 Context 不提供已过期 OB，必要恢复证据的传输字段/权限校验 `[PROPOSED / OPEN]`。有效在途 EVA 的处理资格不由 TTL 自动撤销，提交仍重验 Task / NPCStateVersion 与来源权限；Action Execution 另按当前事实重验。
+
 ## 8. Pending Choice / Reaction / Continuation（P0 语义，MVP 限制实现）
 
 **历史代码审阅限制（本轮未重审实现）：** v0.1 基线的 Reaction 主要提前 `ready`，未证明有完整的“解析到一半停下并等待 NPC/PC 选择”的公共可序列化 continuation；不得据目标契约宣称现有代码已支持。
@@ -501,7 +531,7 @@ EventObservation 是过去事件的授权感知证据；CurrentPerceptualView �
 
 ## 9. Agent Host / NPC Evaluation / Memory / DM（P1 接口边界）
 
-本节新增消息、字段、接口及生命周期均为 **`[PROPOSED; NOT IMPLEMENTED]`**。职责原则已确认，具体类型、状态编码、版本与数据库结构仍需审阅；不要求新增服务或复杂公共 Receipt 子系统。
+本节架构语义按各段 `[DECIDED]` 标记；新增消息、字段和存储协议仍为 **`[PROPOSED; NOT IMPLEMENTED]`**，具体类型、状态编码、版本与数据库结构仍需审阅；不要求新增服务或复杂公共 Receipt 子系统。
 
 ### 9.1 EVA、NPC Meta 与 LLM Runtime `[DECIDED]`
 
@@ -509,16 +539,16 @@ EventObservation 是过去事件的授权感知证据；CurrentPerceptualView �
 
 | 所有者 | 职责 | 边界 |
 |---|---|---|
-| State Machine | 唯一权威 World / Character / Combat / RNG / NPC State、Evaluation Task / Status、模式、Gate 领域政策、Observation / Evidence / Completion、游戏时钟日程、验证、事务及恢复 | 不执行 LLM 主观推理，不管理物理 Context，不做自然语言语义验证 |
-| Agent Host | Prompt / Context Builder、Interactive Context 复用/释放、Background One-shot Context、模型执行队列、超时重试取消、Token / Cache、Tool 适配传输、Invocation 日志/延迟/Usage | 不拥有或持久管理权威游戏状态、Meta、任务完成或行为结果；不做语义筛选 |
+| State Machine | 唯一权威 World / Character / Combat / RNG / NPC State、Evaluation Task / Status、模式、Gate 判断采用与调度、Observation / Inbox / Work / Processing Completion、游戏时间 TTL / Retention / Archive、来源关联、幂等、事务及恢复 | 不执行 LLM 主观推理，不管理物理 Context，不做自然语言语义验证 |
+| Agent Host | JEV / EVA 模型执行、Prompt / Context Builder、Interactive Context 复用/释放、Background One-shot Context、授权 OB 增量/失效通知传输、超时重试取消、Token Budget / Prompt Cache / KV Cache、Tool 传输与调用日志 | 不拥有或持久管理权威游戏状态、Meta、任务完成或行为结果；不做语义筛选 |
 | NPC LLM | 基于完整授权 Meta 与观察决定主观认知变化、对白和候选行动 | 只生成预定义 Schema 的非权威数据；不决定身份、任务资格或世界事实 |
 | Action Execution | 受限 Action Intent → 稳定 command_id / Typed Command → 必要 Rule Evaluation → SM Commit | 独立 Command Receipt；动作成功不是 EVA 完成条件 |
 
 统一逻辑流 **SM → Host → NPC LLM → SM**。SM 创建/批准任务并提供可信授权输入，Host 组织调用和传输 Result，SM 确定性验证、提交 Meta 并可靠交接输出；Host 将反馈送回相应调用。§2–§6 的可信 Host / 调用方描述指受控传输与命令构造，最终领域权限与提交仍由 SM 检查。
 
-`interactive / inactive` 是 SM 管理的当前 NPC 模式状态；`interactive / background` 是 Evaluation Mode。Interactive 活跃（包括模型请求间空闲）期间，主观 Memory / Belief / Relationship / Goal / Plan 和自主决策均交当前 Interactive LLM；不额外调用 Gate / Background / Memory / Cognition LLM。授权观察按序增量追加，不修改运行中请求或 KV Cache。
+`interactive / inactive` 是 SM 管理的当前 NPC 模式状态；`interactive / background` 是 Evaluation Mode。Interactive 活跃（包括模型请求间空闲）期间，主观 Memory / Belief / Relationship / Goal / Plan 和自主决策均交当前 Interactive LLM；不创建新的 Background EVA 或额外 Memory / Cognition LLM。可选 Memory Gate JEV 只作重要性分类，不要求每条 OB 先调用模型。授权观察按事件顺序增量追加，不修改运行中请求、Context 或 KV Cache。
 
-Inactive 时 SM 的 Lightweight Gate 可决定 Safe Retention / No-op 或创建 Background Task；可选轻量分类由 Host 执行、SM 验证采用，不代 NPC 生成 Belief。Background 使用一次性 Context，不创建/恢复/激活 Interactive Agent，也可提出行动。Gate 只管领域触发和证据保留，不为 EVA 语义筛选或排序 NPC Meta；Jev 仍为可替换候选。
+Inactive 不维持持续运行的 Interactive LLM Context。SM 的 Lightweight Gate 可决定优先 Background EVA、Deferred 批量调度或获准 Safe Retention / No-op（§9.8–§9.9）；可选轻量分类由 Host 执行、SM 验证采用，不代 NPC 生成 Memory / Belief。Background 使用一次性 Context，不创建/恢复/激活 Interactive Agent，也可提出行动。Gate 不为 EVA 语义筛选或排序 NPC Meta，实际模型仍可替换。
 
 ### 9.2 标识、状态与提交资格 `[PROPOSED; NOT IMPLEMENTED]`
 
@@ -621,19 +651,49 @@ SM 必须在完成 EVA 的事务中可靠记录每个 Action Intent 的交接（
 
 Dialogue 发布也独立检查受众、结构化可观察事件引用与叙事权限，并可靠记录发布/拒绝/待处理交接；SM 不承担台词的自然语言真实性判断。Narrator 不叙述未经提交的行动成功。
 
-SM 内部 ObservationProcessingStatus 根据必要认知处理和可靠输出交接状态维护；Safe Retention / No-op 可确定性完成观察，全空 Result 可完成 EVA。读、Context Append、LLM 返回、模型失败或任务取消本身不代表处理完成。内部 Completed Cursor 不跨未完成认知/未可靠交接项或投影缺口，无独立 ACK。
+SM 内部 ObservationProcessingStatus 根据必要认知处理和可靠输出交接状态维护；获准 Safe Retention / No-op 可持久完成本轮认知工作，全空 Result 可完成 EVA，均不要求生成长期 Memory。完成只覆盖 Task 明确关联且实际处理的 Work 范围，调用在途新到达的 OB 不随旧 Result 一并完成。Completed OB 在到期前仍是 Recent OB，不能因读取/再次入 Context 重排同一工作；读、Context Append、LLM 返回、模型失败或任务取消本身不代表处理完成。内部 Completed Cursor 不跨未完成认知/未可靠交接项或投影缺口，无独立 ACK；清理不能改变水位语义。
 
 Command 正在执行、失败或等待 choice **不自动使已完成 EVA / 已可靠交接的观察重新变为未完成**；未完成的 Command / PendingOperation 仍单独持久跟踪。动作失败反馈可送现有 Interactive LLM 继续动作交互，不自动重做完整 EVA 或再次写 Meta；若确需新的认知评估，由 SM 显式授权新任务，而非重放旧结果。
 
 ### 9.7 完整授权 NPC Meta、Belief History 与恢复 `[PROPOSED; NOT IMPLEMENTED]`
 
-MVP 由 SM 提供该 NPC **完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan** 及新 Observation；授权完整不意味着全量世界/他人秘密。首次构建或重建 Context、Background One-shot 输入完整授权 Meta，Host 只组装，不做 Semantic Retrieval、Memory Ranking、语义筛选或智能压缩，也不增加独立 Memory Agent。超出模型预算明确反馈/保留任务，不能静默漏掉 Meta。
+MVP 由 SM 提供该 NPC **完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan** 及有效 Recent OB（含 Completed）；待处理 Work 范围另外明确，不能从 Context 中出现哪些 OB 推定完成。授权完整不意味着全量世界/他人秘密。首次构建或重建 Context、Background One-shot 输入完整授权 Meta，Host 只组装，不做 Semantic Retrieval、Memory Ranking、语义筛选或智能压缩，也不增加独立 Memory Agent。超出模型预算明确反馈/保留任务，不能静默漏掉 Meta；已过期 OB 不作为近期输入，受限未完成 Work 恢复见 §7.4。
 
-已有 Interactive Context 可复用，后续增量追加授权观察和已提交 Meta 变化，不要求每 EVA 重注入全量 Meta。Memory Persistence 与 Context 资源管理保持分离；MVP 可预算保护、释放/重建 Context，不增加语义总结压缩。更复杂检索/压缩后置。
+已有 Interactive Context 可复用，后续按事件顺序增量追加授权观察和已提交 Meta 变化，不要求每 EVA 重注入全量 Meta 或全部历史 OB。Memory Persistence 与 Context 资源管理保持分离；MVP 可预算保护、释放/重建 Context，不增加语义总结压缩。更复杂检索/压缩后置。
+
+**Context 中 OB 到期 `[DECIDED]`：** SM 更新权威有效性并停止将其作为新的 Recent 输入；不强制删除现有 Context 历史 Token，不自动 Compression / Compaction。Host 可在下一次 Invocation 前追加 SM 授权的结构化失效通知（候选内容为 Observation ID、原始时间及已失效状态，Schema `[PROPOSED / OPEN]`）；不得异步修改执行中 Invocation 的输入、Context 或 KV Cache。通知本身不重新执行 EVA，不承诺 LLM 严格遗忘已出现文本。新建/重建 Context 不再提供过期 Recent OB；合法长期 Meta 自有持久生命周期，不因其来源 OB 到期而删除。
 
 Adventure Package Initial Belief 与运行时 Belief 使用兼容结构：同一稳定 Belief 追加新版本，保留来源、版本、当前有效状态及旧历史，不直接覆盖/删除。NPC LLM 可修改、降低置信度或放弃旧 Belief；SM 仅校验结构、引用、权限、版本和数据库约束，不替它改写文本。
 
 SM 持续不可用或持久化失败时，Session 停止权威推进，进入暂停/错误/待恢复流程；不能写库时不伪称状态已落盘。Host 不接管游戏状态，无影子权威副本或独立游戏执行队列。恢复依据 SM 持久 Task、已选 Result / Meta、可靠交接和独立 Command Receipt，不重做成功认知或行动；非战斗恢复必需，战斗中断精确续玩仍 Post-MVP。保留单命令响应丢失的幂等查询，不增加分布式协调系统。
+
+### 9.8 JEV 的两个判断职责 `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
+
+允许同一底层轻量 JEV 模型承担两种任务，但使用**不同输入、输出 Schema 与权限验证**，不能混用结果或新增 Memory Agent / 认知状态权威：
+
+| 职责 | 许可输入 | 输出与采用边界 |
+|---|---|---|
+| Perception Judgment（§7.2） | 待判断 Signals 与可信事件时感知证据 | 逐 Signal Boolean 察觉候选；SM 验证后形成 OB；不生成 Memory / Belief / 世界变化，不替代 RE 机械检定 |
+| Memory Gate Judgment | 已确认察觉且授权的 OB、关联 NPC / Work 与必要调度信息 | 是否需及时认知评估的分类候选；SM 验证采用并路由；不重新判定察觉、不生成主观 Memory / Belief 或其他 Meta |
+
+Memory Gate 建议分类为 **Urgent / Deferred / Irrelevant / Uncertain（或 Failure）**；分类语义见 §9.9，枚举编码、请求/返回字段和失败错误形状仍 `[PROPOSED / OPEN]`。沿用既有 Gate 分类反馈与持久 Work，不新增独立公共提交/ACK。SM 核验可信调用、任务用途、NPC / OB / Work 归属、分类类型与请求覆盖范围；未知/重复/缺失项、超时、Schema 错误不作为 Irrelevant 或自动完成。Host 执行模型，SM 持有判断采用、模式路由、调度与持久结果。
+
+JEV 不是每条 OB 的必经模型步骤：确定性规则或批量分类均可使用，不必为普通 OB 单独发起 Invocation；模型/Prompt/阈值/成本预算不冻结。Interactive 模式也可选用 Memory Gate 重要性分类，但主观更新仍独占于现有 Interactive LLM。
+
+### 9.9 按模式与优先级调度 EVA `[DECIDED; NOT IMPLEMENTED]`
+
+| Gate 语义 | Inactive NPC | Interactive NPC |
+|---|---|---|
+| Urgent | 优先授权一次 Background EVA，联合考虑七字段输出；不自动生成长期 Memory | 优先授权现有 Interactive LLM 的下一轮 EVA，不创建 Background EVA |
+| Deferred | 保留 Recent OB 与 Pending Work，积累多个 OB；定期调度或最长等待到达时批量 Background EVA | 随正常交互或定期 EVA 批量处理，复用 Context |
+| Irrelevant | SM 可持久批准 No-op 完成本轮处理，无须 Background EVA；到期前仍可为 Recent OB | 可受控 No-op，不要求逐条 JEV 或完整 EVA；到期前仍可为近期信息 |
+| Uncertain / Failure | 保守保留 Pending 证据，重试/确定性保底并纳入有界调度；不能当作 Irrelevant 清理 | 保留工作，由 SM 路由现有 Context 的后续处理；不启动第二个认知 EVA |
+
+同一 NPC **只允许一个有效认知 EVA**，沿用 §9.2 的串行授权、版本检查与模式切换，不另设并行 Memory/Cognition 队列。新 OB 到达已有 EVA 时，Urgent 提升后续授权优先级，其余按序合并或排队；不能改在途输入或偷扩旧 Task 的完成范围。迟到 Gate 结果须按 SM 当前模式和 Work 状态重新路由，不能唤起旧 Background 任务或重开 Completed Work。Safe Retention / No-op 是处理结果，不能被解释为立即删掉 Recent OB 或替代长期 Memory Formation。
+
+**定期 EVA `[DECIDED]`：最大调度等待期限必须严格小于相应 OB Lifecycle，并留出执行余量。** 候选约束可表达为同一游戏时间尺度下 `max_scheduling_wait + execution_margin < applicable_ob_ttl`，变长 TTL / 批次要考虑各 OB 的剩余到期窗口，不能反复合批重置最早等待期限。具体周期、最长等待、执行余量与游戏时间/Host 运行耗时的对应方式 `[OPEN]`。正常运行应在到期前完成必要认知处理；周期短于 TTL 并非绝对完成保证。
+
+Background 调用失败、LLM 超时、Mode Switch、Game Time 跳跃、Context Budget 不足、同 NPC 已有运行 EVA、崩溃恢复均可能越过期限。SM 更新有效性并保护 Pending Work / 证据，按原 Task/Result/Receipt 对账后合法续处理或受控 No-op，不能因 TTL 到期丢失、伪造 Completed 或盲目重做已提交结果。Expiry 是 Retention 转换，不是唯一 EVA 触发条件；处理完成也不要求 Memory 写入。
 
 ## 10. Adventure Package → State Machine（P1）
 
@@ -733,11 +793,11 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 
 | ID | 场景 | 预期断言 |
 |---|---|---|
-| C-A13 | Interactive 新增 Observation | 原 Context 按序追加；只有当前 Interactive LLM 处理，额外 Gate / Background / Memory / Cognition LLM 调用数为零 |
+| C-A13 | Interactive 新增 Observation | 原 Context 按序追加；主观认知由当前 Interactive LLM 处理，可选重要性 Gate 无逐条强制，新 Background / Memory / Cognition LLM 调用数为零 |
 | C-A14 | Active Context 暂时无模型请求，重大事件到达 | SM 批准下一次 Interactive Task，Host 执行请求；在途调用期间新增输入排队，不修改执行中请求/KV Cache |
 | C-A15 | Interactive Result 含 Dialogue、Belief、Memory、Action Intent | Meta 整批验证原子写入，行动独立 Typed Command，不回滚合法 Meta；全空 Result 合法 |
 | C-A16 | Inactive NPC 经 Gate 一次 Background Evaluation 产生行动 | 无 Interactive Agent Context；同一 NPC 权限与共享命令路径，临时 Context 调用后释放 |
-| C-A17 | 低价值 Observation / 轻量模型不可用 | 不调用完整 NPC LLM或按保守策略留待处理；Safe Retention / No-op 有回执，关键证据不丢失 |
+| C-A17 | 低价值 Observation / 轻量模型不可用 | 获准 Safe Retention / No-op 持久完成工作、TTL 前仍 Recent；轻量模型不可用保守保留 Pending，关键证据不丢失 |
 | C-A18 | Background → Interactive 与提交竞争 | 原子取消旧有效 EVA 并新建，不等旧反馈；先成功 Meta/可靠交接保留，迟到取消任务结果拒绝 |
 | C-A19 | Model Failure、重投、版本冲突、完成事务前后崩溃 | Evaluation ID / 唯一 Result / 原子 Meta 与独立 Command ID / 交接防重复，未完成认知/交接缺口不跳过 |
 | C-A20 | 任一模式 Memory 持久化成功 | 不强制 Compact / Rebuild；MVP 仅预算保护与必要的安全释放/完整 Meta 重建，不新增智能压缩 |
@@ -771,6 +831,22 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-A34 | 完整授权 Meta 与 Belief History | 六类 Meta + 新观察，Host 不语义筛选/检索/排名/智能压缩，Context 增量复用；Belief 版本追加保留历史 |
 | C-A35 | 非忠实 Memory / 错误 Belief | SM 只确定性校验引用等，不证明自然语言忠实、不改写文本、不新增 Semantic Validator LLM；不改 World Fact |
 
+### 12.4 v0.9 OB Lifecycle 与调度合成验收 `[PROPOSED; NOT IMPLEMENTED]`
+
+以下为实现期测试目标，本轮只做文档一致性检查；覆盖既有 EVA / Work / Cursor 的生命周期扩展。
+
+| ID | 场景 | 预期断言 |
+|---|---|---|
+| C-A36 | Irrelevant No-op / 全空合法 Result | SM 持久完成处理，无需生成长期 Meta；Completed OB 到期前可读为 Recent，重复投递/读取不重开同一 Work |
+| C-A37 | 游戏暂停 / 墙钟流逝 / Game Time 跳跃 | TTL 仅据 SM Game Time；跳跃移除 Recent 投影，Pending 证据/任务受保护，Completed 不因到期重新 EVA |
+| C-A38 | 同一 OB 被多个 Meta 及历史版本引用 | 到期归档必要原始证据和来源；不能删成悬空引用，内部归档不自动作为 NPC 近期记忆 |
+| C-A39 | 清理与引用提交、任务/交接/审计/幂等竞争 | 同事务保护检查；仅工作完成且全部保护解除才可清理，Cursor / Receipt / 重试语义不破坏 |
+| C-A40 | JEV 双用途与错误批次 | Schema / 权限分离，Perception 只判察觉，Gate 只分类已察觉 OB；错误/缺失/超时不当 Irrelevant 或 Completed |
+| C-A41 | Inactive Urgent / Deferred / Irrelevant | 优先联合 EVA / 有界批量 EVA / 受控 No-op；最多一个有效认知 EVA，保留近期信息，不强制长期 Memory |
+| C-A42 | Interactive 分类与在途新 OB | 可选 Gate，非逐条前置依赖；Urgent 下一轮优先、Deferred 批量、Irrelevant No-op；无新 Background，不改在途输入/完成范围 |
+| C-A43 | 周期、合批、失败/超时/切换/预算/占用/崩溃 | 最大等待严格短于 TTL 且留余量，合批不重置最早期限；异常保留过期 Pending Work 并安全续处理，不谎称完成保证 |
+| C-A44 | OB 已入 Context 后到期 | SM 更新有效性，下一 Invocation 可增量通知；不删除旧 Token、不自动压缩、不重做 EVA，重建排除过期 Recent OB |
+
 ## 13. 尚需显式批准或验证的开放问题
 
 | ID | 问题 | 初步建议 / 决策要求 |
@@ -787,13 +863,16 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-10 | PendingOperation 生命周期与 CommandReceipt 分支字段？ | [OPEN]；仅命令键查询、无独立回执 ID/ACK 已确认；具体持久性、过期与可空性由 SM 实施设计验证 |
 | C-11 | EvaluationStatus / NPCStateVersion、Work / Task、唯一 Result 与可靠交接的最小存储/编码？ | 原子撤销旧 EVA 并新建、Meta 事务内校验任务/版本；状态编码、稳定 Result 比较和恢复实现待论证 |
 | C-12 | Observation Cursor、投影水位、批次合并及内部 ProcessingStatus / Completed Cursor Schema？ | 需证明不跨越未投影/未完成项，明确必要认知处理、可靠交接及独立 Command 重入；具体类型待冻结 |
-| C-13 | Gate / 两种模式的模型、Prompt、阈值、预算与取消能力？ | Jev 仅候选；通过合成场景测定漏判/延迟/成本，不擅自固定技术选型或 SLO |
+| C-13 | JEV 双职责 / 两种 EVA 模式的模型、Prompt、阈值、预算与取消能力？ | 同一模型可承担两个分离判断任务已确认；实际模型仍候选，通过合成场景测定漏判/延迟/成本，不固定技术选型或 SLO |
 | C-14 | NPCEvaluationResult / EvaluationReceipt 的字段类型、元素约束、版本与错误映射？ | 七字段概念结构及两模式兼容原则已确认；JSON Schema、可信运行环境绑定和持久任务编码待审阅，不把草案当成已实现 API |
 | C-15 | 完整 Effect / Reaction / 复杂组件 Delta 字段？ | [OPEN]；封闭 Typed Union、完整依赖与原子提交已确认，字段须对照现有生命周期与不变量盘点，禁止任意路径或 Snapshot 覆盖 |
 | C-16 | combat.start / combat.create、rules.effect 与触发后续命令？ | AP-15 按操作类型校验 Actor 已 [DECIDED]；source_ref / 来源权限、具体字段与可靠编排仍 [OPEN]，见 §3.1 / §10 和 Adventure Package §11；不扩张为独立服务 |
 | C-17 | 动态 World Operations 与 Conditional World Effect Proposal 的具体 Schema？ | [OPEN]；受限类型、SM 稳定身份、授权投影和提交边界已确认，完整 Object / Connection 字段、结果关联及复杂 Scene / 战斗地形生成未冻结 |
 | C-18 | Observable Signal / Scope、结果条件与传播 Schema？ | [OPEN]；最小四字段/事件内 ID 与确定性范围原则已确认，具体枚举、复杂空间关系/传播参数、模板绑定与分时观察键仍待设计 |
 | C-19 | 正式感知检定与异步处理的事务编排？ | [OPEN]；RE 负责规则掷骰，事件时历史引用/保留、可靠批处理与 RNG / command / 事务衔接须实施设计，不由 JEV 替代 |
+| C-20 | OB TTL、Retention / Archive / SourceReference 的字段与清理保护？ | [OPEN]；游戏时间权威、双生命周期、多 Meta / 历史引用保护已确认；起算点、数值/分类型 TTL、编码、归档粒度与清理算法待设计 |
+| C-21 | Gate 分类及定期 EVA / 最长等待的具体协议？ | [PROPOSED / OPEN]；Urgent / Deferred / Irrelevant / Uncertain 或 Failure 编码、批次覆盖验证、周期/执行余量、游戏时间跳跃及资源耗尽恢复细节待评审 |
+| C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 
@@ -803,7 +882,7 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 
 **Batch 2 — SQLite Atomic Commit 最小闭环：** 建 `Session + Snapshot + idempotency + RNG + Delta + Event + Receipt + Outbox` 单事务。完成药水跨领域、重试、冲突和注入失败测试。
 
-**Batch 3 — NPC/Perception & DM 最小集成：** 验证 Interactive 独占与 Inactive Gate / Background、SM 模式协调及内部 Processing Completion；让一条显式敌方 NPC Typed Intent、一次 NPC Event Observation 与 Player-facing Narration 完整通路成功；不要求先实现 Jev 或复杂记忆治理。
+**Batch 3 — NPC/Perception & DM 最小集成：** 验证 Interactive 独占与可选重要性 Gate、Inactive 优先/定期批量 Background / No-op、OB 双生命周期与 SM Game Time / 引用保护及内部 Processing Completion；让一条显式敌方 NPC Typed Intent、一次 NPC Event Observation 与 Player-facing Narration 完整通路成功；不要求先实现 Jev 或复杂记忆治理。
 
 **Batch 4 — First Blush 私有冒险集成与 MVP 验收：** 仅在通用闭环可测后导入人工整理的私有 Package；按真实剧本验证完整游玩，不上传受限素材。
 
