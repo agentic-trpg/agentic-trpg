@@ -6,7 +6,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.9（跨模块目标接口最高规范，具体 ABI 仍 Draft）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.12、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.11、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6
+> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.10（跨模块目标接口最高规范，具体 ABI 仍 Draft）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.12、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.12、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
@@ -876,10 +876,10 @@ OB 直接承担短期感知记忆，完成后到期前仍可用；Processing / R
 
 ### 与其它文档的正式分工
 
-- **`STATE_MACHINE_ARCHITECTURE.md` v0.11**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
+- **`STATE_MACHINE_ARCHITECTURE.md` v0.12**：定义 WorldEvent、Observation、Persistent NPC State、Commitment、Outbox/Inbox、权威提交与存档；本文件不重定义其事务实现。
 - **`ADVENTURE_PACKAGE_SCHEMA.md` v0.6**：定义 NPC 初始身份、初始知识、场景初态和声明式事件；不存 NPC 的动态推理上下文或后续记忆。
 - **`AGENT_ARCHITECTURE.md` v0.10**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；SM 管领域任务与模式。
-- **`MODULE_CONTRACTS.md` v0.9 / Draft**：跨模块目标接口的最高规范，定义最终 Stateless 架构与统一 P0 Snapshot / Request / Result、Typed Delta、ProposedEvents、RNG、CommandReceipt、只读 Availability Query，以及 NPC Evaluation / 原子 Meta / 内部 Completion 与独立行动交接。已有 [DECIDED] 约束有效；具体 ABI / 新接口仍 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
+- **`MODULE_CONTRACTS.md` v0.10 / Draft**：跨模块目标接口的最高规范，定义最终 Stateless 架构与统一 P0 Snapshot / Request / Result、Typed Delta、ProposedEvents、RNG、CommandReceipt、只读 Availability Query，以及 NPC Evaluation / 原子 Meta / 内部 Completion 与独立行动交接。已有 [DECIDED] 约束有效；具体 ABI / 新接口仍 Proposed / Not Implemented，最终 Schema 未冻结。本文 YAML **仅为示意**。
 
 ### 仍应保持开放的技术问题
 
