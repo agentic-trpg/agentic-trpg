@@ -6,6 +6,8 @@
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
+> **本轮修复：** 在当前架构上恢复 Player Input Deterministic Fast Path（§3.0）；沿用现有命令/事件协议，NPC OB 生命周期与调度契约不变。
+>
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
 > **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.12、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.6、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.11、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.10
@@ -80,6 +82,27 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 
 ## 3. Player / DM Planner / NPC Agent → State Machine：TypedCommand（P0）
 
+### 3.0 Player Input Gateway 与可信输入交接
+
+**[DECIDED] [NOT IMPLEMENTED]** Player Host 负责 UI / Chat、输入提交及授权结果展示。Player Input Gateway 只是在现有服务端输入适配边界内识别通道、检查输入并确定性分发的逻辑职责，不新增独立 Agent、服务或仓库，也不拥有权威游戏状态。Agent 工作流见 [Agent Architecture §3.1](./AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path)；本节是输入交接的契约来源。
+
+| 输入通道 | 交接路径 | 约束 |
+|---|---|---|
+| Structured Action | Gateway → 服务端身份 / Schema / 权限验证 → submit_command(TypedCommand) → SM | 验证通过才准入 Fast Path；不调用 DM Planner，不使用 JEV 路由；非法操作明确拒绝，不自动回退 Planner |
+| Natural Language | Gateway → Agent Host → DM Planner | 经基础格式及会话访问检查后直接交 Planner 理解、规划与必要 GM 裁决；只有需执行的 Action Intent 才转换为 TypedCommand，不强制每条输入生成命令 |
+
+**可信准入 [DECIDED]：** UI 或协议的结构化外形不是认证。服务端核验通道/协议、认证主体、Session 访问、PC 控制绑定、允许的操作类型与强类型参数，再绑定可信 principal_id / actor_id 交 SM。不能采信客户端声明的输入类型、源界面、身份、任意 DC/后果或 JSON 形状；聊天中的 JSON 仍是低信任聊天数据，不提升为 Structured Action。未知/无法核验的通道及非法输入明确拒绝，不通过内容猜测、DM Planner 或 JEV 重新分类。
+
+Fast Path 仅承接已有确定语义、受支持参数及可信规则/Package 依据的操作；缺少必要 GM 裁决依据时明确拒绝，玩家可另行聊天提出自由行动。SM 仍重验身份权限、世界前置条件、引用、版本、幂等及提交不变量，D&D 机械合法性与计算按需交 Stateless Rule Engine。入口验证不替代 SM 或 Engine。
+
+**共用生命周期 [DECIDED]：** 两路可执行操作沿用 §2–§6 的 TypedCommand、RuleEvaluationRequest / Result、CommandReceipt 和 WorldEvent，不新增执行 API、路由 ID、命令信封字段或回执状态。进入命令生命周期前的认证/格式错误返回输入错误或拒绝，不伪造 CommandReceipt / 规则结果；SM 接收命令后的领域拒绝、冲突、pending_choice 与提交未知沿用 §6 / §8 / §11。反馈经权限过滤返回原调用方，Fast Path 拒绝不触发 Planner 重规划；原样重试与丢响应查询仍按 §2.2。
+
+SM 提交后的事件继续走 §7 的 Perception / Observation / Inbox 及 §9 的 Mode / Gate / EVA / 可靠输出交接，按需提供 PlayerView / Narrator 呈现。Fast Path 的 Signals 优先复用已有已审核标准行为或 Package 模板，由 SM 按可信执行结果选取，不依赖 Planner 临时补写。未执行/未提交行为不产生对应观察；跳过 Planner 不跳过必要规则或感知。
+
+**JEV / 调度边界 [DECIDED]：** JEV 仅承担 §9.8 的 Perception Judgment / Memory Gate Judgment，不做玩家输入路由。SM 持有权威状态、领域 Gate 与任务授权；Agent Host 执行全部模型调用、Context 与运行时调度。§7.4 / §9.2–§9.9 的 Processing / Retention、Game Time TTL、定期 EVA、Interactive / Background 独占、任务资格和完成语义完整保留。无需执行的对话、信息请求或澄清沿用现有授权查询/发布与呈现边界；涉及实际话语发布或世界副作用时仍需相应授权，不把 Planner 的 GM Context 直接送给玩家/Narrator。
+
+**[OPEN] [NOT IMPLEMENTED]** 可信通道的传输/身份绑定、输入封装与 UI 操作到既有 TypedCommand 的具体映射尚未冻结（C-23）；本文不声明已有 Gateway endpoint、类或函数。
+
 ### 3.1 统一公开入口与命令信封 `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
 所有普通游戏命令只经公开逻辑入口 **submit_command(TypedCommand)**，内部以 command_type 分派 world.* / rules.* / combat.*。create_session、NPC Evaluation 提交、只读查询和回执查询保留独立生命周期，不塞入此信封。不要求 submit_world_command / submit_check_request / submit_combat_intent 等独立公开入口；旧名最多描述内部处理路径，不是额外服务。
@@ -117,11 +140,13 @@ payload:
 
 | 领域 | 责任 |
 |---|---|
-| DM Planner | 根据主持范围内完整授权 DMView / 适用规则理解情境，决定是否需要检定，提出能力/技能、DC、成功/失败后果及可追溯依据 |
+| DM Planner | 需要语义理解/GM 裁决时，根据主持范围内完整授权 DMView / 适用规则理解情境，决定是否需要检定，提出能力/技能、DC、成功/失败后果及可追溯依据 |
 | State Machine | 确定性验证结构、可信身份/权限、引用存在、世界事实/前置条件、版本、操作能力和提交不变量；不证明自然语言语义正确，不新增语义审核 LLM |
 | Rule Engine | 验证 D&D 机械合法性，计算骰点、豁免、伤害、资源和效果；不替 DM 决定剧情情境，也不提交权威状态 |
 
 优先采用规则或 Package 已规定的机制/DC；未规定时允许可信 GM 裁决，但能力/技能、DC、成功/失败后果必须在掷骰前确定并可追溯。SM 只验证能确定性检查的内容，机械规则交 Engine；依据记录不要求模型私有推理链。GM 裁决复用 TypedCommand / 受限 payload，不增加 Adjudication API。Planner 不能提交骰点/伤害或任意状态修改，也不能替独立 NPC Agent 决定私人意图。
+
+上述 Planner 职责不要求每个 Structured Action 先调用模型；Fast Path 使用可信既定依据，准入与缺失依据的拒绝见 §3.0。
 
 ### 3.3 有限动态世界操作 `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
@@ -141,7 +166,7 @@ Planner 可随 Action Intent 提出按可能执行结果分类的候选 observab
 
 复用 get_scene_view 等既有查询入口，按可信主体投影 DMView / PlayerView / NPCView：Planner 获取主持范围内完整授权 GM 信息；Player / Narrator 只读玩家可知事实；NPC 通过独立 NPCView / Perception 获取自身授权信息；get_scene_view 面向 NPC 时也必须经过 NPC Perception / 授权投影，不能绕过感知权限（DOC-02）。动态创建且已提交的对象进入后续授权查询，未提交对象或隐藏信息不能泄漏；不新增冗余查询服务。
 
-反馈映射沿用 §5 / §6 / §11：rejected 是规则/世界拒绝，unsupported 是不支持的能力/操作原因，合法机械失败可为 accepted 并提交实际成本；version_conflict 对应 CommandReceipt.conflict，needs_choice 对应 pending_choice。RuleEvaluationResult 四态不变，CommandReceipt 不增加 unsupported 状态，能力不支持可用 rejected + 授权结构化原因表达。Schema/运行时/传输错误与规则拒绝分开，提交未知先查询 (session_id, command_id)。结构化原因经权限过滤供 Planner 使用，拒绝不会强制再调 LLM；重试/重规划按 §2.2。
+反馈映射沿用 §5 / §6 / §11：rejected 是规则/世界拒绝，unsupported 是不支持的能力/操作原因，合法机械失败可为 accepted 并提交实际成本；version_conflict 对应 CommandReceipt.conflict，needs_choice 对应 pending_choice。RuleEvaluationResult 四态不变，CommandReceipt 不增加 unsupported 状态，能力不支持可用 rejected + 授权结构化原因表达。Schema/运行时/传输错误与规则拒绝分开，提交未知先查询 (session_id, command_id)。结构化原因经权限过滤返回原调用方（Player Host 或 Planner）；Fast Path 拒绝不自动转给 Planner，Agent Path 的有界重规划与重试按 §2.2。
 
 Narrator 保持游戏世界内的沉浸叙事，不把内部 API、Schema 或 unsupported 错误直接作为玩家叙事。但能力限制不能成为“墙壁永久不可摧毁”“骰点已失败”或“世界已改变”的无依据世界事实；Planner 可以提出合理情境解释，权威效果仍须正式提交。必要的能力/运行时提示由文字入口以可理解方式表达，不伪造机械结果。Narrator 没有写权限。
 
@@ -847,6 +872,19 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-A43 | 周期、合批、失败/超时/切换/预算/占用/崩溃 | 最大等待严格短于 TTL 且留余量，合批不重置最早期限；异常保留过期 Pending Work 并安全续处理，不谎称完成保证 |
 | C-A44 | OB 已入 Context 后到期 | SM 更新有效性，下一 Invocation 可增量通知；不删除旧 Token、不自动压缩、不重做 EVA，重建排除过期 Recent OB |
 
+### 12.5 Player Input Fast Path 场景核对 `[NOT IMPLEMENTED]`
+
+以下六个原创场景用于本轮文档一致性审查，也是实现期验收目标；不代表已运行 Gateway、模型、数据库或规则集成测试。
+
+| ID | 场景 | 预期断言 |
+|---|---|---|
+| C-A45 | 玩家通过结构化选项操作已知、可操作的门 | 服务端核验主体 / Session / PC / Schema / 操作权限后构造既有 TypedCommand；SM 重验前置条件/版本，按需 RE 求值并原子提交；玩家输入路由与执行前均无 Planner / JEV 调用 |
+| C-A46 | 伪造 Structured Action 标签、他人 actor_id 或聊天中的 JSON | 操作通道上的认证/Schema/权限错误明确拒绝，无世界变化/RNG/动作 Signals、不回退 Planner；聊天 JSON 留在 Natural Language 路径作为数据，不能获得执行权限 |
+| C-A47 | 自然语言「我想撬开这扇门」 | Agent Host 直接运行 DM Planner；Planner 理解情境、必要时澄清/作 GM 裁决，只有可执行 Action Intent 才形成 TypedCommand；SM / RE / Receipt 使用同一契约 |
+| C-A48 | 纯对话、信息请求或澄清，没有可执行 Action Intent | Planner 可通过授权查询/呈现响应，不强制生成 TypedCommand 或机械动作事件；若向 NPC 发布实际话语，仍走现有发布/交互授权，NPC 自主回应且不泄漏 GM Secret |
+| C-A49 | 结构化命令缺裁决依据、越权、资源不足或操作不支持 | 在对应输入/SM/RE 边界明确拒绝，不消耗权威资源/RNG、不伪造动作成功或自动转 Planner；Schema 错误、领域拒绝及 conflict / pending_choice 继续区分，合法未命中按 accepted 的实际成本处理 |
+| C-A50 | 任一路径的正常动作已成功提交，旁观 NPC 可能察觉 | 仅已提交 WorldEvent / Signals 经事件时 Discovery、确定性/可选 JEV Perception 形成授权 OB / Inbox；随后复用模式路由、可选 Memory Gate、定期/优先 EVA 或获准 No-op。C-A36–C-A44 的 Processing / Retention、TTL、引用保护、独占、任务完成与故障约束全部继续成立，Narrator 只呈现玩家可知事实 |
+
 ## 13. 尚需显式批准或验证的开放问题
 
 | ID | 问题 | 初步建议 / 决策要求 |
@@ -873,6 +911,7 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-20 | OB TTL、Retention / Archive / SourceReference 的字段与清理保护？ | [OPEN]；游戏时间权威、双生命周期、多 Meta / 历史引用保护已确认；起算点、数值/分类型 TTL、编码、归档粒度与清理算法待设计 |
 | C-21 | Gate 分类及定期 EVA / 最长等待的具体协议？ | [PROPOSED / OPEN]；Urgent / Deferred / Irrelevant / Uncertain 或 Failure 编码、批次覆盖验证、周期/执行余量、游戏时间跳跃及资源耗尽恢复细节待评审 |
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
+| C-23 | Player Input Gateway 的可信通道绑定、输入封装与 UI 操作映射？ | [OPEN] [NOT IMPLEMENTED]；§3.0 的确定性分流、服务端验证和拒绝不回退已确认，具体传输/认证绑定及 UI → 既有 TypedCommand 映射待审阅；不新增 Agent、服务、仓库或执行 API |
 
 ## 14. 建议实施顺序（在本契约评审通过之后）
 

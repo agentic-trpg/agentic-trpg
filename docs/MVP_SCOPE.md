@@ -6,7 +6,7 @@
 >
 > **初稿日期：2026-10-09**
 >
-> **修订日期：2026-10-11；同步 OB 生命周期与 EVA 调度验收约束，非实现完成声明**
+> **修订日期：2026-10-11；同步 OB 生命周期与 EVA 调度约束，并修复 Player Input Fast Path 遗漏，非实现完成声明**
 >
 > **文档级别：项目级（跨 Repository）**
 >
@@ -44,6 +44,8 @@
 **长期重构与 MVP 分期**：MVP 不要求实现全部 SRD 5.2.1 规则，但已经选择支持的机制必须按 `StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext → RuleEvaluationResult` 求值并由 SM 原子提交；不能落回依赖 Legacy `_LiveCombat` / `CombatHandle` / `_REGISTRY` / Stateful Combat Orchestrator 的路径。长期目标是将计划保留的原有规则能力统一迁入 Stateless 体系并退出旧执行器（MODULE_CONTRACTS.md §14.1）。增加 Stateless 规则覆盖、完成 MVP 子集与完成整个执行架构迁移是不同的验收结论，均须有实际证据。
 
 **[已确认] DM 职责隔离**：DM Planner 负责游戏规划/主持与结构化提议；DM Narrator 只依据玩家可见的已提交结果进行叙事，不共享未经授权的 GM Secret/其他 NPC 私有认知，可使用同一 LLM 但需隔离上下文和权限。
+
+**[DECIDED] [NOT IMPLEMENTED] Player Input Routing**：Player Host 提供 UI / Chat，Gateway 仅为可信输入边界的逻辑职责，不新增 Agent、服务或仓库。可信 Structured Action 经服务端身份 / Schema / 权限验证直接交 SM；Natural Language 经 Agent Host 直接交 DM Planner，无可执行 Action Intent 不强制生成命令。Fast Path 不调用 Planner，不用 JEV 路由，非法操作明确拒绝且不自动回退；JSON / 客户端声明不代表可信。交接契约见 [Module Contracts §3.0](./MODULE_CONTRACTS.md#30-player-input-gateway-与可信输入交接)，工作流见 [Agent Architecture §3.1](./AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path)，具体绑定/封装/映射仍 [OPEN]。
 
 **[已确认，2026-10-11 同步] NPC 双模式 Evaluation 与职责**：NPC 只有一份由 State Machine 权威持久保存的 Identity、Personality、Memory、Belief、Relationship、Goal、Plan 和 Runtime State（含 Schedule / Current Activity）。SM 管 Evaluation Task / Mode / Gate、Observation / Work / Completion、游戏时间 TTL / Retention / Archive；Host 仅管理模型运行、可复用 Interactive Context 与一次性 Background Context。Interactive 独占主观认知与自主行动，可选 Memory Gate 重要性分类但不逐 OB 强制，也不创建新 Background EVA。Inactive Gate 路由优先/定期批量 Background 或受控 No-op，不维持持续 Interactive Context；Background 可产生独立 Action Intent，**不创建、恢复或激活 Interactive Agent**。MVP 保留简单游戏时钟日程，实际 JEV 模型仍为可替换候选。
 
@@ -95,14 +97,15 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 
 ## 2. 四个模块及权威边界
 
-MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，加一个最低限度的文字交互入口**。**NPC Sub-agent 是 Agent DM 模块的内部多智能体能力，而非新增第五个顶层 Repository 的强制要求。** Visual Presentation 属于 MVP 后的开发阶段。
+MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，加一个最低限度的文字交互入口**。Player Host 承担该入口的 UI / Chat，Gateway 是其服务端可信边界内的逻辑职责。**NPC Sub-agent 是 Agent DM 模块的内部多智能体能力，而非新增第五个顶层 Repository 的强制要求。** Visual Presentation 属于 MVP 后的开发阶段。
 
 | 模块 | 核心职责 | 权威范围 | 不应承担的职责 | MVP 地位 |
 | --- | --- | --- | --- | --- |
+| **Player Host / Player Input Gateway**（文字入口 / 逻辑可信边界） | UI / Chat 与结果展示；服务端验证后确定性分流 | 展示层状态，无权威游戏状态 | 以客户端标签/JSON 授予权限、LLM 玩家输入路由或替代 SM 验证 | **既有入口职责** |
 | **Agent DM** | 解释玩家意图、主持场景、请求 SM 批准 NPC Evaluation、GM 难度/线索和叙事裁决、将已提交结果叙述给玩家 | **场景组织与语义裁决** | 直接代替 NPC Sub-agent 做人物决策；伪造命中/骰点、HP 或 Rule Engine 结果 | **核心** |
 | **NPC Sub-agent**（属于 Agent DM） | 基于 NPC 自身角色设定、当前知识、目标与记忆决定说什么、做什么；给出对话或结构化行动提议 | **角色层面的决策提议，不具备权威状态写入权限** | 查看角色不应知道的秘密；写 HP/Slot/世界状态；自行确认机械动作成功 | **核心内部能力** |
 | **State Machine** | 游戏领域逻辑；Session/Scene、全部权威状态、NPC 认知、感知证据、Evaluation Task / 模式 / Gate / Completion、游戏时间日程、验证与事务恢复 | **全部权威 World / Character / Combat / RNG / NPC Runtime State** | 再实现机械规则；执行 NPC LLM 推理；直接把提议当成已提交状态 | **核心** |
-| **Agent Host**（Agent DM 内部基础设施） | LLM 调用、Context / Prompt / Budget / Cache、Tool 传输与运行时日志 | 仅临时 Runtime Metadata | 权威游戏状态、NPC 认知、领域任务完成与游戏结果 | **核心内部能力** |
+| **Agent Host**（Agent DM 内部基础设施） | 全部 Planner / Narrator / JEV / NPC EVA 模型调用、运行时调度、Context / Prompt / Budget / Cache、Tool 传输与日志 | 仅临时 Runtime Metadata | 权威游戏状态、NPC 认知、领域 Gate / 任务授权/完成与游戏结果 | **核心内部能力** |
 | **Rule Engine** | Typed RuleSet、规则合法性、骰点、攻击/豁免、行动经济、战斗机械状态转换计算及拟议事件 | **明确支持的机械规则求值，不拥有独立权威运行态**，与发起提议的 Agent 无关 | 扮演 NPC、决定 NPC 的动机、管理剧情与完整世界 | **核心** |
 | **Visual Presentation** | 将来的地图、Token、动画与场景呈现 | **只拥有展示层状态** | 直接决定伤害、HP、位置或合法性 | **MVP 后** |
 
@@ -125,7 +128,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 | Actor / 操作类别 | 决策者 | 权限与事实检查 | 机械裁决 |
 | --- | --- | --- | --- |
-| 玩家的唯一 PC | **真人玩家**；Agent DM 负责把语言映射为候选 Intent 和请求必要选择 | State Machine（Host 传输可信关联） | Rule Engine |
+| 玩家的唯一 PC | **真人玩家**；Structured Action 走 Fast Path，自然语言由 DM Planner 映射为候选 Intent 和请求必要选择 | 服务端可信输入初检；State Machine 权威验证（适配层 / Host 传输绑定） | 按需 Rule Engine |
 | 非战斗 NPC（委托人、商人、证人等） | **对应 NPC Sub-agent**，在其知道的世界事实及目标范围内自主回应 | State Machine（Host 传输可信关联）；DM 协调场景 | 需要机械检定时交由 Rule Engine |
 | 敌方 NPC、Monster（战斗中） | **对应 NPC Sub-agent** 提出战术行动或反应提议 | State Machine 校验 actor、回合、受控信息 | Rule Engine；不得直接写入战斗状态 |
 | 常驻 AI 队友 / 可招募同伴 | **MVP 不适用** | — | — |
@@ -160,34 +163,25 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 ### 2.4 目标交互流程（逻辑模型，非固定网络拓扑）
 
 ```text
-玩家（唯一 PC） ──自然语言──> Agent DM（主持者/协调器）
-                                    |
-                                    +──场景与事实查询──> State Machine
-                                    |
-                                    +──请求 NPC 决策────> State Machine 批准 Task
-                                    |                       |
-                                    |                 Agent Host Runtime -> NPC LLM
-                                    |                       |
-                                    |                 Result -> State Machine 验证提交
-                                    |                       |
-                                    |                 已授权发布的对白 / 权威回执
-                                    |                       |
-                                    <───────────────────────+
-                                    |
-                                    +──世界操作────────────> State Machine 授权/提交
-                                    |
-                                    +──机械 Intent─────────> State Machine -> Rule Evaluation
-                                    |                         |
-                                    <──────最终 CommandReceipt / Perception Events ─────────+
-                                    |
-                              用权威结果叙述、推动 Scene
-                                    |
-                                    v
-                                  文字界面
+玩家（唯一 PC） -> Player Host（UI / Chat） -> Player Input Gateway（逻辑职责）
+   |- Structured Action -> 服务端身份 / Schema / 权限验证 -> TypedCommand -> SM
+   '- Natural Language -> Agent Host -> DM Planner
+                            |- 可执行 Action Intent -> TypedCommand -> SM
+                            '- 对话 / 信息 / 澄清 -> 既有授权查询/发布/呈现
+
+SM：权威身份 / 前置条件 / 版本 / 幂等验证
+   -> Stateless Rule Evaluation（需要机械计算时）
+   -> SM 原子提交 State / RNG / Events / CommandReceipt / Outbox
+      |- NPC Perception -> 授权 OB / Inbox / Work -> 既有 Mode / Gate 路由
+      |    |- Interactive -> 现有 Context，可选重要性 Gate / 下一次或定期 EVA / 受控 No-op
+      |    '- Inactive -> 优先或定期批量 Background EVA / 受控 No-op
+      |    -> 仅 EVA 路径：Result -> SM 原子 Meta / 可靠输出交接 / EVA Completion
+      |    -> 已授权对白；独立 Action Intent 复用统一命令路径
+      '- 玩家授权事实 / 回执 -> 按需 DM Narrator（Agent Host 运行）-> Player Host
                     （可选图像只读叙事，不写入游戏状态）
 ```
 
-该图表示责任和信任边界，而不是强制把 Sub-agent、Agent DM、State Machine、Rule Engine 分别部署成服务。单一 LLM 可以在不同隔离上下文下承担不同 NPC 角色，但 NPC 必须通过独立 Sub-agent 调用与输出契约作决定，不能退化为 DM 对所有角色的直接代言。
+该图表示目标责任和信任边界，不要求独立服务或完整战术视觉 UI。Fast Path 只跳过 Planner，不跳过规则、提交、事件和 NPC 感知；JEV 仅承担既有 Perception Judgment / Memory Gate Judgment。SM 管领域 Gate / 任务授权，Host 管全部模型与 Context / 运行时调度；§2.3 / §6.5 的 OB、TTL、定期 EVA、模式独占及任务生命周期不变。单一 LLM 可以在不同隔离上下文下承担不同 NPC 角色，但 NPC 必须通过独立 Sub-agent 调用与输出契约作决定，不能退化为 DM 对所有角色的直接代言。
 
 ## 3. MVP 游戏场景目录（Gameplay Scenarios）
 
@@ -273,8 +267,8 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 ### 4.4 不支持规则时的行为
 
-1. **机械规则不支持：** 在任何资源扣减、RNG 消耗或不可逆状态变化前返回结构化拒绝/能力不支持信息（若该执行路径支持 Preflight）；能力限制经授权结构化反馈给 Planner，由文字入口提供可理解说明或合法替代方案；Narrator 不直接暴露 API/Schema/unsupported 错误，也不伪造成骰点失败或墙壁永久不可摧毁等世界事实。
-2. **需要 GM 裁决：** 明确切换为叙事/世界操作路径；仅在经过授权和验证后提交世界状态，不冒充 Rule Engine 的机械结算。
+1. **机械规则不支持：** 在任何资源扣减、RNG 消耗或不可逆状态变化前返回结构化拒绝/能力不支持信息（若该执行路径支持 Preflight）；能力限制经权限过滤反馈原调用方（Player Host 或 Planner），由文字入口提供可理解说明。Fast Path 拒绝不自动转 Planner；Agent Path 可按需提供合法替代方案。Narrator 不直接暴露 API/Schema/unsupported 错误，也不伪造成骰点失败或墙壁永久不可摧毁等世界事实。
+2. **需要 GM 裁决：** Natural Language 由 Planner 负责必要裁决，经授权和验证后才提交世界状态，不冒充 Rule Engine 机械结算；Fast Path 缺少裁决依据明确拒绝，玩家可另行聊天提出请求。
 3. **混合型效果：** 将可执行的机械部分和需要 GM 语义裁决的部分清楚拆开；不得因一个规则的某个 Activity 可解析，就宣称整个规则效果已实现。
 4. **不得静默变更规则：** 若要采用简化、Homebrew 或 DM Override，应留有操作来源与审计记录，并与正式 SRD 机制区分。
 
@@ -285,6 +279,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 ### 5.1 MVP 必需的文字交互能力
 
 - 玩家可以通过自然语言描述行动并接收 Agent DM 的场景描写、NPC 回应和规则结果。
+- 文字入口提供的结构化操作/选项采用 §2.4 的 Fast Path；具体通道绑定与映射待设计，不要求完整视觉 UI。
 - 玩家能以文字获知必要的 PC 状态、行动资源、任务进度、当前可交互对象及自身的位置/距离等信息；不要求全部数据每回合完整输出。
 - 当规则执行需要补充选定目标、位置、法术模式、骰点来源等信息时，Agent DM 能询问玩家或提出明确选项；不能猜测或擅自操作玩家 PC。
 - 受支持的战斗能够通过文字叙述、结构化状态摘要和必要的坐标/位置提示完成，不要求提供实时地图、Token 或动画。
@@ -322,12 +317,13 @@ MVP **仍需要可加载的 First Blush 本地结构化内容和场景初始状�
 
 ### 6.1 Command / NPC Decision
 
+- 玩家输入按 MODULE_CONTRACTS.md §3.0 确定性分流；两路可执行意图共用下列协议，非行动结果不强制生成命令，输入错误不伪造回执。
 - **[DECIDED]** 普通游戏命令统一 submit_command(TypedCommand)：session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按操作类型适用的 actor_id；创建、NPC Evaluation、查询/回执保持独立。AP-15：Actor 行动必填真实 Actor，受信系统/世界事件操作可无行动 Actor，但须核验 principal / 机械来源 / 目标；具体来源字段 [PROPOSED / OPEN; NOT IMPLEMENTED]。
 - 真人玩家仅能直接代表唯一 PC；NPC 的行为选择由对应 `npc_id` 的 NPC Sub-agent 提出，State Machine 校验 NPC 身份、控制权、状态版本与可见信息；Agent DM 只做合法协调，不代其直接下决定。
 - 原始 `NPCEvaluationResult` 使用统一七字段；提交只需 evaluation_id + result，SM 从 Task 恢复可信关联，Meta 整批验证原子写入、每任务至多一个最终结果；Action Intent 映射为统一 Typed Command 的世界/规则操作，最终 Schema 为 Proposed / Not Implemented。
 - NPC 决策不能直接携带“成功造成多少伤害”“把某目标 HP 改成多少”之类最终机械结论。含攻击模式、目标、法术效果和资源的命令必须明确选择。
 - PC 和 NPC 可以共享 Engine 机械语义，Controller 权限在 State Machine 执行，不能通过伪造 `actor_id` 越权。
-- State Machine 返回自身验证或 Engine 求值的可解释拒绝，Host 传输回模型，NPC Sub-agent 可以在受限预算内重新选择；异常不能制造已提交的假象。
+- State Machine 返回自身验证或 Engine 求值的授权拒绝给原调用方；Fast Path 直接反馈 Player Host、不转 Planner。NPC Sub-agent 的反馈由 Host 传输回模型，可在受限预算内重新选择；异常不能制造已提交的假象。
 
 DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷骰前确定 DC/后果并可追溯）；SM 负责确定性世界事实/身份/结构/版本验证，Engine 负责 D&D 机械合法性与计算。有限动态 Object / Fact / Connection 及 Conditional World Effect 复用 TypedCommand / Package 受限语义，运行态由 SM 提交，不改静态包、不增加 World Creation Agent；复杂字段/生成仍 [OPEN]，详见 MODULE_CONTRACTS.md §3。
 
@@ -419,10 +415,13 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 | A43 | 双用途 JEV 与模式调度 | Perception / Memory Gate 的输入输出及权限分离；Urgent / Deferred / Irrelevant 路由当前模式，错误不当 No-op，同 NPC 至多一个有效认知 EVA |
 | A44 | 定期 EVA 与异常越期 | 最大等待严格短于 OB 生命周期且留余量；失败/超时/切换/跳时/预算/占用/崩溃保护 Pending Work，周期短于 TTL 不冒称完成保证 |
 | A45 | Context 中 OB 到期 | 下一 Invocation 可增量通知；不删旧 Token/自动压缩/重做 EVA、不保证严格遗忘；新建/重建排除过期 Recent OB |
+| A46 | Player Input Deterministic Fast Path | MODULE_CONTRACTS.md §12.5 六场景符合 §3.0 的可信准入、两路分发、无行动不强制生成命令、非法不回退与共用提交后感知约束；不改变 A22–A45 的 NPC 生命周期要求 |
 
 **独立正确性要求：** 关键规则预期来自 SRD 5.2.1 或有记录的公开裁决，而不是用 Engine 自身输出生成正确答案。多 Agent 能力另需测试角色可知事实与行动授权，不等同于规则测试。
 
 A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_ARCHITECTURE.md` §11.3–§11.6、`STATE_MACHINE_ARCHITECTURE.md` §11.2–§11.5、`MODULE_CONTRACTS.md` §12.1–§12.4；本轮只检查文档，不表示运行测试已通过，不扩写 First Blush 剧情或 MVP 产品范围。
+
+A46 的六个场景集中于 [Module Contracts §12.5](./MODULE_CONTRACTS.md#125-player-input-fast-path-场景核对-not-implemented)，同样为 [NOT IMPLEMENTED] 的运行验收目标；本轮仅作静态文档核对。
 
 ### 7.1 最小黄金测试场景
 
@@ -489,6 +488,7 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | D27 | NPC Persistent State 与两种 Evaluation Mode？ | **唯一权威状态；Interactive 活跃独占 LLM 认知/行为；Inactive Gate / 一次性 Background 不激活 Interactive Agent** | **[已确认：2026-10-10 架构原则]** |
 | D28 | 模式切换 / Observation Processing Completion 最终 Schema 与预算？ | 取消旧有效 EVA 并新建、不等旧反馈；Meta 原子提交与可靠交接完成 EVA，行动独立回执；状态编码、模型/Gate 阈值及预算待验证 | [原则已确认；接口 Proposed / Not Implemented，技术细节待评审] |
 | D29 | OB 短期记忆、引用与 EVA 调度？ | OB 直接承担短期记忆，处理/保留分离、Game Time TTL、引用归档与 Pending 保护；定期最大等待严格短于生命周期且留余量，Interactive 可选 Gate 分类、无新 Background EVA | **[已确认：2026-10-11]**；TTL / Schema / 模型 / 周期 / 清理算法仍待评审 |
+| D30 | 玩家输入如何分流？ | 可信 Structured Action 服务端验证后直接交 SM；自然语言经 Host → Planner，无行动不强制生成命令；非法结构化操作不回退，JEV 不路由 | [DECIDED] [NOT IMPLEMENTED]；传输/身份绑定、封装与映射 [OPEN]，见 MODULE_CONTRACTS.md C-23 |
 
 **当前下一步：** 先合法取得并通读 First Blush，人工制作**场景/NPC/Encounter/规则差异清单**（内容仅本地保存）；在此基础上定义最小 Adventure Package + Initial State Schema，再落实 NPC Sub-agent 的行为/记忆契约和首版精选规则。不要提前启动 World Creation Agent 或 Visual Representation Engine 的研发。
 
@@ -500,6 +500,8 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 4. 最新实现是否已具备能力，始终以对应模块的实际代码、测试及审核清单为准。本文件的历史实现快照不作为持续更新的完成状态表。
 5. 每完成若干开发 Batch，应回看 MVP 场景是否更接近可玩状态；如果只是扩大规则条目但没有改善场景体验，需要重新考虑优先级。
 6. 文件审批人、文档维护流程以及决策记录位置：**[待决策]**。
+
+**本轮修复范围**：恢复 Player Input Fast Path 的入口责任、两路流程、拒绝反馈与六场景验收引用；沿用最新统一命令和后续 NPC 流程。具体协议仍 [OPEN] [NOT IMPLEMENTED]，未新增模块、代码或 MVP 功能。
 
 **v0.12 修订范围**：仅同步 OB Processing / Retention、Game Time TTL / 引用保护、JEV 双职责、当前模式及有界定期 EVA 的既有可靠性验收；Context 到期与持久化/压缩分离。无实现代码、不冻结参数、不修复 Event-time Perception P1，也不扩张 MVP 产品范围。
 

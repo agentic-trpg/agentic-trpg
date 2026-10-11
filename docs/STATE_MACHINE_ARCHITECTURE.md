@@ -11,6 +11,8 @@
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
 > **证据边界**：本文件是基于已讨论范围和冒险需求的**设计建议**，不是现有 State Machine 代码的完成状态。与 Rule Engine 的 API 适配以实际实现和独立测试为准。
+>
+> **本轮修复**：恢复 Player Input Fast Path 的可信命令交接与拒绝反馈；v0.11 的 OB 生命周期、调度和任务协议完整保留，目标接口未实现。
 
 ## 1. 目标、边界和核心术语
 
@@ -60,7 +62,12 @@ State Machine 是**一次具体游戏 Session 的游戏领域逻辑管理者、�
 ## 2. 总体运行架构
 
 ```text
-Human Player / DM Planner -> State Machine domain request / authorization
+Player Host / UI -> Player Input Gateway -> server-side Identity / Schema / Permission Validation
+   -> submit_command(TypedCommand) -> State Machine
+Player Host / Chat -> Player Input Gateway -> Agent Host -> DM Planner
+   |- no executable Action Intent -> existing authorized query / publication / presentation
+   '- executable Action Intent -> submit_command(TypedCommand) -> State Machine
+SM -> Stateless Rule Evaluation when needed -> SM atomic State / RNG / Events / Receipt / Outbox
    SM owns World / Character / Combat / RNG / Persistent NPC State
    SM Perception / Evidence -> reliable Observation
    SM Gate / Schedule / Mode coordinator -> authorized Evaluation Task
@@ -86,7 +93,7 @@ Human Player / DM Planner -> State Machine domain request / authorization
                     player-visible receipts -> DM Narrator -> Text UI
 ```
 
-统一逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Host 仅做模型运行、Context、预算、重试取消、Tool 适配传输及运行时可观测性；不持久管理游戏状态或任务完成结果。
+NPC Evaluation 的统一逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库。Player Host / Gateway 的两路工作流见 [Agent Architecture §3.1](./AGENT_ARCHITECTURE.md#31-player-input-routingdeterministic-fast-path)，可信输入交接集中于 [Module Contracts §3.0](./MODULE_CONTRACTS.md#30-player-input-gateway-与可信输入交接)。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Host 负责 Planner / Narrator / JEV / NPC EVA 的全部模型调用、Context、运行时调度、预算、重试取消、Tool 适配传输及可观测性；不持久管理游戏状态或任务完成结果。
 
 DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。MVP 为 Python + SQLite WAL；Jev 为可替换候选。旧 Stateful Engine 仅为历史基线或隔离回归对照，最终执行路径及 SM 均不依赖 `_LiveCombat` 等 Legacy 对象。
 
@@ -236,6 +243,8 @@ ObservationProcessingStatus 仅表示 Processing，与 Retention 分离。完成
 
 ### 5.1 统一 submit_command 与命令信封（概念字段）
 
+**两路共用入口 [DECIDED] [NOT IMPLEMENTED]：** 经服务端身份 / Schema / 权限验证的 Structured Action，与 Planner 形成的可执行 Action Intent，均进入既有 TypedCommand 协议。Gateway 是逻辑输入边界，其初检不替代 SM 的权威验证；JSON / 客户端标签不是信任证明。Fast Path 不调用 Planner 或 JEV 路由，非法操作明确拒绝、不自动回退；无可执行 Action Intent 的自然语言不强制产生 TypedCommand。输入错误与命令回执的区分见 MODULE_CONTRACTS.md §3.0。
+
 ```yaml
 schema_version: module-contracts/0.2
 command_id: cmd.demo.0007
@@ -261,7 +270,7 @@ payload:
 | **场景转移** | 进入已定义出口、传送剧情事件 | State Machine 的场景与权限判断，必要时 Rule Engine | 更新位置并记录 enter/exit；不重置旧场景 |
 | **声明式事件** | 经审查 EventDefinition 与已提交事件/权威条件 | State Machine 内部受限声明式处理 | 执行允许列表的世界效果，一次性/按规定次数去重，不运行脚本 |
 
-**[DECIDED]** 上表普通游戏操作是 submit_command 的内部处理路径，不是独立公开提交 API；纯对话仍沿用独立 NPC Evaluation / 发布生命周期。DM Planner 负责情境语义和 GM 裁决，SM 负责世界事实、身份权限、结构/引用/版本与提交不变量，Rule Engine 负责 D&D 机械合法性与计算。Planner 可基于完整授权 GM View 提出检定、能力/技能、DC 和成功/失败后果，优先使用规则或 Package 的规定；未规定时在掷骰前确定并留下可追溯依据。裁决复用 TypedCommand，不新增 Adjudication API / 语义审核 LLM；SM 只验证可确定性检查的内容，不重算规则，Planner 不提交骰点/伤害或替 NPC 决定私人意图。
+**[DECIDED]** 上表普通游戏操作是 submit_command 的内部处理路径，不是独立公开提交 API；纯对话仍沿用独立 NPC Evaluation / 发布生命周期。需要语义理解/GM 裁决时由 DM Planner 负责，Fast Path 使用可信既定依据、缺少依据明确拒绝（MODULE_CONTRACTS.md §3.0）。SM 负责世界事实、身份权限、结构/引用/版本与提交不变量，Rule Engine 负责 D&D 机械合法性与计算。Planner 可基于完整授权 GM View 提出检定、能力/技能、DC 和成功/失败后果，优先使用规则或 Package 的规定；未规定时在掷骰前确定并留下可追溯依据。裁决复用 TypedCommand，不新增 Adjudication API / 语义审核 LLM；SM 只验证可确定性检查的内容，不重算规则，Planner 不提交骰点/伤害或替 NPC 决定私人意图。
 
 Planner 可通过有限 Typed World Operations 提出简单 Object / World Fact / Scene Connection；已有 ID 从可信 GM View 引用，新身份由 SM 分配，正式提交后进入 Runtime World State 和后续授权 get_scene_view 等查询，不修改静态 Package。叙事/提议不是事实，不采信 LLM 自报引用或状态变化。操作封闭且字段受限，禁止任意 Patch、SQL、脚本或整份状态覆盖；完整字段及复杂 Scene/战斗地形生成 [OPEN]，详见 MODULE_CONTRACTS.md §3.3。
 
@@ -305,6 +314,8 @@ Load validated CombatSnapshot / NonCombatSnapshot + Typed Intent
 - Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
 
 本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
+
+两种玩家执行路径均复用本节提交与 §5.5 / §6 的事件后处理；Fast Path 的 Signals 使用可信标准行为/Package 模板，不需要 Planner 临时补写。提交后按需走既有 Perception / OB / Mode / Gate / EVA / Narrator，JEV 仅作 Perception Judgment / Memory Gate Judgment。§3.7a / §3.9 / §6 的 Processing / Retention、Game Time TTL、定期 EVA、Interactive / Background 独占和任务生命周期不变。
 
 ### 5.5 声明式事件、作用域与链式效果
 
@@ -433,7 +444,7 @@ combat.start / 候选 Typed Delta combat.create 均 **[PROPOSED; NOT IMPLEMENTED
 
 ### 7.2 战斗期间
 
-- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。Host 传输受控身份关联，State Machine 核验权限、获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
+- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。可信输入适配层 / Agent Host 传输受控身份关联，State Machine 核验权限、获取版本化快照并调用 Rule Engine 求值，再对 Delta 和 RNG 进行原子提交。
 - CombatState 包括回合顺序、行动预算、位置、Active Effects、Concentration、待处理 Reaction/Choice 等。State Machine **持有和持久化**这些字段但不自行计算规则；Rule Engine 不维护跨调用的私有战斗权威。
 - 战斗中打开门、拾取物品、喝药、触发机关等，若世界/机械效果能够在同一命令提交前完整求值，则同事务提交完整副作用，Engine 不提前扣费；已提交事件才触发的后续机械效果使用可靠、幂等的独立命令，不声称跨已提交事务原子（§5.5）。
 - 已提交的 Combat/World Events 经事件时 Perception 分发，可供 DM Narrator 叙述；未提交的规则求值或 LLM 提议不能被叙述为已发生。
@@ -506,7 +517,7 @@ MVP 是 Python + SQLite 单机权威运行时。SM 持续不可用或持久化�
 
 特别区分 rejected、unsupported、合法机械失败（可为 accepted 并提交成本）、version_conflict、pending_choice，以及传输/提交未知。保持 RuleEvaluationResult 四态及 CommandReceipt committed / rejected / conflict / pending_choice 模型，unsupported 作为 rejected 的授权结构化原因，不新增回执状态。Schema/异常另行处理，不能一律映射为“失败，请重新掷骰”。
 
-确定性拒绝不强制调用 LLM，仅新语义判断需要有界重规划；原样重试用原 command_id，修改内容后用新 ID，响应丢失先查询原回执。原因按权限供 DM Planner 使用。Narrator 使用玩家可知投影并保持世界内叙事，不直接暴露 API/Schema/unsupported 错误，也不因系统能力限制编造墙壁永久不可摧毁、骰点失败或未提交世界变化；必要能力/运行时提示由文字入口合理表达。
+确定性拒绝经权限过滤反馈原调用方（Player Host 或 DM Planner）；Fast Path 拒绝不自动转 Planner，Agent Path 仅新语义判断需要有界重规划。原样重试用原 command_id，修改内容后用新 ID，响应丢失先查询原回执。Narrator 使用玩家可知投影并保持世界内叙事，不直接暴露 API/Schema/unsupported 错误，也不因系统能力限制编造墙壁永久不可摧毁、骰点失败或未提交世界变化；必要能力/运行时提示由文字入口合理表达。
 
 ## 10. 最小公共接口（仅候选名称）
 
@@ -541,6 +552,8 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 ## 11. MVP 开发顺序与验收测试
 
 建议先用**原创、可公开分发**的合成 Adventure Fixture 做最小可运行闭环；不要直接把未经授权的 *First Blush* 剧情/图片嵌入公开代码测试。
+
+玩家两路输入、拒绝及提交后的 NPC 感知六场景集中于 [Module Contracts §12.5](./MODULE_CONTRACTS.md#125-player-input-fast-path-场景核对-not-implemented)；以下既有状态机验收目标继续适用，本轮未执行运行测试。
 
 ### Batch SM-1：统一 Package Loading / Validation + Session / Scene
 
@@ -714,6 +727,10 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 ---
 
 ## 13. 文档治理与下一步
+
+### 本轮 Player Input Fast Path 修复
+
+仅补回服务端可信输入到统一命令入口的两路交接及原调用方反馈，不新增执行 API 或更改 v0.11 OB / EVA 协议。输入绑定、封装和操作映射仍 [OPEN] [NOT IMPLEMENTED]（MODULE_CONTRACTS.md C-23）；SM / Host / JEV 权威边界与既有 Stateless 目标不变。
 
 ### v0.11 修订摘要
 
