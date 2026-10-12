@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.15（SM＋RE 为当前开发/运行基础；允许证据驱动的子系统重构/替换；具体机制映射及 Episode / Continuation ABI 仍 OPEN）
+> **状态**：Draft v0.16（领域管理状态、共享提交；SM＋RE 当前基础不变；Handler 重构及新接口尚未实施）
 >
 > **日期**：2026-10-12
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.13（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.15；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.9；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.13；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.2（演进与验证计划）
+> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.14（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.16；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.10；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.14；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.3（演进与验证计划）
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -14,29 +14,29 @@
 
 ## 1. 目标、边界和核心术语
 
-本文的 State Machine 指**一次具体游戏 Session 的游戏领域管理、权威状态与可信提交职责**，不是剧本生成器、规则引擎或 NPC 对话模型。依据 MODULE_CONTRACTS.md §0.2，`trpg-state-machine`＋RE 是当前开发/运行基础；允许重构或替换不合适的子系统，单一事实权威原则不冻结现有类、表、模块、命令或 Event 管线。本文件暂不改名。
+本文保留 State Machine 文件名与当前 SM 公开入口，区分现有实现和**按领域管理状态、按事实确定权威、按操作组织事务的目标设计**。MODULE_CONTRACTS.md v0.14 §0.3 的责任表替代旧的 SM 独占全部状态限制；`trpg-state-machine`＋RE 仍是开发基础，不要求 StateMachine 类或单一模块理解、保存和批准所有业务细节。以下现有 Task / Perception 协议中的“SM”指保留的逻辑入口，内部责任按该表分配；具体拆分尚未实施。
 
 **适用范围 `[DECIDED]`：** SQLite / WAL、具体表结构及 Event-level OB / Outbox 是当前 SM 实现或可复用设计资产，不是永久实现约束。保留授权、幂等、RNG、回执、故障一致性、NPC 私有状态与可靠处理语义，并通过回归证明替换后的正确性；不要求逐类逐表迁入另一框架。不同表可以保存不同事实，视图/缓存只是派生数据；禁止两份相同权威世界双向同步。替换原型与现有实现使用独立测试 Session。Evennia 整体采用仍 OPEN，可选评估不阻塞主线。
 
-它承担六件事：
+目标内部协作承担六件事 `[DECIDED; NOT IMPLEMENTED]`，具体类/表/API `[OPEN]`：
 
-1. 加载并验证**不可变** Adventure Package；为一次 Session 实例化初始状态。
-2. 记录玩家和 NPC 的行动在世界中造成了哪些**已验证、已提交**的变化。
-3. 为 Agent DM / NPC Sub-agent 提供**按角色权限过滤**的上下文视图。
-4. 将需要机械裁决的动作交给无权威可变状态的 Rule Engine 求值，验证其未提交的 `StateDelta`，再在自身事务中统一提交 World / Character / Combat State、RNG、事件和回执。
-5. 持久保存已提交运行态，防止重访重置、重复执行/付款及知识泄漏；当前实现采用 Python + SQLite WAL，未来替换的存储配置须独立验证。MVP 产品仅保证非战斗状态下的安全续玩，不承诺任意战斗崩溃续玩。
-6. 管理 NPC Identity / Memory / Belief / Relationship / Goal / Plan、Perception / Observation / Evidence、Evaluation Task 创建与授权、模式协调元数据、Gate 领域策略、游戏时钟与 Schedule、Proposal / Action Intent 验证、内部 Processing Completion、幂等和持久恢复；Host 仅执行模型与 Context 运行。
+1. Session / 世界领域加载验证固定 Adventure Package，按各数据负责人接口一次初始化。
+2. Character / World Object 等领域保存各自负责的当前事实；角色在探索和战斗中共享同一 HP、位置、库存与实体身份。
+3. 授权查询 / Perception 提供角色视图；共享对象接口不能泄漏秘密。
+4. Combat Handler / 相关领域组织显式事实、行动、绑定和 RNG 交 RE 求值；各领域应用未提交结果，共享设施在同一事务提交状态、RNG、事件和回执。
+5. 共享持久化与提交设施保障版本/原值、授权、幂等、回执、可靠通知及恢复；当前 Python + SQLite WAL 基础继续使用，MVP 安全续玩边界不变。
+6. NPC Cognition 管追加版本的 Meta / Evaluation / 模式，Perception/Observation 管证据、观察与处理生命周期，两者按既有完成协议协调。Host 仅执行模型与 Context 运行。
 
 ### 1.1 四个容易混淆的概念
 
 | 概念 | 内容 | 可变？ | 谁拥有权威？ |
 |---|---|---|---|
 | **Adventure Definition** | 地点、静态世界事实、NPC 初始档案、剧情条件、规则绑定 | **不可变**（Session 固定版本） | Adventure Package 作者 / 验证器 |
-| **Session Runtime State** | 当前场景、场景实例、世界标记、物体归属、任务、NPC 记忆、事件记录 | **可变** | **State Machine** |
-| **Mechanical Combat State** | 战斗中的 HP、位置、Action Economy、RNG、Conditions、集中、回合等 | **可变** | **State Machine（唯一权威）** |
-| **LLM Evaluation Context** | DM Context；NPC 可复用 Interactive / 一次性 Background Context | **临时派生视图** | Agent Host 管生命周期；State Machine 提供授权状态与证据 |
+| **Session Runtime State** | 当前场景、场景实例、世界标记、物体归属、任务、NPC 记忆、事件记录 | **可变** | Session / 世界 / Cognition 等按事实分责，共享提交 |
+| **Mechanical Combat State** | 人物 HP/位置、行动预算、效果、回合、RNG 等组合视图 | **可变** | Character / Combat Handler / Effect 分别管理；RNG 经共享设施提交 |
+| **LLM Evaluation Context** | DM Context；NPC 可复用 Interactive / 一次性 Background Context | **临时派生视图** | Agent Host 管生命周期；负责领域提供授权事实与证据 |
 
-**不变量（MODULE_CONTRACTS.md §0、§4–§6）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则计算结果。全部 Runtime State，包括 World、Character、Combat、Inventory / Equipment、Effect、Reaction、RNG 与 NPC 持久认知，都只有 State Machine 一份权威；Rule Engine 只计算而不提交。单次求值临时计算对象不构成独立状态所有者，也不能使 Legacy 执行器成为最终依赖。
+**不变量（MODULE_CONTRACTS.md §0.3、§4–§6）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则结果。每项当前事实有一个负责领域，跨领域不可分割操作共享一次提交/回滚；RE 只求值。临时候选状态、事件缓冲区和规则上下文允许存在，不能把 Legacy 隐藏战斗对象恢复为长期权威。
 
 ### 1.2 行动、观察与记忆的认识论边界
 
@@ -44,9 +44,9 @@
 |---|---|---|---|
 | `Intent` / `Proposal` | PC/Agent/Host 提交的**内部提议** | **否**；被拒绝的私有意图尤其不能公开 | 提议者可获合法拒绝回执；其他角色不可据此读心 |
 | `ObservableActionStarted` | **真实在世界中发生**且被提交的外部动作（例如实际伸手） | **是，该外显动作已经发生**；但目标效果未必成功 | 通过 Perception 判断哪些角色看到了动作 |
-| `WorldEvent` | State Machine 原子提交的世界/规则事件 | **是，记录客观行为或结果** | 不能向所有 NPC 原样广播含秘密的事件 |
-| `Observation` | State Machine 的 Perception Projection（必要机械判定来自 Rule Engine） | **是，该角色获得了某项观察**；观察内容不一定涵盖全部事实 | 构成该角色后续认知的证据，按角色私有保存 |
-| `Belief / Memory / Relationship / Goal / Plan` | 当前模式的 NPC LLM 提出可选更新；State Machine 校验后保存 | **成为 NPC 私有权威状态，不自动成为客观世界事实** | 两种模式都读取同一份授权持久状态 |
+| `WorldEvent` | 负责领域通过共享设施提交的世界事实 | **是，记录客观行为或结果** | 不能向所有 NPC 原样广播含秘密的事件 |
+| `Observation` | Perception Projection（必要机械判定来自 RE） | **是，该角色获得了某项观察**；观察内容不一定涵盖全部事实 | 构成该角色后续认知的证据，按角色私有保存 |
+| `Belief / Memory / Relationship / Goal / Plan` | 当前模式 NPC LLM 提议；NPC Cognition 验证并持久保存版本 | **成为 NPC 私有权威状态，不自动成为客观世界事实** | 两种模式都读取同一份授权持久状态 |
 
 **关键区别**：Agent A 获得金币，不等于 A 知道 B 也想拿金币。只有 B 真正作出可观察的动作并被 A 感知，A 才能基于观察判断双方是否发生争抢。世界事件的排序也不能直接替代游戏世界的“谁更快”的规则裁决。
 
@@ -61,17 +61,18 @@
 
 ## 2. 总体运行架构
 
-**Immediate Mechanical Response 与 Agent Cognitive Response 是独立路径 `[DECIDED]`**（定义集中于 MODULE_CONTRACTS.md §0.1）：SM 协调可信确定性机制、Combat Policy 与 RE 完成即时战术、Reaction、自动效果和战斗触发，不等待 Planner、JEV LLM、Memory Gate 或 EVA。所需机械察觉不能使用未知/LLM 猜测作为已察觉证明；RE 仍负责规则公式，Policy 只在授权机械可知视图内选择 Intent。NPC LLM 保留认知、记忆、关系、目标、宏观决定与角色对白，Host 管全部模型调用，Narrator 呈现玩家获准事实。
+**Immediate Mechanical Response 与 Agent Cognitive Response 是独立路径 `[DECIDED]`**（MODULE_CONTRACTS.md §0.1 / §0.4）：Combat Handler / 相关领域组织可信机制、Combat Policy 与 RE 完成即时战术、Reaction、自动效果和触发，不等 Planner、JEV LLM、Memory Gate 或 EVA。机械察觉不能用未知/LLM 猜测证明；Policy 只在授权机械可知视图内选 Intent。NPC LLM 保留认知与宏观决定，Host 管模型调用，Narrator 呈现玩家获准事实。
 
 ```text
-Human Player / DM Planner -> trusted Game Runtime domain request / authorization
-   Current foundation: trpg-state-machine + RE; programmatic mechanisms may evolve
-   One authority per World / Character / Combat / RNG / Persistent NPC fact
-   Immediate path -> deterministic mechanics / Combat Policy
-                  -> RE only when D&D adjudication required -> trusted atomic commit
+Human Player / DM Planner -> submit_command / trusted authorization -> responsible Handler
+   Current foundation: trpg-state-machine + RE; target domain split not implemented
+   Session | Character/World Object | Combat Handler | Effect: one authority per fact
+   Immediate path -> stateful Combat Handler -> player boundary OR Combat Policy
+                  -> RE only when D&D adjudication required -> domain interfaces
+                  -> one shared transaction: domain changes + RNG + receipt + outbox
                        [no Planner / JEV / Memory Gate / EVA dependency]
-   SM Perception / Evidence -> reliable Observation
-   SM Gate / Schedule / Mode coordinator -> authorized Evaluation Task
+   Perception / Evidence -> reliable Observation
+   NPC Cognition / Gate / Schedule / Mode -> authorized Evaluation Task
                                   |
                          NPCEvaluationRequest
                                   v
@@ -83,19 +84,19 @@ Human Player / DM Planner -> trusted Game Runtime domain request / authorization
                                   |
                      Host submits evaluation_id + Result
                                   v
-                      State Machine atomic Meta / sole Result / EVA completion
+                      NPC Cognition + shared commit: Meta / sole Result / EVA completion
                 |- reliable Dialogue / Action Intent handoff
                 '- independent command_id -> SM authorization
                    -> ordinary world handling OR D&D evaluation (validated Snapshot / Intent
                       + pinned RulesetBinding + explicit RNGContext -> uncommitted Result)
-                   -> SM Atomic Commit
+                   -> responsible domain interfaces / shared Atomic Commit
                                   |
                     EvaluationReceipt / cognitive completion + reliable handoff
                     committed WorldEvent -> Perception
                     player-visible receipts -> DM Narrator -> Text UI
 ```
 
-认知路径的逻辑信息流是 **State Machine → Agent Host → NPC LLM → State Machine**，不要求微服务或多个数据库；它不是即时机械响应的必经环路。SM 是游戏领域逻辑与权威状态管理者，创建/批准任务、管理 Gate 领域政策和游戏时钟日程，但不执行 LLM 主观推理、不管理 Prompt / 物理 Context / KV Cache。Host 仅做模型运行、Context、预算、重试取消、Tool 适配传输及运行时可观测性；不持久管理游戏状态或任务完成结果。
+认知路径是 **NPC Cognition / 授权 Perception → Host → NPC LLM → Cognition / 共享提交**。默认进程内、共享持久化；Handler 使用受控领域接口及共同事务上下文，不要求内部字段变化逐一包装外部命令/JSON/RPC。共享库不允许跨责任任意写表，不引入微服务、多数据库、分布式锁或两阶段提交。Host 管模型、Context、预算、调用重试，不持有权威事实。
 
 DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。Python + SQLite WAL 是当前 SM 基线，不冻结未来实现；Jev 为可替换候选。普通世界操作不必进入 RE；D&D 规则沿用 RE，SM / 脚本不重复实现持续效果、Reaction 或连锁裁决。旧 Stateful Engine 仅为历史基线或隔离回归对照，最终执行路径及 SM 均不依赖 `_LiveCombat` 等 Legacy 对象。
 
@@ -103,7 +104,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 
 ## 3. 运行时数据模型与状态所有权
 
-依据 MODULE_CONTRACTS.md，Character、Combat、Inventory / Equipment、Effect、Reaction、RNG 及其版本与 WorldState 在同一权威提交域内；Rule Engine 输入是经验证的只读状态快照、Typed Intent、固定规则绑定与显式 RNG，输出只是待提交结果。
+依据 MODULE_CONTRACTS.md §0.3，各领域可管理、持久化其负责状态；一次操作涉及 Character、Combat、Effect、World 与 RNG 的必要变化在同一事务共同生效。下述结构按数据责任组织，并不规定一个 SM 包保存所有内容。规则输入显式、输出未提交，实体身份共用。
 
 建议把 Session 存储划分为少量聚合（aggregate）；下面是**概念数据结构**，不是已经冻结的 JSON/Python Schema。
 
@@ -115,26 +116,26 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 | `adventure_id`, `package_version`, `package_digest` | 固定加载的冒险定义版本；重载时校验，禁止静默升级 |
 | `ruleset_binding` | 固定 ruleset_id / data_revision / evaluator_version；数据修订区分生效规则及适用 Homebrew，Engine 求值前验证匹配 |
 | `players[]` / `pc_actor_id` | 可信认证主体核验的 player_id / pc_template_id / Actor 控制关联；MVP 严格一玩家一 PC，具体存储字段 [PROPOSED; NOT IMPLEMENTED] |
-| `current_scene_id`, `current_location_id` | 当前所在场景、地点 |
+| `current_scene_id`, `current_location_id` | Session 当前场景引用；角色位置从实体负责人读取，若缓存须可重建且不可独立改写 |
 | `phase` | `exploration` / `combat` / `challenge` / `completed` 等有限阶段（候选） |
 | `world_version` | 世界/机械状态变更提交时单调推进，与事件序号不同；仅事件/元数据提交的推进规则 [OPEN] |
 | `last_world_event_seq` | 本 Session 已提交事件的稳定全序序号，观察记录据此引用及排序 |
 | `last_safe_checkpoint_id` | 最近可核验的非战斗安全恢复点；不意味着活跃战斗可精确恢复 |
 | `status` | `active`、`combat_unrestorable`、`completed`、`blocked_reconciliation` 等（候选） |
-| `active_combat_ref` | 指向本 Session 的 SM 权威 CombatState，不依赖 Engine 私有 Handle 保存战斗真相 |
+| `active_combat_ref` | 指向 Combat Handler 负责的遭遇/流程状态，不依赖 Engine 私有 Handle |
 | `created_at`, `updated_at` | 运行元数据，不直接决定游戏世界时间 |
 
 **注意**：`phase` 不等于每个场景固定的剧情幕数。玩家可合法往返 Scene，不应被强制套入不可逆的线性故事进度。
 
 ### 3.2 `WorldState`：会话全局事实
 
-包括 `flags`、`quest_state`、`game_time`、`world_actor_locations`、`object_instances` / `inventory_ownership`、已解锁的内容标记等。
+世界领域负责 `flags`、`quest_state`、已解锁内容与 Scene 关系；`game_time` 使用 Session 时钟，`world_actor_locations` / 对象清单读取 Character / World Object 的同一实体事实。具体存储映射 `[OPEN]`，不是多份可独立写入的当前位置/归属。
 
 约束：
 
 - `flags` 仅用于剧情/场景状态，不能成为 HP、Slot、Action Budget 等机械变量的替代品。
-- 物品 `owner_id`、当前位置与 `quantity` 由 State Machine 唯一维护；在活跃战斗中也由 State Machine 原子提交，机械消耗与合法性先经 Rule Engine 求值。
-- 人物身份在 World State 中稳定；战斗中 `Combatant` 是同一 Actor 的临时机械表示，其结束结果通过映射返回世界。
+- 物品 `owner_id`、当前位置与 `quantity` 由物品/库存负责接口维护；战斗中同样与角色/流程变化共同提交，机械消耗先由 RE 求值。
+- 人物身份稳定；`Combatant` 只是同一 Actor 的参战关系/规则投影，不在战斗内另存一份 HP/位置/背包，结束时无需从第二权威回写。
 - 若两个场景引用同一个世界 Actor，不复制成互不关联的角色实例。
 
 ### 3.3 `SceneInstance`：场景懒初始化、只初始化一次
@@ -153,7 +154,7 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 ### 3.4 `ActorRuntime` / `NPCState`
 
 - 所有 Actor：稳定身份、当前世界位置、归属、世界层可见状态、可用控制策略。
-- 玩家 PC：从 Package 内置的一个或多个完整、只读 PC Templates 中选择一名，经规则验证机械属性后初始化 CharacterState；HP、资源、成长等运行态由 SM 保存。无需独立构建服务或外部 pc_build_ref；未来外部导入 [OPEN]，不实现。
+- 玩家 PC：从 Package 内置的一个或多个完整、只读 PC Templates 中选择一名，经规则验证机械属性后初始化 CharacterState；HP、资源、成长等运行态由 Character 负责接口管理。无需独立构建服务或外部 pc_build_ref；未来外部导入 [OPEN]，不实现。
 - NPC：唯一 Persistent Identity、Personality、Memory、Belief（允许错误）、Relationship、Goal、Plan 和 Runtime State（Schedule / Current Activity 等）；私有知识、处理游标与控制权一并权威保存，观察收件箱与认知更新分开。
 - 敌人/普通怪物：与重要 NPC 一样有身份和状态，但是否调用 LLM 要由策略决定；不要求为每一个普通怪物常驻创建 Agent。
 
@@ -161,13 +162,13 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 
 Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两份 NPCState。State Machine 管当前模式、Evaluation Task / Status、NPCStateVersion 及内部完成状态；Agent Host 仅管理非权威 Context 与模型运行，不能从 Context 内容反向覆盖权威状态。
 
-### 3.4a `CharacterState`、`CombatState` 与 RNG（统一权威）
+### 3.4a `CharacterState`、Combat Handler、Effect 与 RNG（分责、共同提交）
 
-State Machine 为每名 Actor 保存 HP/Temp HP、法术位、有限使用次数、装备、Condition、持续效果；活跃 Encounter 持有 Initiative/Turn、行动经济、位置、Concentration、反应窗口、Pending Choice 以及所需技能/规则生命周期账本。SM 另存权威 RNG 流状态/版本，以独立 RNGContext 提供给 Engine。只存储明确规定的权威数据，不复制可由规则确定性计算的派生字段作为第二权威。
+Character / World Object 管当前 HP、资源、位置、库存/装备；Effect 管有效效果、来源、时钟、消耗及生命周期；Combat Handler 管参战关系、先攻/回合流程、待选窗口、已提交行动关联与推进进度。组合机械视图引用同一实体/效果事实，不生成另一份可写目录。共享提交设施管理权威 RNG 流/版本并提供显式 RNGContext；不为各 Handler 任意另开流。具体类/表/字段拆分 `[PROPOSED / OPEN; NOT IMPLEMENTED]`，逻辑责任已决定。
 
-**[DECIDED; NOT IMPLEMENTED]** RE 正常求值读取完整当前机械状态及必要的可信类型化历史摘要/账本，不反复载入完整 Combat Event Log。每回合使用/已支付资源/效果来源等历史依赖由规则路径归纳、SM 原子保存，不能用模型总结。原始机械 Audit、命令/选择、版本及 RNG 证据仍保留以支持审计与确定性重放；当前本地 Snapshot 仍有 event_log，迁出前必须审计依赖（MODULE_CONTRACTS.md §4 / C-24）。
+**[DECIDED; NOT IMPLEMENTED]** 完整 Combat Event Log 应退出普通 RE 输入；每回合使用标记、效果时钟、关键时间点等是必要当前机械状态，由规则计算并经负责接口共同提交，不另建重复的精简历史日志。本次有序 ProposedEvents / 结算结果在提交前仍为候选，审计与 Episode 证据按需保留，不自动回灌求值。当前 event_log 依赖先按 RE-HIST-01 审计真实读者并补状态；不置空日志、删历史表或删全部候选事件（MC §4）。
 
-同一角色在战斗内外共享角色资源的最终所有权：喝药、开门、取物、移动等跨界动作最终由**同一个 State Machine 事务**提交；Rule Engine 负责计算机械结果。StateSnapshot 采用 CombatSnapshot / NonCombatSnapshot 两种 Schema，共享 CharacterState / InventoryState / EquipmentState / EffectState 等类型化基础组件，不按规则操作增加 Snapshot 情境；相关实体范围可限定，但每个实体机械字段及规则依赖必须完整，不按 Intent 裁剪，使用标准 Required / Optional 校验。RulesetBinding 从 Session 固定配置提供，RNGContext 独立于 Snapshot（详见 MODULE_CONTRACTS.md §4）。SM 不负责创建或恢复 Engine 内部对象；Engine 的临时计算上下文只服务于单次求值，不能依赖旧 `_LiveCombat` 的完整内部结构。
+喝药、开门、取物、移动等跨界操作由负责领域在**同一共享事务**提交；RE 计算机械结果。当前目标 CombatSnapshot / NonCombatSnapshot 共享类型化组件，Required 字段与依赖完整性不取消。无状态不要求搬运全世界或网络调用：可研究按需读取、进程内类型调用、共享不可变值和可重建缓存；新接口 `[OPEN]`，不能以默认值掩盖缺失依赖或任意整份 Snapshot 覆盖数据库（MC §4.2）。缓存失效、重启及回滚一致性须验证，不宣称已测得提速。Session 提供固定绑定，RE 可有调用内候选状态/缓冲区，但不得恢复 Legacy 跨请求权威对象。
 
 ### 3.5 `ChallengeInstance`：非战斗技能挑战
 
@@ -226,7 +227,7 @@ Completed + Recent 仍可供 NPC 近期信息，但不得重新进入同一待�
 
 ### 3.8 NPC Meta、Episodic Memory 与 Belief History
 
-Memory、Belief、Relationship、Goal、Plan 是同一 NPC 的权威认知状态，作为一个原子更新单元。SM 保留稳定 NPC / 记录 ID、来源 Observation / Memory 引用、epistemic_status（observed / inferred / told）、confidence（如适用）、evaluation_id、NPCStateVersion 与内容版本；承诺回忆引用已确认 Commitment。具体类型/约束为 Proposed / Not Implemented。
+NPC Cognition 持久管理 Memory、Belief、Relationship、Goal、Plan 的追加版本历史，保留旧内容/来源、稳定 NPC / 记录 ID、当前版本、Goal/Plan 状态、epistemic_status、适用 confidence、evaluation_id 与 NPCStateVersion。Meta 仍是一个整批原子更新单元，具体类型/约束 Proposed / Not Implemented。历史 Goal 不全部成为当前待执行项，记忆本身不保证避免循环；本轮不新增复杂导航知识图谱、目标树或防循环 Schema。
 
 Initial Belief 与运行时 Belief 使用兼容结构。同一稳定 Belief 追加新版本，保留来源、版本、当前有效状态及完整旧历史，不直接覆盖/删除；NPC LLM 可修改、降低置信度或放弃旧 Belief，SM 不替它改写文本。
 
@@ -285,7 +286,7 @@ payload:
 | 分支 | 输入 | 权威执行 | 成功后的 State Machine 工作 |
 |---|---|---|---|
 | **世界操作** | 开门、取物、NPC 位置转移、设旗标 | State Machine 验证条件、权限并提交 | 记录一次世界事件，更新物体/Quest/Scene |
-| **规则操作** | Ability Check、Save、Combat Intent、受控 Hazard | Rule Engine 进行无副作用求值；State Machine 统一提交 | 验证待提交 Delta，原子写入角色/战斗/世界状态、RNG、事件和回执 |
+| **规则操作** | Ability Check、Save、Combat Intent、受控 Hazard | RE 无副作用求值，Handler 组织各领域共同提交 | 各领域验不变量，共享设施验授权/版本/幂等并提交全部状态、RNG、事件/回执 |
 | **纯对话** | `NPCEvaluationResult.dialogue` | NPC 提议，经 SM 验证发布权限后成为可呈现内容 | 只有有明确语义的承诺/线索公开/关系变化才持久化；普通一句对话不产生机械效果 |
 | **场景转移** | 进入已定义出口、传送剧情事件 | State Machine 的场景与权限判断，必要时 Rule Engine | 更新位置并记录 enter/exit；不重置旧场景 |
 | **声明式事件** | 经审查 EventDefinition 与已提交事件/权威条件 | State Machine 内部受限声明式处理 | 执行允许列表的世界效果，一次性/按规定次数去重，不运行脚本 |
@@ -300,7 +301,7 @@ Planner 可通过有限 Typed World Operations 提出简单 Object / World Fact 
 
 1. 按 `(session_id, command_id)` 查询历史完成回执；同键相同内容返回原结果，**同键不同内容拒绝冲突**。
 2. 验证 expected_world_version、可信 principal 权限、适用分支的真实 Actor 控制权或受信机械来源/目标、当前 Phase、可见/可用对象与事件条件。
-3. 对需要机械规则的操作，先在**写事务外**调用 Rule Engine 求值得到 `accepted` / `rejected` / `needs_choice` / `unsupported`，并持有返回的预期版本和 RNG 转换；进入短事务后再次验证身份、版本及 Delta 不变量，再将全部 World / Character / Combat / RNG Delta、Events / Signals、阶段对齐的 Evidence / 稳定历史引用、可靠 Outbox、Receipt 和去重键一并提交。世界操作可直接生成待提交 Delta；取证逻辑与阶段约束见 §3.6 / §6.2。
+3. 对需要机械规则的操作，先在**写事务外**调用 Rule Engine 求值得到 `accepted` / `rejected` / `needs_choice` / `unsupported`，保留预期版本与 RNG 转换；短事务内重验身份、版本及领域不变量，各负责接口共同提交全部 World / Character / Effect / Combat / RNG Delta、Events / Signals、阶段 Evidence / 稳定历史引用、Outbox、Receipt 与去重键。世界操作可直接准备候选变化；阶段取证约束见 §3.6 / §6.2。
 4. **事务提交完成后**才返回 `committed` 并允许 Agent DM 将其叙述为事实；失败/冲突不写任何部分 Delta。
 
 请求 payload 应使用稳定序列化计算指纹，以区分重复提交和同一 `command_id` 下的不同请求。当前 SM 使用单个本地 SQLite 原子事务；替换提交实现须证明等价正确性，不以两份权威副本同步替代原子性。
@@ -309,19 +310,20 @@ Planner 可通过有限 Typed World Operations 提出简单 Object / World Fact 
 
 **子系统演进验证 `[OPEN; NOT IMPLEMENTED]`：** 短事务与求值/通知分离原则继续有效，新后端不由上述配置预先冻结。相关实现变更须注入失败，检查回滚后的已持有对象引用、属性容器、重新查询与后续命令所见状态，不能只验证 SQL 或靠重启清缓存。提交后回调不自动提供可靠通知语义；见演进计划 §8，可选 Evennia 评估另见 §9。
 
-### 5.4 单一提交者协议：Rule Evaluation ≠ Commit
+### 5.4 共享提交协议：Rule Evaluation ≠ Commit
 
-**目标语义遵循 MODULE_CONTRACTS.md §4–§6。** State Machine 只向 Stateless Rule Engine 提供经过验证的 Typed Snapshot、Intent、Session 固定 RulesetBinding 和显式 RNGContext；候选 `evaluate(RuleEvaluationRequest)` 还保留 session_id / command_id / operation_kind 及按具体操作类型适用的真实 actor_id 或可信机械来源（AP-15；来源权限字段仍 Proposed / OPEN）。Engine 负责 D&D 机械合法性与规则求值，返回的 `RuleEvaluationResult` **尚未提交**。`accepted` 只是求值完成；只有 State Machine 的 `CommandReceipt.status=committed` 才代表世界已变更。
+**目标遵循 MODULE_CONTRACTS.md §0.3 / §4–§6。** Combat Handler / 相关领域组装显式事实、Intent、固定规则绑定与 RNG 交 Stateless RE 求值；候选请求的命令/操作/Actor 或可信机械来源关联不变（AP-15，具体字段 OPEN）。RE 负责机械合法性与连锁，返回未提交结果。各领域应用自己的变化，共享设施提交；只有持久 `CommandReceipt.status=committed` 才代表世界已变更。分阶段可保留当前公开入口，不能让新旧 Handler 同时独立写同一事实。
 
 ```text
 Load validated CombatSnapshot / NonCombatSnapshot + Typed Intent
   + pinned RulesetBinding + explicit RNGContext
   -> Stateless Rule Engine evaluate（不得提交，无 Legacy 执行器依赖）
   -> accepted / rejected / needs_choice / unsupported
-  -> State Machine begin short transaction
-  -> Validate read set, versions, authorization, delta invariants, idempotency
+  -> Handler opens shared short transaction context
+  -> Shared facility: authorization / versions / original values / request / idempotency
+  -> Owning domains: structure / references / data lifecycle invariants
   -> Prepare Event / Signals -> Scope Discovery -> Evidence Capture / binding [stage protocol OPEN]
-  -> Apply all typed StateDelta + RNG
+  -> Character / Object / Effect / Combat interfaces apply their typed changes + RNG
   -> Persist authoritative Events / Signals + Event Evidence + CommandReceipt + Outbox
   -> Commit authoritative transaction [current SM: SQLite; replacement mapping requires validation]
   -> Return immutable CommandReceipt / publish perceptions / Narrator output
@@ -330,7 +332,7 @@ Load validated CombatSnapshot / NonCombatSnapshot + Typed Intent
 **核心约束**：
 
 - 不能在 SQLite 写事务中等待 LLM、Rule Engine 或远程调用；提交前重新验证输入版本/关联读集；冲突时废弃未提交规则结果并刷新授权视图；原样重试用原 command_id，修改 expected_world_version 等命令内容须新 ID，未提交不推进权威 RNG。
-- State Machine 持有权威 RNG 状态或流位置；求值使用独立的显式 RNGContext；accepted 返回 RNGTransition，无随机消耗时状态可不变，draws 仅可选审计辅助；未提交请求、规则拒绝、版本冲突均不得推进权威 RNG。重试遵守幂等回执，不得双掷骰或重复付款。
+- 共享提交设施持有权威 RNG 流/版本；求值使用独立显式 RNGContext，accepted 返回 RNGTransition。无随机消耗状态可不变，draws 仅可选审计辅助；未提交/拒绝/冲突不推进权威 RNG、不发布候选事件。角色/效果/战斗/RNG 必要变化同成同败。
 - Accepted Delta 使用封闭 Typed Operation Union，覆盖 HP/资源/库存/位置/回合/行动经济/Condition/Effect/Concentration/Reaction/Limited Uses 等全部连带变化；允许受限类型化复杂组件操作，禁止任意路径/JSON Patch/整份 Snapshot 覆盖。StateDelta、RNG、正式事件、CommandReceipt、Outbox 同事务提交，SM 不根据 ProposedEvents 重算伤害/HP。
 - Engine 的 ProposedEvents 无权威 event_id / event_seq；SM 保留 Mechanical Audit，按可信阶段语义形成可观察 Event / Signals，不能把每条机械审计自动送入 NPC Perception。同事务保存相关权威记录，提交后才发布授权投影；分流/阶段 ABI、事件型版本推进及复杂 Delta 仍 [OPEN; NOT IMPLEMENTED]。
 - 一次 RE 请求尽量完成同 Intent 下可连续结算的效果、自动触发与预声明 Reaction；确需中途选择则按 MODULE_CONTRACTS.md §8.3 的 Interrupt / Continuation 目标暂停、持久化并合法恢复。进度/版本/已支付资源与 RNG 须防重放、重掷和重复支付；等待/续算不占 SQLite 写事务。前置 needs_choice 不含这些完整中途语义，Result / Receipt / 前缀提交与取消等 ABI 仍 [OPEN; NOT IMPLEMENTED]。
@@ -338,7 +340,7 @@ Load validated CombatSnapshot / NonCombatSnapshot + Typed Intent
 - Perception 只消费 State Machine 的**已提交**事件及其事件时感知证据；Narrator 不得把规则求值结果当作已发生事实。
 - 上述步骤是逻辑依赖，阶段依据可在可信事件发生阶段保留，不能要求 Capture 一律读取全部 Delta 应用后的状态；最终与对应 Event 原子绑定。具体 SM / RE 阶段协议 [OPEN]，SM 不从 ProposedEvents 重算机械中间状态。
 
-本节是**目标接口语义**，并非现有 Rule Engine 已具备无状态 evaluate API 的声明。
+校验分责以 MC §6.5 为准：通用提交层不为每个法术/能力再写机械判定；确需规则适配须在明确边界记录覆盖范围。内部可信代码仍保留结构/不变量检查，RE accepted 不绕过权限、版本或提交失败；现有受限攻击专用白名单不能未经审计删除或冒称通用化。本节是目标语义，不扩大 MC §1.1 的受限本地实现/公共 API 状态。
 
 ### 5.5 声明式事件、作用域与链式效果
 
@@ -463,35 +465,36 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 - 公开事实、完成承诺、赠与物品只有在结构化意图合法执行并提交后才产生对应**世界副作用**；NPC 自称“我给你金币”不等于金币已转移。私人 Relationship 与其他 Meta 更新整批验证、以 evaluation_id 幂等原子保存，不自动产生公开世界事实。
 - Sub-agent 超时或 Schema / Meta 非法：当前有效 EVA 内有界重试/修正，耗尽保存 failed 与未完成 Observation；不能让 DM 静默冒充该 NPC 的独立决定。Action Intent 非法或执行失败独立反馈，不回滚合法 Meta、不重开已完成 EVA / 观察；事先批准的非 LLM 行动策略仍走独立命令授权。
 
-## 7. 战斗：单一权威状态与规则求值
+## 7. 战斗：有状态 Combat Handler 与跨领域提交
 
 ### 7.1 启动 Encounter
 
-**[DECIDED]** SM 决定启动，可以引用 Package 的可选 EncounterDefinition，也可基于当前权威状态动态组建 Encounter；动态参与者必须具可信、已通过规则验证的机械数据。Package 不提供启动执行 API，不因进入 Scene 自动新建或重置 NPC。
+**[DECIDED; NOT IMPLEMENTED]** Combat Handler 组织遭遇生命周期，可以引用 Package 的可选 EncounterDefinition，也可基于当前权威状态动态组建 Encounter；动态参与者须具可信、规则验证的机械数据。Package 不执行启动，不因进入 Scene 新建或重置 NPC。Handler 具体 API / 持久模型 OPEN。
 
-1. SM 核验启动命令的可信 principal、适用 Actor 或受信系统/世界事件机械来源、参战实体/资源/位置、当前状态及 Session 固定 RulesetBinding；生成完整相关 NonCombatSnapshot 与独立 RNGContext。
+1. Handler 经授权边界核验 principal / 适用 Actor 或系统来源，从 Session、实体/效果负责人读取完整必要事实、规则绑定与既有 RNG，准备 NonCombatSnapshot。
 2. 复用 RuleEvaluationRequest / RuleEvaluationResult，候选 operation_kind=combat.start，强类型 payload 描述启动参数。Engine 计算先攻与机械初始化，在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；不注册独立权威战斗对象。
-3. SM 在短 SQLite 事务重验命令键/版本/权限/Delta，原子建立权威 CombatState 与 phase=combat，提交相关 Character/World 状态、RNG、正式事件、CommandReceipt、Outbox，保留合法战前安全点。
+3. Handler 与 Session / Character / World / Effect 接口在同一短事务重验并建立遭遇、参战关系、流程进度及 phase=combat，共同提交全部必要状态、RNG、正式事件、Receipt / Outbox，保留合法战前安全点。
 
 combat.start / 候选 Typed Delta combat.create 均 **[PROPOSED; NOT IMPLEMENTED]**；完整字段/初始化映射 [OPEN]，不以整份权威 Snapshot 覆盖代替受限类型化操作。失败不留下部分有效 CombatState，不推进权威 RNG；重试遵守 (session_id, command_id)。
 
 ### 7.2 战斗期间
 
-- 每次 PC/NPC 的 Typed Intent 统一到 State Machine Command API。PC/Agent 提议由可信适配层传输，NPC 即时 Tactical Intent 由 SM 授权的 Combat Policy 产生；SM 核验控制权、轮次、机械可知范围和版本，调用 RE 后原子提交 Delta / RNG。NPC Agent 负责宏观目标/策略与后续认知，不要求每回合 EVA。
-- CombatState 包括回合顺序、行动预算、位置、Active Effects、Concentration、待处理 Reaction/Choice 等。State Machine **持有和持久化**这些字段但不自行计算规则；Rule Engine 不维护跨调用的私有战斗权威。
+- 外部 PC/Agent 提议沿现有命令边界分派给 Handler；Handler 根据已提交流程等待玩家或调用非 LLM Combat Policy。内部自动推进可直接用受控类型接口和共享事务，不把每步伪装成外部 Agent。控制权、目标可知范围、版本/前提仍重验，NPC Agent 保留宏观策略与后续认知。
+- Handler 持久管理遭遇、参战关系、当前回合/等待决定、已提交行动关联及继续推进所需信息；角色 HP/位置/背包和效果读取负责领域，不另建可独立写的副本。RE 无隐藏跨请求权威；其调用内候选状态和临时缓冲允许存在。
+- Handler 组织一次行动 RE 求值与共同提交，然后继续至下一决策边界、合法暂停或结束。回合索引、资源恢复、效果到期等由 RE 计算；Handler 应用结果，不能再次加回合或扣资源，一次攻击不默认结束整回合。自动推进有有界重试、无进展退出；调度预算 / Continuation Schema OPEN。
 - 战斗中打开门、拾取物品、喝药、触发机关等，若世界/机械效果能够在同一命令提交前完整求值，则同事务提交完整副作用，Engine 不提前扣费；已提交事件才触发的后续机械效果使用可靠、幂等的独立命令，不声称跨已提交事务原子（§5.5）。
 - 机械审计保留以便追溯/重放；已提交的可观察阶段才按事件时 Evidence / Signals 投影，后续可组织 WorldEpisode / EpisodeObservation。Narrator 只叙述玩家获准事实；审计全集或未提交结果不自动进入 NPC Context。
 - 即时动作、Reaction、自动效果和战斗触发不依赖 Planner / JEV LLM / Memory Gate / EVA。需要机械察觉时用可信确定性/RE 判定，未知不是已察觉；一次求值尽量连续结算，真实中途选择按 §5.4 的目标暂停。具体 Continuation ABI 仍 OPEN，不将复杂路径描述为现有支持。
 
 ### 7.3 战斗结束
 
-- Rule Engine 只计算结束条件和对应 State Delta/Rewards；State Machine 原子提交状态/任务/战利品/事件与最终 Receipt，并切换 `phase`。不存在“结束后从另一个权威战斗内存回写世界”的阶段。
+- RE 计算适用机械结束条件与 Delta/Rewards；Handler 组织负责领域共同提交状态/任务/战利品/事件/Receipt 并结束流程、切换 Session phase。不存在从第二份 HP/位置/背包回写世界的阶段。
 - 资源始终按原 Actor 的实际支付者归属记录；既有 `CombatOutcome.expended_resources` 的已知缺陷必须通过独立正确性用例检验，不能照搬旧有错误聚合。
-- 目标以整场 CombatEpisode 聚合各 NPC 的授权 EpisodeObservation；战时记录/战后聚合算法待游戏核心场景验证，不从结束态重造历史察觉，不让聚合阻塞即时行动或改写已记录结果。
+- Handler 协调同一个 CombatEpisode 开始与结束；Perception 聚合各角色实际已察觉经历，后续认知由 EVA 处理。取证须在能证明当时状态的阶段固定，不能从结束态补造历史；终结战斗与历史观察不可被当前变化改写。Handler 不包揽 Perception / JEV / EVA / 叙事；跨图感知、精细证据、战后同步及通用中断继续 OPEN。
 
 ### 7.4 活跃战斗恢复的 MVP 边界（SM-02）
 
-**统一持有并持久化 CombatState 不等于承诺精确的中途战斗续玩。** MVP 必须保证正常连续战斗和已提交动作的可靠性；非战斗 Session 恢复为发布要求。中途退出后的 PendingChoice、反应窗口、特殊效果延续和完整 Replay 能否精确恢复仍属于 Post-MVP 验证目标。
+**持久化 Handler 流程与领域状态不等于承诺精确的中途战斗续玩。** MVP 必须保证正常连续战斗和已提交动作的可靠性；非战斗 Session 恢复为发布要求。中途退出后的 PendingChoice、反应窗口、特殊效果延续和完整 Replay 精确恢复仍为 Post-MVP 验证目标。
 
 若进程中断且处于活跃战斗：系统不能宣称能够无损续玩；可以在确认不违反已提交副作用与版本要求时**经玩家确认**从战前 Checkpoint 重新开始，否则明确阻塞并给出故障信息。不能悄悄回滚已永久提交的规则操作。安全重新开始是否支持及限制条件需要独立验收。
 
@@ -520,7 +523,7 @@ OB 存档另需保存 Game Time 有效期/Retention、独立 Processing、定期
 ### 8.4 Replay 与审计
 
 - **世界 Replay**：可根据已提交的有序世界命令/事件恢复或核验；保留各 NPC 的 Observation 来源、投影版本与记忆提议回执；不要求 LLM 对话、记忆解释逐字重生成。
-- **机械 Replay**：以固定 Ruleset、已提交的 Snapshot/Intent/RNG 进度和确定性 Rule Evaluation 复算核验；由 State Machine 持久保存权威原始事实，Rule Engine 提供求值一致性。
+- **机械 Replay**：以固定 Ruleset、已提交的 Snapshot/Intent/RNG 进度和确定性 RE 复算核验；负责领域与共享提交设施保留必要原始事实/审计证据，RE 提供求值一致性。独立 Replay 不把全日志回灌普通求值。
 - **禁止**通过新一次随机执行重建已提交但回执不明确的命令；按 State Machine 的幂等记录恢复或阻塞。
 
 ### 8.5 State Machine 不可用
@@ -739,13 +742,14 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 | **SM-01** | 当前 SM 持久化基线 | Python + SQLite WAL、短事务及可靠持久化为当前实现基础；不永久冻结类/表/后端，改变实现须回归证明正确性 | **当前实现基线；后端非永久约束，见 MC §0.2** |
 | **SM-02** | 战斗中途精确恢复 | **MVP 不支持**，列入 Post-MVP；须有明确安全检查点、不可伪恢复及战后可靠结算 | **已确认** |
 | **SM-03** | 多 Agent 感知与记忆 | Event-level 流程保留为当前实现/资产；目标整场 CombatEpisode / EpisodeObservation，不要求每个机械事件独立 OB；任务与模型运行仍分离 | **[DECIDED]；目标映射未实现，见 MC §7.5** |
-| **SM-04** | 统一权威状态 | 同一事实一份权威，由可信运行层提交；不绑定旧类/表/仓库。RE 只求值，见 MC §0.2 / §4–§6 | **[DECIDED]；子系统替换映射 OPEN** |
+| **SM-04** | 状态权威（v0.16 修订旧独占限制） | 每项事实有明确负责领域；各领域可持久管理状态，一次操作共享提交/回滚，RE 只求值，见 MC §0.3 / §6.5 | **[DECIDED] 2026-10-12 修订；具体拆分 OPEN / NOT IMPLEMENTED** |
 | **SM-05** | 非交互 NPC 状态 | 简单游戏时钟日程；Inactive Lightweight Gate / Background Evaluation 可产生行动；不要求 Interactive Agent 激活或常驻 LLM | **已确认逻辑设计，具体阈值待实验** |
 | **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务/模式、EvaluationStatus / NPCStateVersion、原子 Meta 与可靠交接；切换直接取消旧有效 EVA 并新建、不等旧反馈；Host 管 Context / 模型 | **已确认原则；具体协议 Proposed / Not Implemented** |
 | **SM-07** | OB Processing / Retention / 调度 | OB 直接承担短期记忆；完成不等删除/长期 Memory；Game Time TTL、引用归档、到期保护 Pending Work；定期最大等待严格小于生命周期且留余量，Interactive 可选 Gate、无新 Background EVA | **[DECIDED] 2026-10-11；未实现** |
 | **SM-08** | Event-local / Signal-scoped Evidence | 逐 Event 对齐 Signals 实际阶段，逐 Signal 发现后取最小完整证据并集，Discovery 不判察觉；Event / Signals / Evidence / Outbox 同一 SQLite 事务，后续判断才形成 OB，见 MODULE_CONTRACTS.md §7 | **[DECIDED] 2026-10-12；开发分支世界路径已受限实现，RE 阶段协议 [OPEN; NOT IMPLEMENTED]，见 MODULE_CONTRACTS.md §1.1** |
 | **SM-09** | Evennia 优先采用（历史） | v0.14 曾提出优先整体采用及强制 EB 顺序，没有迁移或运行验收；有用机制研究与正确性原则保留 | **采用决定/强制顺序由 v0.15 / SM-10 撤回；整体迁移 [OPEN]** |
 | **SM-10** | SM＋RE 游戏核心演进 | 当前 SM＋RE 为开发/运行基础，基于证据重构/替换子系统；机制与早期 Agentic 验证交错，Evennia 仅可选评估 | **[DECIDED] 2026-10-12；具体机制/Schema [OPEN; NOT IMPLEMENTED]，无运行验收声明** |
+| **SM-11** | 有状态 Combat Handler | 持久遭遇/参战/等待/推进进度，组织规则求值和共同提交；不复制人物事实、不重算机械变化，见 §7 / MC §0.4 | **[DECIDED] 2026-10-12；API / 预算 / Continuation OPEN，重构 NOT IMPLEMENTED** |
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
 | S05 | `world_version` 与实体版本粒度 | MVP 先 Session 级版本；更高并发时评估细化 | 建议 |
 | S06 | NPC 认知 Agent 与即时 Combat Policy | 即时战术不依赖 LLM；至少一名敌方 NPC 独立认知/宏观决定并实际影响受控行为的验收保留，不要求其生成每次 Tactical Intent | [DECIDED]；策略/授权配置 [OPEN] |
@@ -766,6 +770,10 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 ---
 
 ## 13. 文档治理与下一步
+
+### v0.16 修订摘要（2026-10-12）
+
+遵循 MC v0.14 §0.3，替代单一 SM 独占状态限制；同步术语、数据责任、调用图、共享校验/提交和有状态 Combat Handler。保留历史实现基线、EVA 原子 Meta 与独立行动、观察证据/可靠处理及 MVP 恢复边界。只改文档，Handler 重构、RE 日志解耦和新 API 尚未实施；针对性后续验收见演进计划 §8.1。
 
 ### v0.15 修订摘要
 
@@ -817,6 +825,6 @@ OB 直接承担短期感知记忆，Processing 与 Retention 分离，SM 管 Gam
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
 - **文档优先级**：MODULE_CONTRACTS.md 是跨模块目标接口与所有权的最高规范；MVP Scope 约束产品范围，本文细化 SM 内部职责。历史代码与旧双权威用语不能覆盖这些目标约束，具体 ABI 的 Proposed / OPEN 状态保持不变。
 
-**下一步建议**：遵循 MODULE_CONTRACTS.md v0.13 §14 与演进计划 §8，审计当前依赖并选择最小能力场景，与早期 Agentic 验证交错取证；不是先做完整 Host，也不是先整体迁移框架。AGENT_ARCHITECTURE.md v0.13 的 Host 边界和既有 EVA 协议继续适用。README 为正式入口，不承担接口细节；本批不创建仓库或实施验证场景。
+**下一步建议**：遵循 MODULE_CONTRACTS.md v0.14 §14 与演进计划 §8，审计当前依赖并选择最小能力场景，与早期 Agentic 验证交错取证；不是先做完整 Host，也不是先整体迁移框架。AGENT_ARCHITECTURE.md v0.14 的 Host 边界和既有 EVA 协议继续适用。README 为正式入口，不承担接口细节；本批不创建仓库或实施验证场景。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**
