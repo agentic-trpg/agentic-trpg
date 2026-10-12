@@ -1,6 +1,6 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.9（同步 SM＋RE 主线与受控 Session 扩展；Coding Agent 可选，固定冒险基线不变，具体 Schema 尚未冻结）
+> **状态**：Draft v0.10（领域状态与共享提交；固定冒险基线不变，具体 Schema / 拆分尚未冻结或实施）
 >
 > **日期**：2026-10-12
 >
@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.13（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.15；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.2；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.14（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.16；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.3；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -16,7 +16,7 @@
 
 ### 1.1 目标
 
-首个 MVP 使用一个人工审阅、人工适配的 D&D 单人冒险包，初始化**一名玩家 PC**、场景、NPC、物体、谜题、必要的战斗与事件状态。由 State Machine 维护世界事实及持久化；Agent DM 主持和协调；需要独立决策的 NPC 使用 NPC Sub-agent；Rule Engine 计算受支持的规则与战斗机械状态转换（不持有权威战斗状态）。
+首个 MVP 使用人工审阅/适配的 D&D 单人冒险包，初始化**一名 PC**、场景、NPC、物体、谜题、必要战斗/事件状态。当前以 SM＋RE 为基础，目标按 MC §0.3 由负责领域管理事实并共享提交；Agent DM 主持，NPC Sub-agent 独立认知，RE 计算受支持机械转换，不持有隐藏跨请求权威状态。
 
 本 Schema 的直接验收对象是一份固定、经过审核的本地 *First Blush* 冒险包，但**公开 Schema、示例和测试数据不得包含其未经授权的具体剧情、对白、地图或实质性改编内容**。下面所有示例均为**专门编写的合成场景**，不是从该作品中抽取。
 
@@ -41,24 +41,24 @@
 
 ## 2. 模块责任与数据所有权
 
-**当前运行基础 `[DECIDED]`：** 以现有 SM＋RE 推进，以下 SM 为逻辑领域职责；保留可靠性与隐私语义，但允许重构/替换子系统，不冻结现有类/表/模块/接口。不同表可保存不同事实，同一事实只有一个权威来源，视图/缓存不是第二权威；禁止双重权威世界同步。替换原型使用独立测试 Session。整体 Evennia 迁移仅为 OPEN 可选研究，不是 Package 初始化前置条件。
+**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.14 §0.3 替代单一 SM 独占状态要求，各领域持久管理负责事实，一次操作共享提交。本文其余“SM”沿用当前加载/命令协议入口，具体内部类/表拆分仍 OPEN / NOT IMPLEMENTED。同一实体身份共用，视图/缓存不可独立写当前事实；Evennia 整体迁移仍可选 OPEN。
 
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
-| 剧本背景、场景结构、进入条件、起始模板 | Adventure Package 作者（MVP 手工） | State Machine | 初始化模板只能在创建 Session / 特定实体首次实例化时应用一次 |
-| PC Templates、职业/数值/装备的静态定义与审核 | Package 提供完整模板，玩家选择，机械属性经规则验证 | **State Machine**（选定角色的成长/HP/资源等运行状态） | 多个只读模板供选择，MVP 仍一玩家一 PC；不要求外部角色构建服务 |
-| NPC Profile、动机、角色可知事实 | Adventure Package | State Machine 管理内容实例、知识与记忆 | NPC 只收到自身允许访问的数据 |
-| NPC 认知、对白、宏观行为 | 对应 NPC Sub-agent | 仅为提议；SM 验证保存与授权 | Agent DM 不代人物作决定；至少一名敌方 Agent 自主性须验收 |
-| NPC 即时战术 / Reaction / 自动效果与战斗触发 | SM 协调受控 Combat Policy / 可信确定性机制与 RE | SM 验证并原子提交 | 不依赖 Planner / JEV LLM / Memory Gate / EVA；机械察觉未知不算已察觉 |
-| Scene、Quest、物体归属、剧情标志、世界时间 | Adventure Package 初始模板 | State Machine | 经过授权的结构化事件更新 |
-| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Stateless Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Engine 返回未提交的 Typed Delta / ProposedEvents / RNGTransition；SM 验证并原子提交，不重写规则 |
+| 剧本背景、场景结构、进入条件、起始模板 | Adventure Package 作者（MVP 手工） | Session / 世界领域 | 模板仅合法创建/首次实例化应用一次 |
+| PC Templates、职业/数值/装备的静态定义与审核 | Package 提供，玩家选择，规则验证 | Character / 库存负责领域 | 多模板只读，MVP 一玩家一 PC，无外部构建服务前提 |
+| NPC Profile、动机、初始可知事实与 Meta | Adventure Package | NPC Cognition，实体身份共用 | 保留来源/历史与当前版本，仅角色授权内容 |
+| NPC 认知、对白、宏观行为 | NPC Sub-agent 提议 | Cognition 验证 Meta；发布/行动独立授权 | Agent DM 不代人物选择；敌方宏观自主性仍验收 |
+| NPC 即时战术 / Reaction / 自动效果 | Combat Handler 组织 Policy / 可信机制 / RE | Combat / Character / Effect 等负责接口，共享提交 | 无认知 LLM 前置；机械察觉未知不算已察觉 |
+| Scene、Quest、物体归属、剧情标志、世界时间 | Package 初始模板 | 世界/物体负责领域；Session 时钟 | 授权结构化更新，不复制位置/归属 |
+| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | RE 显式规则求值 | Character / Effect / Combat Handler 各管事实，RNG 经共享设施 | 未提交 Delta / 事件 / RNG 共同生效，不复制规则或人物当前事实 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
 
-**静态 / 动态边界**：Package 可以定义静态规则数据、规则绑定和初始状态模板；经审核的规则数据版本由 Session 的 Pinned RulesetBinding 固定。模板只在合法初始化时应用，后续 Inventory / Equipment、Effect、Reaction、Combat、RNG 等动态状态均以 SM 的已提交 Runtime State 为准，不从 Package 重置或补写，不使 Package 成为第二权威来源。Engine 接收 SM 的完整 Typed Snapshot 与显式 RNG，不从 Package 推断当前状态；规则求值目标遵循 MODULE_CONTRACTS.md §4–§6，不依赖 Legacy LiveCombat。
+**静态 / 动态边界**：Package 定义静态数据、规则绑定与初始模板，Session 固定批准绑定；后续实体/库存/效果/战斗事实由相应领域接口维护，不从 Package 重置或补写。RE 接收完整必要显式事实与 RNG，不从模板推断当前状态，不依赖 Legacy LiveCombat。共享提交不要求每个内部字段变化包装外部命令，默认进程内共享持久化，内部写入仍经负责接口；不新增分布式设施（MC §0.3 / §4–§6）。
 
 固定包是 Session 初始基线。运行时新增对象、机制或 NPC 行为须作为获准 Session 扩展或运行态变化，不悄悄回写固定包，也不改变历史执行所依赖的定义。扩展来源、版本、启用记录及与 RulesetBinding 的关系 [OPEN; NOT IMPLEMENTED]，规范集中于 MC §3.6；扩展版本回滚不自动撤销已提交游戏事实。
 
-**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令统一 submit_command(TypedCommand)，携带 session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按具体类型适用的 actor_id（AP-15，见 §6.3 / MODULE_CONTRACTS.md §3）；创建前的幂等键见 §9.1a。规则求值无权威副作用，由 SM 按单个命令原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 评审冻结。
+**执行协议原则**：Package 定义「什么可以发生」与「何时可以提议」，不宣告「一个需要掷骰的行为已经成功」。已有 Session 的游戏命令统一 submit_command(TypedCommand)，携带 session_id / command_id、可信 principal_id、command_type、expected_world_version、强类型 payload 及按具体类型适用的 actor_id（AP-15，见 §6.3 / MODULE_CONTRACTS.md §3）；创建前的幂等键见 §9.1a。规则求值无权威副作用，由负责领域按单次操作经共享设施原子提交；已提交事件的后续效果使用可靠独立命令，不承诺跨已提交事务原子性（§7.3）。具体 HTTP/Python 消息格式将在 `MODULE_CONTRACTS.md` 评审冻结。
 
 ---
 
@@ -209,7 +209,7 @@ SceneInstance 由 SM 在一个 Session 内按需初始化一次，入口场景�
 
 SM 可基于当前权威状态动态启动 Encounter，不强制 EncounterDefinition 存在；参与实体及初始位置须可信、机械数据经过规则验证，不能从 LLM 文本伪造 Monster Stat Block。Encounter 的结局可以是胜利、撤退、投降等，不能预设敌人必须死亡；单人适配仍需人工追溯，不允许篡改已掷结果。
 
-先攻与战斗初始化复用统一 RuleEvaluationRequest / RuleEvaluationResult（MODULE_CONTRACTS.md §4–§6）。候选 operation_kind=`combat.start`，payload 为强类型启动参数，输入当前相关 **NonCombatSnapshot**、固定 RulesetBinding 与独立 RNGContext。Engine 在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；SM 重新验证并在同一事务建立权威 CombatState、相关状态、RNG、正式事件、CommandReceipt 和 Outbox；规则拒绝、求值故障或提交失败不建立部分有效 CombatState，不推进权威 RNG。
+先攻/初始化复用 RuleEvaluationRequest / Result（MC §4–§6），候选 `combat.start` 用强类型参数、相关 NonCombatSnapshot、固定绑定与显式 RNG。RE 返回未提交结果；Combat Handler 组织 Session、Character、Effect 等接口共同建立遭遇/参战/流程及必要变化、RNG/事件/Receipt/Outbox。失败无部分有效遭遇，不推进权威 RNG。Handler 不复制角色 HP/位置/背包，具体 API / 存储映射未冻结。
 
 `combat.start` / 其 Payload 及候选 Typed Delta `combat.create` 均 **[PROPOSED; NOT IMPLEMENTED]**；combat.create 的完整字段、初始化映射与不变量为 [OPEN]，不能覆盖整个权威 Snapshot。NPC Combat Policy 的即时 Typed Intent 与 Agent 宏观提议采用仍走 SM 授权边界，机械执行复用 RE / Commit；不宣称本轮已实现 Policy 绑定或共同 ABI。现有受限代码状态见 MODULE_CONTRACTS.md §1.1。
 
@@ -275,7 +275,7 @@ MVP 候选 `trigger.type`：
 
 区分两条提交路径：
 
-1. **同一命令提交前可完整求值**：基于已有权威状态/已提交触发来源，将所需世界效果与完整规则结果准备好，再由 SM 在一个短 SQLite 事务统一校验与提交全部变化、RNG、正式事件、CommandReceipt、触发历史及 Outbox。失败全部不写；求值在写事务外。
+1. **同一命令提交前可完整求值**：准备世界效果与规则结果，由负责领域接口在同一个共享短事务校验/提交全部变化、RNG、事件、Receipt、触发历史及 Outbox。失败全不写；求值在写锁外，不分成各领域先提交再补偿。
 2. **先前 WorldEvent 已提交后才触发机械效果**：保留该已提交事实，SM 可靠记录触发历史与后续命令交接，使用独立稳定 command_id 幂等求值/提交。触发消费标记与命令交接同事务保存，不能先标完成再遗失派发；重试复用原命令键并查询持久结果。不得虚构跨两个已提交事务的原子性，也不得因后续失败回滚先前事实。
 
 重复投递/重启不能重复伤害、领奖或重新掷已提交命令的骰点。once_per_session / once_per_scene 等重复政策按定义与作用域去重，同时保留触发来源；失败/待处理命令及 Outbox 可恢复。未提交 ProposedEvents 不能冒充已提交 Trigger。复杂效果组合、可靠调度的具体存储/编排与循环限额为 [OPEN]；不新增独立 Event Engine 服务、跨服务事务状态机或 ACK 协议。
@@ -410,7 +410,7 @@ bindings: []
 
 **事态与规则边界 `[DECIDED]`：** Package EventDefinition / Signal 模板是静态定义；运行层管理 Mechanical Audit、WorldEvent、WorldEpisode / EpisodeObservation，规范集中于 MC §7.5。整场战斗一个 CombatEpisode，不默认每 Round / Action 都建 Episode，或每机械事件包装 WorldEvent / 独立 OB；NPC 整段观察只聚合已察觉部分，不泄漏隐藏内容/因果。战时记录/战后聚合待游戏核心场景验证，可比较可信历史重建，禁止从结束态补造过去感知。Event-level OB / Outbox 是当前实现和可复用资产而非永久目标。Package 不嵌入动态 Episode / Memory，不增加 Episode 文件；Schema / 生命周期映射 OPEN，本批不删除历史或修改 EVA 完成协议。
 
-RE 正常求值使用 SM 的完整当前机械状态与必要可信历史账本，审计记录另供确定性重放，不反复加载完整 Combat Event Log。一次请求尽量结算可连续效果，真正中途选择遵循目标 Interrupt / Continuation 的持久暂停/恢复与 RNG 一致性，不占 SQLite 长事务；共同 ABI、前缀提交和最小支持路径 [OPEN]。这些属于运行时契约，不通过冒险脚本或模板补造，亦不改变 MVP 战斗崩溃精确续玩后置边界。
+RE 普通求值目标使用领域提供的完整必要当前机械事实；使用标记/效果时钟/关键时间点不另存精简历史日志。RE-HIST-01 审计读者、补齐依赖后再移除完整日志耦合；审计/Episode 证据保留，不置空 event_log、删历史表或全部 proposed_events。一次请求尽量结算可连续效果，真正中途选择遵循目标 Interrupt / Continuation 的持久暂停/恢复与 RNG 一致性，不占 SQLite 长事务；共同 ABI、前缀提交和最小支持路径 [OPEN]。这些属于运行时契约，不通过冒险脚本或模板补造，亦不改变 MVP 战斗崩溃精确续玩后置边界。
 
 ### 9.1 统一 Package Loading / Validation（AP-01～04）
 
@@ -455,7 +455,7 @@ errors / warnings 是带 code、位置/引用及原因的结构化问题，字�
 
 创建前尚无 Session，以可信 **(principal_id, command_id)** 在 SM 持久数据库中幂等处理；对规范化请求保留 Fingerprint，同键相同内容返回原 Session / 原创建结果，同键不同内容拒绝冲突。并发创建与响应丢失后的相同请求重试不能生成第二份 Session；不新增创建请求 ID、Receipt ID 或二次 ACK。普通游戏命令仍以 (session_id, command_id) 处理。
 
-模板机械验证、必要求值与准备在写事务外完成；SM 在短 SQLite 事务重新核验批准摘要/规则绑定、可信控制关系及创建键，原子初始化 SessionRecord、WorldState、当前必要的唯一 Actor/NPC Persistent State、选定 CharacterState、入口 SceneInstance、权威 RNG 等，并记录创建键到 Session/结果的映射。失败不得留下半初始化的有效 Session；完整创建记录与幂等映射同成同败。RNG 算法/编码不在本轮冻结。
+模板机械验证、必要求值与准备在写事务外完成；Session / 世界、Character / Cognition 等负责接口在共享短事务内重新核验批准摘要/规则绑定、可信控制关系及创建键，原子初始化 SessionRecord、WorldState、当前必要的唯一 Actor/NPC Persistent State、选定 CharacterState、入口 SceneInstance、权威 RNG 等，并记录创建键到 Session/结果的映射。失败不得留下半初始化的有效 Session；完整创建记录与幂等映射同成同败。RNG 算法/编码不在本轮冻结。
 
 返回 Session ID、创建结果及有限的 Package/版本等元数据；不返回全量 WorldState、GM Secret、隐藏 NPC 或未发现事件。后续视图按可信权限读取。创建其他独立 Session 使用新的创建 command_id；多个模板选择不意味着支持多玩家或 AI 队友。
 
@@ -466,9 +466,9 @@ Player intent / NPC decision proposal
     -> validate controller identity, visible facts, scene version
     -> decide: world operation / Engine rule invocation / narrative-only
     -> prepare unique command_id, expected_world_version
-    -> SM obtains full relevant Snapshot + pinned RulesetBinding + independent RNGContext
+    -> responsible Handler reads owning domains + pinned Session binding + explicit RNG
     -> Rule Engine evaluates if required (outside write transaction)
-    -> SM validates and atomically commits this command's state/RNG/events/receipt/Outbox
+    -> domain interfaces + one shared transaction commit state/RNG/events/receipt/Outbox
     -> receive typed committed result (or structured refusal)
     -> Perception persists authorized Observations; optional NPC updates validated separately
     -> DM narrates from the committed state
@@ -535,7 +535,7 @@ Player intent / NPC decision proposal
 | T01 | 文件格式 / Validator 技术 | YAML + 严格验证；Schema 设计独立于编程语言 | 待设计 |
 | T02 | 认知 Agent 与 Combat Policy 的配置 | 即时战术不依赖 LLM、敌方 Agent 宏观自主性验收已决定；认知覆盖、Policy/版本/目标授权如何结合既有 controller.kind 待审 | 原则 [DECIDED]；Schema [OPEN; NOT IMPLEMENTED] |
 | T03 | 内置完整 PC Templates 与未来外部导入 | 多模板只读供选择，机械属性规则验证，MVP 一玩家一 PC；无需外部构建服务 | [DECIDED]；外部导入 [OPEN] / 不实现 |
-| T04 | Scene / Encounter 运行时所有权 | SM 原子创建入口、后续 Scene 按需一次初始化，支持动态 Encounter | [DECIDED]；具体字段 [PROPOSED; NOT IMPLEMENTED] |
+| T04 | Scene / Encounter 运行时所有权 | Session / 世界负责一次初始化，Combat Handler 组织动态 Encounter，相关领域共享提交（MC §0.3） | [DECIDED]；具体字段 [PROPOSED; NOT IMPLEMENTED] |
 | T05 | RE 的 Stateless Hazard / 受控 NPC Typed Intent Evaluation | 区分 SM 锁定 RE 与 RE main，验证 Consumer 与 Policy 授权路径，不要求 LLM 逐次产出 Intent，缺失能力明确阻塞 | [OPEN]；版本差距见 MODULE_CONTRACTS.md §1.1 |
 | T06 | 单人遭遇、非致命训练、旧版规则数据 | 独立人工裁定并追溯记录，不篡改骰点 | 待场景审阅 |
 | T07 | 活跃战斗精确续玩 | MVP 仅承诺非战斗 Session 恢复；活跃战斗跨进程精确续玩在 MVP 之后 | 已确认范围 |
@@ -558,6 +558,10 @@ Player intent / NPC decision proposal
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：按演进计划 §8 的能力轨道，以最小审阅 Fixture / 初始化支持对象动作、真实 RE、NPC 私有视图与早期 Agentic 验证，随实际依赖交错推进；不等完整 Host 或整体框架迁移。包须验证后按需一次初始化，不因复用模板而重访重置。整体 Evennia 与 EB 验证仅为计划 §9 可选评估；本批不改整个 Package Schema 或实施系统。
+
+### v0.10 修订摘要（2026-10-12）
+
+按 MC v0.14 同步初始化/运行时的数据责任表、Combat Handler 与共享提交；固定 Package/Ruleset、单份实体当前事实、按需一次初始化、公开命令幂等及可靠后续效果不变。目标类/表/API 未冻结，未实施 Handler 重构或 RE 日志解耦，产品与恢复范围不扩张。
 
 ### v0.9 修订摘要
 

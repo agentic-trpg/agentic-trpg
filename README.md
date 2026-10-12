@@ -18,20 +18,28 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 
 Open-ended player actions, persistent world consequences, and NPC private cognition/autonomy remain the product goals. LLMs interpret context and propose adjudication, compositions, and character plans; the game core executes supported capabilities and makes their consequences affect later behavior. Agentic validation starts alongside the smallest usable mechanisms, without waiting for a complete conventional engine or full Host.
 
+**[DECIDED] Domain state ownership, 2026-10-12:** Each current fact has an explicit authoritative source and writer. Domain modules may manage and persist their own state; changes belonging to one indivisible game operation share a commit or rollback. This supersedes the requirement that one SM module own and approve every business detail. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) is the cross-module specification; concrete classes, tables, and APIs remain open and unimplemented.
+
 ## System architecture
 
 ```mermaid
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
-    Planner --> SM[Game Core: current State Machine<br/>Trusted execution and commits<br/>Subsystem evolution allowed]
-    SM -->|Authorize immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
-    Policy -->|Typed Intent| SM
-    SM -->|D&D only: Snapshot + Intent + RulesetBinding + RNGContext| RE[Stateless Rule Evaluation Engine]
-    RE -->|Uncommitted RuleEvaluationResult| SM
-    SM -->|Permitted experiences / CombatEpisode target| Perception[NPC Perception<br/>Authorized Observations]
-    Perception --> NPC[NPC Cognition and Macro Decisions<br/>via Agent Host]
-    NPC -->|Dialogue / Action Intents / Meta Proposals| SM
-    SM -->|Committed, authorized facts| Narrator[DM Narrator]
+    Planner --> Entry[Authorized command entry<br/>Current SM foundation]
+    Entry --> Handler[Stateful Combat Handler / domain handlers<br/>Target responsibilities]
+    Handler -->|Immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
+    Policy -->|Typed Intent| Handler
+    Handler -->|Explicit facts + Intent + RulesetBinding + RNG| RE[Stateless Rule Evaluation Engine]
+    RE -->|Uncommitted result| Handler
+    Handler --> Domains[Session / Character and World Object / Effect<br/>Each owns its facts and controlled writes]
+    Domains --> Commit[Shared transaction / versions / idempotency<br/>RNG / receipt / reliable notification]
+    Handler -->|Flow changes in the same transaction| Commit
+    Commit -->|Committed evidence / CombatEpisode boundaries| Perception[NPC Perception<br/>Authorized Observations]
+    Perception --> NPC[NPC LLM / Macro Decisions<br/>via Agent Host]
+    NPC -->|Meta Proposals| Cognition[NPC Cognition<br/>Versioned Meta / tasks]
+    Cognition -->|Atomic Meta completion and reliable handoff| Commit
+    Cognition -->|Independent Action Intents| Entry
+    Commit -->|Committed, authorized facts| Narrator[DM Narrator]
     Narrator --> Player
 ```
 
@@ -42,7 +50,8 @@ flowchart TD
 | **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
 | **NPC Sub-agents** | Independently interpret authorized experiences and propose dialogue, beliefs, memories, goals, and macro decisions. Immediate tactics use a controlled Combat Policy; they do not require an LLM call per action. |
 | **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
-| **Game Runtime / SM domain responsibilities** | Current SM foundation for authoritative world/mechanical/private NPC state and trusted commits. Preserve authorization, versions, idempotency, RNG, receipts, persistence, and reliable processing while allowing evidence-based subsystem replacement. One authoritative source per fact; no duplicate synchronized worlds. |
+| **Domain modules and shared commit facilities** | Session, Character/World Object, Effect, NPC Cognition, and Perception own their respective facts and controlled writes. Shared facilities enforce authorization, versions/original values, idempotency, atomicity, RNG commits, receipts, and reliable notifications. Current SM + RE remains the foundation; no duplicate HP, position, inventory, or entity directories. |
+| **Combat Handler** | Persist encounter/participant/turn flow, pending decisions, committed action links, and progress. Organize evaluation and shared commits, then advance to the next decision boundary, legal pause, or end. RE computes mechanical turn/resource/effect changes; Handler does not apply them twice. Concrete API and scheduling budgets remain open. |
 | **Rule Engine** | Deterministically evaluate supported action legality, attacks, damage, checks, saves, action economy, movement, spells, effects, and reactions. Return typed, *uncommitted* results without independent authoritative runtime state. |
 | **Visual Presentation** | Future presentation of maps, tokens, scenes, and animations. It is outside the first MVP. |
 
@@ -53,11 +62,13 @@ StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext
     → RuleEvaluationResult
 ```
 
-Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. The trusted runtime alone commits authoritative changes; `accepted` does not mean committed. These contracts remain target specifications, not a newly frozen ABI. Ordinary world operations need not invoke RE. D&D effects, reactions, and chained rules remain RE responsibilities rather than being duplicated in SM scripts or framework examples. Derived views and caches do not create another authoritative world.
+Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. Owning domains apply candidate changes in one shared transaction; `accepted` does not mean committed. These remain target specifications, not a frozen ABI or newly implemented API. Ordinary world operations need not invoke RE. D&D rules remain RE responsibilities. Domain invariants and commit checks remain required; a generic commit layer must not reimplement each spell or ability.
 
-Immediate Mechanical Response is coordinated by the State Machine through trusted deterministic mechanisms, Combat Policy, and Rule Engine. Tactics, reactions, automatic effects, and combat triggers do not depend on DM Planner, JEV LLM, Memory Gate, or EVA. Required mechanical perception must be established through trusted deterministic/rule paths; unknown does not mean perceived. Agent Cognitive Response handles subjective interpretation, long-term memory, relationships, goals, macro decisions, and character dialogue afterwards.
+Immediate Mechanical Response is organized by Combat Handler / responsible domain handlers through trusted mechanisms, Combat Policy, and RE. Tactics, reactions, automatic effects, and combat triggers do not depend on cognitive LLM calls. Required mechanical perception must have trusted evidence; unknown does not mean perceived. Handler advances from committed state with bounded retries and a no-progress exit; one attack does not automatically end a turn. NPC Cognition manages versioned private Meta while Host runs models. EVA completion, later actions, and perception processing retain separate transaction lifecycles.
 
-Normal rule evaluation targets current mechanical state plus necessary typed historical ledgers, while retaining audit history for deterministic replay. One request should resolve all continuously executable effects for its intent. Interrupt / Continuation targets durable pause/resume and consistent RNG without holding a database write transaction while waiting; its ABI and supported MVP paths remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) distinguishes implemented development-branch work from remaining targets and the pinned/latest RE version gap.
+Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Removing the full Combat Event Log from ordinary inputs requires RE-HIST-01 reader/dependency auditing first; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) retains the earlier static implementation and pinned/latest RE evidence.
+
+Default deployment continues in process with shared persistence. Reviewed internal modules may collaborate through controlled domain interfaces and a shared transaction context without wrapping every field change as JSON, RPC, or an external command. Shared storage does not authorize arbitrary table writes. One continuously executable operation commits together, with no write lock held while waiting for a player, model, external I/O, or long evaluation; neither a whole battle nor an entire NPC plan is one long transaction.
 
 The final goal is to refactor the Stateful Combat Engine into a Stateless Rule Evaluation Engine. Supported execution must not depend on legacy `_LiveCombat`, `CombatHandle`, `_REGISTRY`, or the Stateful Combat Orchestrator, including rebuilding them behind a permanent adapter. Correct Nat20 algorithms, resolvers, and declarative rules data may be reused with explicit state dependencies; local evaluation variables and temporary calculation contexts are allowed. Legacy Stateful APIs may remain briefly for isolated regression comparison, subject to the [migration completion criteria](docs/MODULE_CONTRACTS.md#141-stateful--stateless-完成标准-decided-not-implemented). Project specifications define the target; legacy code does not define the architecture.
 
@@ -84,7 +95,7 @@ The initial milestone is a **locally runnable, text-first, single-player adventu
 - One human player controls one player character, with no permanent AI party companions.
 - The AI Game Master supports dialogue, exploration, checks, combat, and adventure progression.
 - NPC Sub-agents independently make meaningful dialogue and macro decisions, including at least one enemy whose agent decisions demonstrably affect controlled behavior and later cognition; immediate tactical intents come from Combat Policy.
-- Rules-based outcomes are evaluated by the Rule Engine and committed by the State Machine.
+- Rules-based outcomes are evaluated by RE and committed through owning domain interfaces and shared facilities, evolving from the existing SM foundation.
 - The adventure is loaded from a manually prepared and reviewed Adventure Package.
 - A complete, repeatable end-to-end experience takes priority over broad ruleset coverage or visual polish.
 
@@ -118,7 +129,7 @@ The design documents are currently written primarily in Chinese. Start with MVP 
 | [MVP Scope](docs/MVP_SCOPE.md) | Product goals, first playable milestone, acceptance boundaries, and deferred features. |
 | [Module Contracts](docs/MODULE_CONTRACTS.md) | Highest cross-module target interface specification: final stateless architecture, state ownership, requests/results, atomic commits, and migration completion criteria. Detailed ABI proposals remain subject to review. |
 | [Game Core Evolution Plan](docs/GAME_CORE_EVOLUTION_PLAN.md) | SM + RE evolution, mechanism/component research, composable world consequences, early interleaved Agentic validation, and optional Evennia evaluation. Subordinate to Module Contracts. |
-| [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Current SM foundation, authoritative execution, perception and cognition boundaries, and replaceable subsystem design. |
+| [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Current SM foundation and target domain modules, stateful Combat Handler, shared commits, perception and cognition boundaries. File name retained. |
 | [Agent Architecture](docs/AGENT_ARCHITECTURE.md) | DM Planner/Narrator separation, NPC Sub-agents, Host responsibilities, and evaluation modes. |
 | [Adventure Package Schema](docs/ADVENTURE_PACKAGE_SCHEMA.md) | Static adventure content, validation, initialization, and runtime separation. |
 
@@ -138,6 +149,8 @@ The agreed invariants in Module Contracts establish architectural intent; draft 
 Develop by capability and evidence, with interleaved validation rather than a mandatory framework migration sequence. The [plan §8](docs/GAME_CORE_EVOLUTION_PLAN.md#8-主线能力轨道与早期-agentic-验证) covers object/action composition, Encounter/Activity control and real RE integration, perception/Policy, CombatEpisode experience, and early Agentic behavior. A candidate original scenario links an environmental change to perception, NPC investigation/routing/combat, and persistence.
 
 Use real-model trials to assess language, adjudication, private perspectives, and autonomous plans as soon as a minimal execution path exists. Use deterministic regressions separately for execution, authorization, RNG, retries, conflicts, and failure consistency. A full Host and Coding Agent are not prerequisites; none of these trials ran in this docs-only batch.
+
+The [domain migration acceptance targets](docs/GAME_CORE_EVOLUTION_PLAN.md#81-领域分责的分阶段验收-proposed-not-implemented) cover shared character facts, cross-domain rollback, stale/duplicate results, Handler advancement, log-independent mechanics/RNG, and immutable historical observations. Public entries and regressions may remain during migration, with one writer per fact throughout. This batch changes documentation only; Handler refactoring and RE log decoupling have not been implemented.
 
 EB-1–EB-3 are retained only as optional Evennia replacement evaluation in plan §9. Research must not block SM + RE progress. Reconsider whole-framework adoption only with concrete native reuse, independent integration evidence, and a reasonable comparison of remaining work; stop that migration option if it requires duplicate authority or fails critical correctness. Prototype implementations use independent test Sessions.
 
