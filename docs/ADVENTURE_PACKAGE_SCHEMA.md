@@ -1,14 +1,14 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.6（遵循 Module Contracts 的统一权威状态与 Stateless 目标，具体 Schema 尚未冻结为代码契约）
+> **状态**：Draft v0.7（遵循 Module Contracts 的机械/认知双路径与 WorldEpisode 目标，具体 Schema 尚未冻结为代码契约）
 >
-> **日期**：2026-10-10
+> **日期**：2026-10-12
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md)（跨模块目标接口最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.12；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md)（跨模块目标接口最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.13；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -44,7 +44,8 @@
 | 剧本背景、场景结构、进入条件、起始模板 | Adventure Package 作者（MVP 手工） | State Machine | 初始化模板只能在创建 Session / 特定实体首次实例化时应用一次 |
 | PC Templates、职业/数值/装备的静态定义与审核 | Package 提供完整模板，玩家选择，机械属性经规则验证 | **State Machine**（选定角色的成长/HP/资源等运行状态） | 多个只读模板供选择，MVP 仍一玩家一 PC；不要求外部角色构建服务 |
 | NPC Profile、动机、角色可知事实 | Adventure Package | State Machine 管理内容实例、知识与记忆 | NPC 只收到自身允许访问的数据 |
-| NPC 对话或行动选择 | 对应 NPC Sub-agent / 经审查的非 LLM 策略 | 仅为提议；不直接获得状态写权限 | Agent DM 不替需要独立决策的 NPC 直接编造行为 |
+| NPC 认知、对白、宏观行为 | 对应 NPC Sub-agent | 仅为提议；SM 验证保存与授权 | Agent DM 不代人物作决定；至少一名敌方 Agent 自主性须验收 |
+| NPC 即时战术 / Reaction / 自动效果与战斗触发 | SM 协调受控 Combat Policy / 可信确定性机制与 RE | SM 验证并原子提交 | 不依赖 Planner / JEV LLM / Memory Gate / EVA；机械察觉未知不算已察觉 |
 | Scene、Quest、物体归属、剧情标志、世界时间 | Adventure Package 初始模板 | State Machine | 经过授权的结构化事件更新 |
 | 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | Stateless Rule Engine 规则求值与显式输入 | **State Machine（所有已提交机械状态和 RNG）** | Engine 返回未提交的 Typed Delta / ProposedEvents / RNGTransition；SM 验证并原子提交，不重写规则 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
@@ -163,11 +164,13 @@ adventure-pack/
 
 | 值 | 用途 | 约束 |
 | --- | --- | --- |
-| `sub_agent` | 需要角色自主对话、策略/战术选择的 NPC | 按需执行；上下文隔离；只返回提议 |
-| `deterministic_policy` | 经审核的有限行为策略 | 非 LLM；不能伪称是一个自主推理的 NPC Agent |
+| `sub_agent` | 需要独立认知、对白、目标和宏观行为的 NPC | 按需执行；上下文隔离；只返回提议，不要求逐次战术 LLM |
+| `deterministic_policy` | 经审核的有限行为策略 / 即时 Combat Policy | 非 LLM；受 SM 授权，不能伪称独立认知 Agent |
 | `scripted_event` | 无自主决策的客观事件、情节援助、环境危险 | 不能作为长期 NPC 队友系统 |
 
-**待决策**：普通敌人是否默认调用 `sub_agent`。`MVP_SCOPE.md` 目前要求**至少一名敌方 NPC 的显式战术 Intent**来自独立 NPC Sub-agent；这与“每个普通怪物都要调用 LLM”不是一回事。实现可对其它低复杂度怪物使用 `deterministic_policy`，但不得把它当作已完成上述 Sub-agent 验收。
+**控制分层 `[DECIDED]`：** NPC Sub-agent 保留独立认知与宏观行为，受控 Combat Policy 承担即时战术，SM 协调确定性机制与 RE，不等待 Planner / JEV LLM / Memory Gate / EVA；所需机械察觉必须可信，未知不算已察觉。至少一名敌方 Agent 的宏观决定必须实际影响后续受控行为及战后认知，纯固定策略不能完成此验收；不再要求每次 Tactical Intent 来自 Sub-agent。
+
+同一 NPC 可以同时拥有认知 Agent 与即时 Combat Policy。`controller.kind` 是既有候选控制描述，不能据单个枚举把两层设为互斥；认知覆盖、Policy 绑定/版本、目标转换和权限的具体 Schema [PROPOSED / OPEN; NOT IMPLEMENTED]，本轮不新增正式字段、控制 API、Agent 或仓库。Package 只提供经审核的初始策略/约束定义，实际采用、后续目标/策略和合法执行由 SM 管理，不能从自然语言策略直接执行动作。
 
 ### 5.2a NPC Schedule 初始模板（可选、MVP 基础）
 
@@ -200,7 +203,7 @@ SM 可基于当前权威状态动态启动 Encounter，不强制 EncounterDefini
 
 先攻与战斗初始化复用统一 RuleEvaluationRequest / RuleEvaluationResult（MODULE_CONTRACTS.md §4–§6）。候选 operation_kind=`combat.start`，payload 为强类型启动参数，输入当前相关 **NonCombatSnapshot**、固定 RulesetBinding 与独立 RNGContext。Engine 在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；SM 重新验证并在同一事务建立权威 CombatState、相关状态、RNG、正式事件、CommandReceipt 和 Outbox；规则拒绝、求值故障或提交失败不建立部分有效 CombatState，不推进权威 RNG。
 
-`combat.start` / 其 Payload 及候选 Typed Delta `combat.create` 均 **[PROPOSED; NOT IMPLEMENTED]**；combat.create 的完整字段、初始化映射与不变量为 [OPEN]，不能覆盖整个权威 Snapshot。Enemy Sub-agent 的显式战术 Intent 仍走同一授权/求值/提交边界，不以本轮文档宣称现有公共 API 已支持。
+`combat.start` / 其 Payload 及候选 Typed Delta `combat.create` 均 **[PROPOSED; NOT IMPLEMENTED]**；combat.create 的完整字段、初始化映射与不变量为 [OPEN]，不能覆盖整个权威 Snapshot。NPC Combat Policy 的即时 Typed Intent 与 Agent 宏观提议采用仍走 SM 授权边界，机械执行复用 RE / Commit；不宣称本轮已实现 Policy 绑定或共同 ABI。现有受限代码状态见 MODULE_CONTRACTS.md §1.1。
 
 ### 6.2 `rule_bindings.yaml`
 
@@ -397,6 +400,10 @@ bindings: []
 
 ## 9. 加载、运行、保存与回放协议
 
+**事态与规则边界 `[DECIDED]`：** Package EventDefinition / Signal 模板是静态定义；Mechanical Audit、实际发生的 WorldEvent、WorldEpisode 及 NPC EpisodeObservation 是 SM 管理的运行时概念，定义集中于 MODULE_CONTRACTS.md §7.5。纯机械审计不自动生成感知；Episode 可跨多个命令/阶段，各阶段保留独立时间、可信 Evidence、Signals 与因果，观察只聚合已察觉部分。Package 不嵌入动态 Episode / Memory，也不要求新增 Episode 文件或重复状态存储；相关 Schema、增量/生命周期 [OPEN; NOT IMPLEMENTED]。
+
+RE 正常求值使用 SM 的完整当前机械状态与必要可信历史账本，审计记录另供确定性重放，不反复加载完整 Combat Event Log。一次请求尽量结算可连续效果，真正中途选择遵循目标 Interrupt / Continuation 的持久暂停/恢复与 RNG 一致性，不占 SQLite 长事务；共同 ABI、前缀提交和最小支持路径 [OPEN]。这些属于运行时契约，不通过冒险脚本或模板补造，亦不改变 MVP 战斗崩溃精确续玩后置边界。
+
 ### 9.1 统一 Package Loading / Validation（AP-01～04）
 
 **[DECIDED]** 对外只有一个逻辑加载入口，内部由 SM 完成安全解析、Schema、引用、规则绑定、声明式操作及必要元数据验证。没有独立加载/验证服务，不暴露可供创建 Session 使用的半验证状态。
@@ -518,10 +525,10 @@ Player intent / NPC decision proposal
 | 编号 | 问题 | MVP 默认提案 | 状态 |
 | --- | --- | --- | --- |
 | T01 | 文件格式 / Validator 技术 | YAML + 严格验证；Schema 设计独立于编程语言 | 待设计 |
-| T02 | NPC/Monster `controller.kind` 默认值 | 重要 NPC 按需 `sub_agent`；普通怪物可使用确定性策略，但至少一次敌方 Sub-agent Intent 必须完成验收 | **产品决策未完全确认** |
+| T02 | 认知 Agent 与 Combat Policy 的配置 | 即时战术不依赖 LLM、敌方 Agent 宏观自主性验收已决定；认知覆盖、Policy/版本/目标授权如何结合既有 controller.kind 待审 | 原则 [DECIDED]；Schema [OPEN; NOT IMPLEMENTED] |
 | T03 | 内置完整 PC Templates 与未来外部导入 | 多模板只读供选择，机械属性规则验证，MVP 一玩家一 PC；无需外部构建服务 | [DECIDED]；外部导入 [OPEN] / 不实现 |
 | T04 | Scene / Encounter 运行时所有权 | SM 原子创建入口、后续 Scene 按需一次初始化，支持动态 Encounter | [DECIDED]；具体字段 [PROPOSED; NOT IMPLEMENTED] |
-| T05 | Rule Engine 的 Stateless Hazard / NPC 显式战斗 Intent Evaluation | 先验证公开接口，缺失则作为 MVP 集成阻塞项 | 必须技术验证 |
+| T05 | RE 的 Stateless Hazard / 受控 NPC Typed Intent Evaluation | 区分 SM 锁定 RE 与 RE main，验证 Consumer 与 Policy 授权路径，不要求 LLM 逐次产出 Intent，缺失能力明确阻塞 | [OPEN]；版本差距见 MODULE_CONTRACTS.md §1.1 |
 | T06 | 单人遭遇、非致命训练、旧版规则数据 | 独立人工裁定并追溯记录，不篡改骰点 | 待场景审阅 |
 | T07 | 活跃战斗精确续玩 | MVP 仅承诺非战斗 Session 恢复；活跃战斗跨进程精确续玩在 MVP 之后 | 已确认范围 |
 | T08 | 世界事件条件 AST 的精确编码与限制 | 固定少量 Operator，默认拒绝未知类型 | 待实现确认 |
@@ -538,8 +545,12 @@ Player intent / NPC decision proposal
 
 1. 确认本 Schema 的最小字段和 Source/Secrets 边界可表示私有 *First Blush* 需求矩阵中的所有 **MVP Core** 场景，不要求记录作品原文。
 2. 建立一个**公开可提交的原创合成 Fixture**，通过引用、条件、幂等与权限校验。
-3. 明确 Rule Engine 已有接口与缺失接口，特别是 NPC 显式 Combat Intent 和受控 Hazard 结算；给出真正的 MVP 阻塞项。
-4. 确认普通 Monster 是否强制 Sub-agent；明确 MVP 至少一条敌方 NPC Sub-agent 战斗验证链。
+3. 明确锁定 RE 与最新 main 的接口差异，验证受控 Combat Policy 的 NPC Typed Intent / Hazard 求值及真实阶段 Evidence，给出集成阻塞项。
+4. 明确认知覆盖与 Policy 绑定的最小 Schema；至少一名敌方 Agent 的独立宏观决定实际影响受控行为与后续认知，不要求每次战术调用 Sub-agent。
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：先实现统一 `load_adventure_package`（内部含验证）+ SM 原子 Session Creation / Scene Persistence 的最小闭环，再加入 NPC Knowledge Projection、World Events/Skill Challenges，最后接入经审核的规则入口与完整 Golden Adventure。未通过一次可重访且可恢复的端到端测试前，不应扩成通用世界模拟系统。
+
+### v0.7 修订摘要
+
+同步机械/认知双路径与敌方 Agent 宏观自主性要求，消除逐次战术必须由 Sub-agent 生成的冲突；明确初始策略定义与 SM 运行时采用的边界。WorldEpisode / EpisodeObservation、机械审计分流及 Interrupt / Continuation 只引用总契约，不复制 Schema；具体字段/绑定、增量/生命周期仍 OPEN / NOT IMPLEMENTED。本轮仅文档，未修改 Package 格式、代码或依赖。

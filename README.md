@@ -20,10 +20,12 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
     Planner --> SM[State Machine<br/>Authoritative Runtime]
+    SM -->|Authorize immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
+    Policy -->|Typed Intent| SM
     SM -->|Typed Snapshot + Intent + Pinned RulesetBinding + Explicit RNGContext| RE[Stateless Rule Evaluation Engine]
     RE -->|Uncommitted RuleEvaluationResult| SM
     SM -->|Committed World Events| Perception[NPC Perception<br/>Authorized Observations]
-    Perception --> NPC[NPC Sub-agents<br/>via Agent Host]
+    Perception --> NPC[NPC Cognition and Macro Decisions<br/>via Agent Host]
     NPC -->|Dialogue / Action Intents / Meta Proposals| SM
     SM -->|Committed, authorized facts| Narrator[DM Narrator]
     Narrator --> Player
@@ -34,7 +36,7 @@ flowchart TD
 | Component | Responsibility |
 | --- | --- |
 | **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
-| **NPC Sub-agents** | Maintain character-specific perspectives and propose dialogue, actions, beliefs, memories, and goals. They do not directly mutate game state. |
+| **NPC Sub-agents** | Independently interpret authorized experiences and propose dialogue, beliefs, memories, goals, and macro decisions. Immediate tactics use a controlled Combat Policy; they do not require an LLM call per action. |
 | **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
 | **State Machine** | Exclusively own all authoritative runtime state, including world, character, combat, inventory, effects, reactions, RNG, and persistent NPC state. Enforce authorization, versions, idempotency, atomic commits, persistence, and observation delivery; do not recalculate D&D mechanics. |
 | **Rule Engine** | Deterministically evaluate supported action legality, attacks, damage, checks, saves, action economy, movement, spells, effects, and reactions. Return typed, *uncommitted* results without independent authoritative runtime state. |
@@ -49,6 +51,10 @@ StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext
 
 Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. Only the State Machine atomically commits state, RNG, authoritative events, receipts, and Outbox records; `accepted` does not mean committed.
 
+Immediate Mechanical Response is coordinated by the State Machine through trusted deterministic mechanisms, Combat Policy, and Rule Engine. Tactics, reactions, automatic effects, and combat triggers do not depend on DM Planner, JEV LLM, Memory Gate, or EVA. Required mechanical perception must be established through trusted deterministic/rule paths; unknown does not mean perceived. Agent Cognitive Response handles subjective interpretation, long-term memory, relationships, goals, macro decisions, and character dialogue afterwards.
+
+Normal rule evaluation targets current mechanical state plus necessary typed historical ledgers, while retaining audit history for deterministic replay. One request should resolve all continuously executable effects for its intent. Interrupt / Continuation targets durable pause/resume and consistent RNG without holding a SQLite write transaction while waiting; its ABI and supported MVP paths remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) distinguishes implemented development-branch work from remaining targets and the pinned/latest RE version gap.
+
 The final goal is to refactor the Stateful Combat Engine into a Stateless Rule Evaluation Engine. Supported execution must not depend on legacy `_LiveCombat`, `CombatHandle`, `_REGISTRY`, or the Stateful Combat Orchestrator, including rebuilding them behind a permanent adapter. Correct Nat20 algorithms, resolvers, and declarative rules data may be reused with explicit state dependencies; local evaluation variables and temporary calculation contexts are allowed. Legacy Stateful APIs may remain briefly for isolated regression comparison, subject to the [migration completion criteria](docs/MODULE_CONTRACTS.md#141-stateful--stateless-完成标准-decided-not-implemented). Project specifications define the target; legacy code does not define the architecture.
 
 ### Events, perception, and NPC knowledge
@@ -56,14 +62,16 @@ The final goal is to refactor the Stateful Combat Engine into a Stateless Rule E
 A committed world event is not automatically known to every character. The intended pipeline is:
 
 ```text
-Committed World Event + Observable Signals
-    → Scope-based NPC Discovery
+Event + Observable Signals → per-Signal Scope Discovery → Event-local Evidence
+    → Atomic commit with reliable Outbox
     → Deterministic / optional JEV Perception Judgment
-    → Authorized Observation
+    → Authorized stage Observation
     → Existing NPC Inbox and Evaluation Flow
 ```
 
 NPCs receive only observations they could perceive and are authorized to know. Their beliefs and memories are separate from objective world facts. Event observations do not automatically trigger an LLM call or change a character's goals.
+
+Mechanical Audit does not automatically enter perception. A target WorldEpisode groups related WorldEvent stages across commands, preserving each stage's occurrence time, Signals, trusted Evidence, and confirmed causal order. EpisodeObservation is the target logical unit for an NPC's perceived parts of that episode; it cannot expose unseen stages or hidden causes. Its schema, incremental delivery, and lifecycle remain open, and existing stage observations stay immutable and traceable. Optional JEV prepares later cognitive observations; it cannot unlock immediate mechanical responses.
 
 ## First MVP
 
@@ -71,7 +79,7 @@ The initial milestone is a **locally runnable, text-first, single-player adventu
 
 - One human player controls one player character, with no permanent AI party companions.
 - The AI Game Master supports dialogue, exploration, checks, combat, and adventure progression.
-- NPC Sub-agents can independently propose meaningful dialogue and actions, including at least one enemy combat-intent path.
+- NPC Sub-agents independently make meaningful dialogue and macro decisions, including at least one enemy whose agent decisions demonstrably affect controlled behavior and later cognition; immediate tactical intents come from Combat Policy.
 - Rules-based outcomes are evaluated by the Rule Engine and committed by the State Machine.
 - The adventure is loaded from a manually prepared and reviewed Adventure Package.
 - A complete, repeatable end-to-end experience takes priority over broad ruleset coverage or visual polish.
