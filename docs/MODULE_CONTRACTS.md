@@ -1,6 +1,6 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
-> **版本：** v0.12 / Draft for Review
+> **版本：** v0.13 / Draft for Review
 >
 > **日期：** 2026-10-12
 >
@@ -8,7 +8,7 @@
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.14、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.8、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.14、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.12、[Evennia Adoption Plan](./EVENNIA_ADOPTION_PLAN.md) v0.1（复用与验证计划，遵循本文）
+> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.15、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.9、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.15、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.13、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.2（演进与验证计划，遵循本文）
 >
 > **历史代码核对基线（§1 历史表沿用 v0.1，2026-10-12 前批有限核对见 §1.1）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -16,24 +16,26 @@
 
 ## 0. 用途与冻结策略
 
-本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。既有规则契约与最小安全边界继续作为设计依据；当前优先执行 §14 的 Evennia 验证，本批不冻结新 ABI，也不将全部 RE 迁移设为基础验证前提。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。v0.8 将 PER-01～PER-08 接入既有事件/可靠工作协议（§7），区分 Signal、察觉判断、授权观察与 NPC 认知。v0.9 明确 OB 短期记忆、独立 Processing / Retention、Game Time TTL / 引用归档、JEV 双职责和有界 EVA 调度，当时未修改 Signal / Event Evidence 计算。
+本文定义 Agent Host、State Machine、Rule Engine、Perception、NPC Evaluation、DM Narration 与 Adventure Package 的交接边界。既有规则契约与最小安全边界继续作为设计依据；当前以 SM＋RE 为开发/运行基础，按 §14 能力轨道交错验证游戏机制与 Agentic 行为；Evennia 整体迁移不是前置条件。本批不冻结新 ABI，也不将全部 RE 迁移设为最小验证前提。v0.5 统一 P0 Snapshot / Request / Result、封闭 Typed Delta、ProposedEvents、独立 RNG、CommandReceipt 和只读 Availability Query，并澄清 Invocation 错误不立即终止有效 EVA。v0.6 统一 Adventure Package 加载、可信创建幂等、静态模板与 SM 运行时边界（§10），候选 combat.start / rules.effect 复用本协议。v0.7 统一 submit_command / GM Adjudication、有限动态世界操作和 AP-15 按操作类型校验 Actor，并同步只读查询的早期开发计划。v0.8 将 PER-01～PER-08 接入既有事件/可靠工作协议（§7），区分 Signal、察觉判断、授权观察与 NPC 认知。v0.9 明确 OB 短期记忆、独立 Processing / Retention、Game Time TTL / 引用归档、JEV 双职责和有界 EVA 调度，当时未修改 Signal / Event Evidence 计算。
 
 **v0.10 修订摘要（Batch A）：** §7 明确 Event-local / Signal-scoped Evidence、逐 Signal 候选发现与事件级证据并集、可信字段完整性及同一 SQLite 原子提交；区分 `trpg-state-machine@5deea78` 历史实现与目标，新增 §12.5 合成验收目标，事件阶段采集协议仍 [OPEN]。本轮仅更新文档，不实现 Event-time Perception P1。既有状态所有权、Rule Engine、OB 生命周期、Game Time TTL、EVA 调度与 MVP 产品范围不变；结构决策标为 [DECIDED]，具体 API/字段实现仍 [NOT IMPLEMENTED]，未冻结细节单列 [OPEN]。
 
 **v0.11 修订摘要：** 统一 Immediate Mechanical Response / Agent Cognitive Response、WorldEpisode / EpisodeObservation、机械审计分流、状态式规则求值与 Interrupt / Continuation 目标；同步敌方 Agent 宏观自主性验收。§1 记录已核对的 SM / RE 基线，具体 Episode / Continuation ABI 仍 [OPEN; NOT IMPLEMENTED]。章节的目标接口标记不否认 §1 列明的受限本地实现；本轮只改文档，不升级依赖或实现接口。
 
-**v0.12 修订摘要：** 正式记录 Evennia 优先底座、保留 RE、允许 SM 迁移/重构（§0.2）；明确 CombatEpisode 的整场战斗边界（§7.5）与受控 Coding Agent 扩展目标（§3.6），EB-1～EB-3 优先验证（§14）。方向已定不等于迁移或运行验收完成；既有代码基线与规则完成状态不变。
+**v0.13 修订摘要：** 撤回未合并 v0.12 的 Evennia 优先采用决定与强制 EB 顺序，以现有 SM＋RE 补强程序化游戏核心（§0.2），允许基于证据重构/替换子系统。新增可组合世界机制原则（§3.7），受控扩展不绑定 Coding Agent；§14 将真实 Agentic 验证提前并与机制轨道交错。保留 CombatEpisode、信息隔离、可靠处理及已有规则边界；研究与具体方案不等于实现或验收。
 
-**规范层级 `[DECIDED]`：** 本文是跨模块目标接口与状态所有权的最高权威规范；MVP Scope 定义产品范围，State Machine / Agent Architecture 和 Adventure Package Schema 在此契约内细化职责，Evennia Adoption Plan 记录复用理由与验证门槛，README 提供入口。项目目标约束实现，旧 Nat20 / Rule Engine 代码只作为待重构的实现和回归证据，不能反过来限定目标架构。本文中的 [DECIDED] 约束持续有效；文档整体 Draft 不撤销这些决定，也不把 [PROPOSED] / [OPEN] 的具体 ABI 字段或实现选择升级为已批准。
+**v0.12 修订摘要（历史，采用决定及强制 EB 顺序已由 v0.13 撤回）：** 曾提出 Evennia 优先底座、保留 RE、允许 SM 迁移/重构；整场 CombatEpisode 与受控扩展原则保留。该批没有迁移或运行验收，代码基线与规则完成状态不变。
+
+**规范层级 `[DECIDED]`：** 本文是跨模块目标接口与状态所有权的最高权威规范；MVP Scope 定义产品范围，State Machine / Agent Architecture 和 Adventure Package Schema 在此契约内细化职责，Game Core Evolution Plan 记录能力演进、机制研究与验证门槛，README 提供入口。项目目标约束实现，旧 Nat20 / Rule Engine 代码只作为待重构的实现和回归证据，不能反过来限定目标架构。本文中的 [DECIDED] 约束持续有效；文档整体 Draft 不撤销这些决定，也不把 [PROPOSED] / [OPEN] 的具体 ABI 字段或实现选择升级为已批准。
 
 **必须满足的不变量 `[DECIDED]`：**
 
-1. 同一 Game Session 的每项游戏事实只有一个权威来源，游戏变化只由可信运行层验证并提交。本文 **State Machine / SM 指领域职责**，包括 World / Scene / Quest / Object、Character、Combat、资源/效果/Reaction、RNG、NPC 私有状态/观察/任务、版本与回执；不绑定旧 `trpg-state-machine` 的类、表结构或仓库。目标允许 Evennia 对象系统与领域服务分担不同事实，禁止同一事实在新旧 SM 各存一份并双向同步（§0.2）。
+1. 同一 Game Session 的每项游戏事实只有一个权威来源，游戏变化只由可信运行层验证并提交。本文 **State Machine / SM 指领域职责**，包括 World / Scene / Quest / Object、Character、Combat、资源/效果/Reaction、RNG、NPC 私有状态/观察/任务、版本与回执。`trpg-state-machine` 是当前开发与运行基础，但原则不冻结其类、表、模块、命令或 Event 管线；不同实现不能各存同一权威事实并双向同步（§0.2）。
 2. 最终 Rule Engine 是 **Stateless Rule Evaluation Engine**，彻底替代原 Stateful Combat 执行架构；不能持有独立权威 Runtime State 或直接提交数据库，也不能以持续扩张 Stateful Adapter 作为最终方案。其计算边界见 §4，迁移完成标准见 §14.1。
 3. `evaluation.status == "accepted"` 不等于 `commit.status == "committed"`；拟议事件不得提前发布为 WorldEvent。
 4. Agent 提交的是意图或提议，不是 HP、骰点、资源支付等机械事实；Narrator 消费已提交、经授权的事实。
 5. 可重试、确定性、版本和授权均在可信系统边界实现，不能仅依赖 LLM 自律。
-6. 可信提交必须保持原子性与短事务，**不得在写事务内等待 LLM 或长时间 Rule Evaluation**。SQLite + WAL 是旧 SM 的实现基线/原实施提案；Evennia 目标的存储映射、提交边界和数据库配置仍 [OPEN]，不以本轮固定后端或引入分布式协调。
+6. 可信提交必须保持原子性与短事务，**不得在写事务内等待 LLM 或长时间 Rule Evaluation**。Python + SQLite WAL 是当前 SM 实现基线，不是未来子系统或可选框架的永久后端约束；改变存储/提交实现须独立验证等价正确性，本批不固定新配置或引入分布式协调。
 7. NPC 只有一份 Persistent State；Interactive 活跃期间独占该 NPC 的 LLM 主观认知/自主行动，Background 一次性推理不需要 Interactive Agent Context。新消息/接口均为 `[PROPOSED; NOT IMPLEMENTED]`，架构原则确认不等于 API 已实现。
 
 8. SM 创建/批准 Evaluation Task、管 Gate / 模式 / Observation Completion；Host 仅 LLM Runtime，不持久管理权威游戏状态或完成结果。
@@ -51,17 +53,21 @@ Combat Policy 是 SM 协调的可信非 LLM 行为职责，不新增 Agent、服
 
 至少一名敌对 NPC 的 Agent 自主性仍须验收：证明其独立认知/宏观决定实际影响后续受控行为与战后认知；仅运行固定 Policy 不算完成。旧版“敌方 Sub-agent 必须生成每次战术 Intent”的要求由此取代，具体产品验收见 MVP_SCOPE.md A03 / G10。
 
-### 0.2 Evennia 采用与可替换运行实现 `[DECIDED]`
+### 0.2 SM＋RE 主线与游戏核心演进 [DECIDED]
 
-优先采用 Evennia 作为游戏运行底座，保留现有 D&D RE，允许迁移和重构 SM；这是已选择的技术方向，不是普通参考候选，也不代表迁移完成。实际复用对象、持久属性、模板、动作钩子、Script / 活动处理、建造工具和文字客户端，避免在 Evennia 内再造通用引擎。`agentic-trpg/Evennia_base` 为 **Planned / [NOT IMPLEMENTED]** 的游戏项目与运行集成层，优先固定版本依赖，不默认 fork Evennia；本轮不创建仓库、不安装依赖。
+当前以 **trpg-state-machine＋trpg-rules-engine 为开发和运行基础**，补强支持开放行动、持续世界后果与 NPC 私有认知/自主性的程序化游戏核心。LLM 负责语义、情境裁决、人物认知与宏观计划，代码执行可验证机制并让后果影响后续世界；不是先做完整传统 RPG 再加聊天 NPC。早期真实 Agentic 验证与机制建设交错，不以完整 Host 为前置条件（§14）。
 
-旧 `trpg-state-machine` 保留为现有实现、迁移资产与回归对照，暂不删除/归档/宣布废弃。优先保留已验证的授权、幂等、RNG、回执、规则集成、故障测试、NPC 私有状态与可靠处理语义，允许更换具体实现，不要求逐类逐表搬迁。新旧实现只用独立测试 Session 对照，不共同控制同一生产 Session。不同时接入 Evennia 与 Ranvier；CDDA / Ranvier 仅为机制借鉴来源。
+保留并回归验证授权、版本、幂等、RNG、回执、规则集成、故障一致性、NPC 私有状态与可靠处理语义；不冻结当前类、表、模块、命令集或逐 Event 管线。可以基于实际依赖与验证结果大幅重构或替换不合适的子系统，包括不兼容旧内部接口；不能仅为保持旧代码形状否决演进，也不能无证据认定现有能力全部缺失。
 
-不同表可保存不同事实，授权视图、只读 Snapshot 和缓存不构成第二权威；同一位置、资源或 NPC 状态不能因两套系统分别持有而双向同步。Evennia 对象/Attribute 与领域表如何映射、可信提交怎样覆盖状态/RNG/幂等/回执/可靠交接、对象缓存如何随回滚恢复，均 [OPEN]，须经过 EB 验证。下文 SQLite / WAL、现有表与 Event-level OB / Outbox 的具体描述属于当前实现或原实施方案，**不冻结 Evennia 的目标配置或永久处理粒度**；其中单一事实来源、原子性、信息隔离、防丢防重与已提交事实保护仍有效。
+基础设施、游戏机制、Agentic 能力是三个逻辑关注层，不要求三个服务/仓库。Evennia、CDDA、Ranvier 是机制与可能的组件复用研究来源；逐项区分设计借鉴、框架依赖与代码迁入，不预设全部自建或为少量特性同时接入两套整框架。可复用成熟组件，但不能把属性/回调可扩展等同任意玩法已有支持。
 
-本节取代旧文将“SM 唯一权威”解释为“当前 SM 实现/仓库必须不可替换”、将 SQLite 配置视为新底座已冻结、或将现有逐事件观察协议视为永久目标的约束。RE 仍无权威跨请求状态，显式 RNG、`accepted ≠ committed` 与已有规则完成状态不变；普通世界操作不必经过 RE，涉及 D&D 机械裁决才求值。不因采用 Evennia 重写攻击/伤害/豁免/支付/效果或采用示例战斗代替 D&D。
+**撤回未合并 v0.12 的“Evennia 优先采用已决定”及 EB-1～EB-3 强制主线顺序。** 整体 Evennia 迁移为 [OPEN] 备选，须有具体原生复用与独立集成证据后再决策；研究不阻塞当前主线。**agentic-trpg/Evennia_base** 改为 **Deferred / Optional evaluation**，不是已创建仓库或必须交付的新项目。
 
-具体复用、官方依据、EB-1～EB-3 证据和退出门槛见 [Evennia Adoption Plan](./EVENNIA_ADOPTION_PLAN.md)。方向 [DECIDED]，正式迁移范围、存储/接口 [PROPOSED / OPEN]，目标集成 [NOT IMPLEMENTED]，EB 运行验收未执行；本轮不升级依赖、不冻结新 ABI。
+不同表可保存不同事实，授权视图、只读 Snapshot、缓存只是派生数据；禁止维护两份相同权威世界并双向同步。替换原型与当前实现用独立测试 Session，不共同控制同一生产 Session。当前 SQLite / Event-level OB / Outbox 是实现与可复用资产，不是永久实现粒度；原子性、信息隔离、防丢防重和已提交事实保护继续有效，不授权删除既有观察/历史。
+
+RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG 和 **accepted ≠ committed**。普通世界操作不必全经 RE；D&D 持续效果、Reaction、连锁规则不能在 SM / Policy / 脚本另造一套公式或结算。不因框架研究重写规则、升级依赖、冻结新 ABI 或扩大已有完成状态。
+
+机制来源与复用限制、主线能力轨道和可选 EB 验证见 [Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) §4 / §8 / §9。技术主线 [DECIDED]，候选能力组合 [PROPOSED]，具体映射/Schema/替换方案 [OPEN]；未实现目标仍 [NOT IMPLEMENTED]。本轮只改文档，无代码或运行验收结果。
 
 ## 1. 实际代码基线与迁移缺口
 
@@ -76,16 +82,16 @@ Combat Policy 是 SM 协调的可信非 LLM 行为职责，不新增 Agent、服
 | `nat20_bridge/state.py` / `combat_execution.py` | CombatHandle、事件及重试 Receipt 存于 Bridge 进程内；请求指纹与 `request_id` 已有基础机制 | 可复用概念，不可用 Bridge 进程内缓存作为新 State Machine 的权威持久回执 |
 | `outcome.py` / `results.py` | `CombatOutcome` 是战斗关闭时的结果投影，并非每一步的完整 Delta | 新契约不得用 `CombatOutcome` 替代逐命令 StateDelta |
 
-以上表格沿用 v0.1 的历史代码审阅基线；本轮的有限静态代码核对另列 §1.1，不是完整规则审计或运行测试。迁移应按受支持规则建立状态依赖闭包与读写映射；旧 `_LiveCombat` / sidecar 盘点用于发现遗漏、区分权威/派生/临时数据，不能成为目标 Schema 蓝本、永久执行依赖或要求所有规则重构先复制完整旧对象的门槛。
+以上表格沿用 v0.1 的历史代码审阅基线；前批有限静态代码核对另列 §1.1，不是完整规则审计或运行测试。迁移应按受支持规则建立状态依赖闭包与读写映射；旧 `_LiveCombat` / sidecar 盘点用于发现遗漏、区分权威/派生/临时数据，不能成为目标 Schema 蓝本、永久执行依赖或要求所有规则重构先复制完整旧对象的门槛。
 
 ### 1.1 2026-10-12 跨仓库核对（静态代码 / Review，未重跑运行测试）
 
-以下为前一批静态核对的日期化记录，本次 Evennia docs-only Batch 保留原 SHA / 分支 / 能力范围，未刷新仓库现状或运行测试。后续 EB 实施前重新只读记录实际锁定版本，不把历史 main 与开发分支状态混同。
+以下为前一批静态核对的日期化记录；本次 docs-only 修订保留原 SHA / 分支 / 能力范围，未刷新其他仓库现状或运行测试。后续实现/可选验证前重新只读记录实际锁定版本，不把历史 main 与开发分支状态混同。
 
 | 基线 | 已核对事实与限制 |
 |---|---|
 | SM 开发集成分支 `feat/sm-b19-b22-gameplay-domain-bridge@058e79f` | Batch B 的 `event-evidence/4` 对已支持世界 Producer 阶段取证；Batch C（`9e7c130`）实现每 NPC 感知引用队列/独立放行；PERF-01/02（`6eb5855`）实现按需水位和 Pending 分页。核对 `events.py`、`perception_queue.py`、迁移及相应 Review；本轮不重设计这些实现 |
-| SM 远端 `main@b3f350f` | 尚未包含上述开发分支提交；“已完成 Batch C / PERF”指开发集成基线，不等于已合入 SM main 或已部署 |
+| SM 远端 `main@b3f350f`（该次核对基线） | 当时尚未包含上述开发分支提交；“已完成 Batch C / PERF”指开发集成基线，不等于已合入 SM main 或已部署 |
 | RE 阶段 Evidence | SM 的 `dnd_runtime.py` 对非空感知 Signals 仍记录 `engine.intermediate_phase_unavailable`；RE 返回最终 Delta / 有序 ProposedEvents，未提供已审计的逐阶段感知证据协议。不从结束态补历史，不把 `intent_submitted` 自动当真实外显动作 |
 | 机械审计 / Episode / Continuation | SM 仍包装 ProposedEvents 为 `combat.engine_event`；目标审计/可观察事实分流、WorldEpisode / EpisodeObservation 聚合与通用可持久恢复 Continuation 均 [NOT IMPLEMENTED]。受限预声明 Reaction 不代表通用中途选择已完成 |
 
@@ -197,11 +203,21 @@ Planner 可随 Action Intent 提出按可能执行结果分类的候选 observab
 
 Narrator 保持游戏世界内的沉浸叙事，不把内部 API、Schema 或 unsupported 错误直接作为玩家叙事。但能力限制不能成为“墙壁永久不可摧毁”“骰点已失败”或“世界已改变”的无依据世界事实；Planner 可以提出合理情境解释，权威效果仍须正式提交。必要的能力/运行时提示由文字入口以可理解方式表达，不伪造机械结果。Narrator 没有写权限。
 
-### 3.6 Coding Agent 与受控 Session 扩展 `[DECIDED; OPEN; NOT IMPLEMENTED]`
+### 3.6 受控动态能力与 Session 扩展 [DECIDED; OPEN; NOT IMPLEMENTED]
 
-运行时创建内容、组合已有机制、安装 NPC 行为是目标能力；区分配置/模板更新、已有能力组合和真正新增底层机制。前两类也须校验权限与定义，第三类生成代码还须经过验证、权限限制和受控启用。任意 Python / JavaScript 回调、人工审批或 reload 本身均不构成安全热部署；目标是准备完成后在安全边界启用，不是任意代码即时生效。完整 Coding Agent 扩展系统不是 EB-1 前置条件，也不是本批实现范围。
+运行时创建内容、组合已有机制、安装 NPC 行为是目标能力。区分配置/模板更新、已有能力组合和真正新增底层机制；已有能力优先受控组合，不要求每个自由行动都生成代码。Coding Agent 是可选代码生成手段，不是这些能力或早期 Agentic 验证的必需前置条件。
+
+各类扩展须校验定义、权限与资源预算；新增代码还须通过适用测试、受限执行与版本化受控启用。任意 Python / JavaScript 回调、人工审批或 reload 本身均不构成安全热部署；目标是准备完成后在安全边界启用，不是任意代码即时生效。本批不实现完整扩展系统。
 
 固定 Adventure Package 仍是 Session 初始基线。运行中新增对象、机制或行为须作为获准的 Session 扩展或运行态变化，不悄悄回写固定包或改变历史执行依赖的定义。扩展来源/版本/启用记录、在途操作版本绑定、行为状态迁移、失败隔离与恢复协议均 [OPEN]；回滚扩展版本不自动撤销已提交游戏事实。不得借扩展让 Host 成为权威状态所有者。
+
+### 3.7 可组合世界机制 [DECIDED; PROPOSED; OPEN; NOT IMPLEMENTED]
+
+**[DECIDED]** 游戏核心应以可复用动作、对象属性与关系表达可执行能力，并让提交后的变化被移动、感知、Policy 等后续机制实际消费；描述文字或不被机制读取的标记不能冒充实现。允许合理的任务/剧情 Flag，但不以每个对象专用命令或不透明 Flag 替代可组合物理/行为语义；也不开放任意 JSON Patch、SQL 或越权属性写入。
+
+**[PROPOSED; NOT IMPLEMENTED]** 原创候选：移动物体阻塞通道 → 移动/感知/Policy 按各自可信语义响应 → 移除障碍后相应限制解除（已发生后果不撤销）。LLM 可把无专用剧情分支的合理行动映射为已有能力组合；不支持或证据不足时明确反馈，不虚构执行结果。不同感官/规则不能共用未经验证的“阻塞即全不可感知”假设。
+
+当前覆盖范围须结合真实 SM / RE 依赖审计；对象关系、动作/活动生命周期、影响传播与保存映射 [OPEN]，此处不冻结 Schema 或新增执行 API。候选场景、成熟机制来源与早期 Agentic 验证证据统一见演进计划 §4–§8。
 
 ## 4. State Machine → Rule Engine：RuleEvaluationRequest（P0）
 
@@ -399,7 +415,7 @@ Typed Command -> authenticate / authorize / (session_id, command_id) lookup
    OR D&D adjudication: Snapshot + pinned RulesetBinding + RNGContext
       -> Rule Engine.evaluate(RuleEvaluationRequest)    [outside DB write transaction]
       -> accepted result
--> begin short authoritative commit transaction        [Evennia mapping OPEN]
+-> begin short authoritative commit transaction        [implementation may evolve]
    -> re-check fingerprint / existing CommandReceipt / authoritative versions
    -> re-check read set, permissions, ruleset pin, typed Delta invariants
    -> retain mechanical audit; determine observable events / Signals from trusted stages
@@ -414,7 +430,7 @@ Typed Command -> authenticate / authorize / (session_id, command_id) lookup
 
 上述事件步骤表示逻辑依赖，不要求等全部 Delta 应用完才采集证据；可信阶段取证及最终裁剪/绑定遵守 §7，不能用命令结束态冒充各事件阶段。具体阶段采集协议仍 [OPEN]，不由 SM 根据事件重算机械规则。
 
-**OCC / 幂等**：可信运行层承接 SM 的权威版本、Fingerprint、权限、Delta 不变量与短事务职责。过期 Snapshot 返回 version_conflict，或在授权/有界条件下重新取完整 Snapshot + RNG 重算，不能把旧 Delta 套在新状态上。持久唯一键 `(session_id, command_id)` 防双提交；相同已提交请求只查原回执，不重新求值。并发/重算的内部尝试不增加公共操作标识。SQLite 是旧 SM 的实现基线；Evennia 目标提交映射须经 EB-2 验证，包含数据库回滚后的对象、Attributes 和派生缓存一致性。
+**OCC / 幂等**：可信运行层承接 SM 的权威版本、Fingerprint、权限、Delta 不变量与短事务职责。过期 Snapshot 返回 version_conflict，或在授权/有界条件下重新取完整 Snapshot + RNG 重算，不能把旧 Delta 套在新状态上。持久唯一键 `(session_id, command_id)` 防双提交；相同已提交请求只查原回执，不重新求值。并发/重算的内部尝试不增加公共操作标识。SQLite 是当前 SM 实现基线；子系统/存储演进须验证数据库回滚后已持有对象引用及派生缓存的一致性，不能只看 SQL 回滚。
 
 ### 6.2 CommandReceipt `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
@@ -450,13 +466,13 @@ RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accept
 
 ### 6.4 原子性与故障 `[DECIDED]`
 
-采用现有 Event 协议时，`StateDelta + RNG + CommittedWorldEvent（含 Signals）+ Event Evidence / 稳定历史引用 + CommandReceipt + Outbox` 同属一个原子提交域，全部成功或全部失败；旧 SM 使用 SQLite 事务。目标运行层须保留等价正确性，具体数据库配置与提交映射 [OPEN]，不要求每条机械审计都生成 WorldEvent。LLM/Rule Engine 求值及对 UI/NPC 的发送均在写事务外；提交后投递失败须可靠、幂等补偿，不回滚已提交世界事实。Schema 错误、求值异常、传输故障、Commit failed/unknown 与 committed response failed 必须分别报告，不能一律要求重新掷骰。
+采用现有 Event 协议时，`StateDelta + RNG + CommittedWorldEvent（含 Signals）+ Event Evidence / 稳定历史引用 + CommandReceipt + Outbox` 同属一个原子提交域，全部成功或全部失败；当前 SM 使用 SQLite 事务。替换提交实现须保留等价正确性，新的数据库配置与映射不在本轮冻结，不要求每条机械审计都生成 WorldEvent。LLM/Rule Engine 求值及对 UI/NPC 的发送均在写事务外；提交后投递失败须可靠、幂等补偿，不回滚已提交世界事实。Schema 错误、求值异常、传输故障、Commit failed/unknown 与 committed response failed 必须分别报告，不能一律要求重新掷骰。
 
-模块边界不意味着分布式 ACID：Engine 没有要与可信运行层协调提交的第二份权威状态，也不建立 Evennia / 旧 SM 的双写同步。EB-2 必须验证 SQL 回滚后内存对象/缓存不会继续暴露或提交失败结果，不能只靠重启恢复；提交后回调也不自动等于可靠 Outbox。性能验证应分别测量 Snapshot 构建、规则求值、提交的 p50 / p95 延迟与内存；派生缓存可丢弃，正确性不依赖缓存跨请求存活。
+模块边界不意味着分布式 ACID：Engine 没有要与可信运行层协调提交的第二份权威状态，也不建立两份权威世界的双写同步。任何相关实现演进必须验证 SQL 回滚后内存对象/缓存不会继续暴露或提交失败结果，不能只靠重启恢复；提交后回调也不自动等于可靠 Outbox。性能验证应分别测量 Snapshot 构建、规则求值、提交的 p50 / p95 延迟与内存；派生缓存可丢弃，正确性不依赖缓存跨请求存活。
 
 ## 7. WorldEvent → Perception → NPC Evidence（P0/P1）
 
-§7.1–§7.4 描述当前 Event-level 协议及迁移资产；当保留这种事件记录时，其证据、原子性和信息隔离要求继续适用。它们不要求每次机械行动产生 WorldEvent / 独立 OB，也不冻结 Evennia 的永久观察粒度；完整事态目标见 §7.5。
+§7.1–§7.4 描述当前 Event-level 协议及可复用实现资产；当保留这种事件记录时，其证据、原子性和信息隔离要求继续适用。它们不要求每次机械行动产生 WorldEvent / 独立 OB，也不冻结未来运行层的永久观察粒度；完整事态目标见 §7.5。
 
 ### 7.1 CommittedWorldEvent 与 Observable Signals `[DECIDED; PROPOSED; NOT IMPLEMENTED]`
 
@@ -636,9 +652,11 @@ Retention 描述有效性与保留用途：Expired OB 可以同时需要归档�
 | EpisodeObservation | NPC 对完整事态的**已察觉部分**的目标逻辑观察单位；聚合其合法阶段结果，不泄漏未察觉阶段、隐藏身份或客观因果边 |
 | Long-term Memory | NPC EVA 对经历的主观长期认知提议，由 SM 验证持久化；不自动从 Episode / OB 复制，不必每个 Episode 都生成 |
 
+机械审计、局部对象通知、感知刺激与认知观察各有用途；局部通知不证明 NPC 察觉，刺激也不自动成为认知 OB。不由这些逻辑区别自动引入新数据库、队列或总线；具体交接仍需设计并复用可靠边界。
+
 EpisodeObservation 是 NPC 对整段经历的逻辑观察单位。已记录的阶段感知结果保持不可变、可追溯，不能因后续阶段加入而改写此前 Positive / Negative，或把 Unresolved 补成已察觉。运行时感知可支持即时行为，不等待 EVA 或战斗结束；战后可统一聚合 NPC 的整体观察。聚合允许只有声音、后续结果或局部经历，不能泄漏未察觉内容、隐藏身份或因果；NPC 对原因的猜测只能是主观 Belief。
 
-**[PROPOSED; OPEN; NOT IMPLEMENTED]** 战时保存必要感知结果或证据、战后聚合是 EB-3 待验证方案，可与使用可信历史记录的重建比较，不是冻结算法；禁止从战斗结束态补造过去感知。Episode 身份/起止/因果、增量交付、去重、证据 Schema 及 Processing / Retention / TTL / SourceReference 映射仍须设计。现有 Event-level OB / Outbox 是当前实现和迁移资产，不是永久目标；此决定替代“每个机械 Event 必须有独立 OB”的目标解释，不授权删除已有观察或历史记录。映射批准前既有 Inbox / Work / Gate / EVA、Game Time TTL、Pending 保护、模式独占、任务标识与完成协议继续有效，本批不重新设计这些协议。
+**[PROPOSED; OPEN; NOT IMPLEMENTED]** 战时保存必要感知结果或证据、战后聚合是游戏核心演进的待验证方案，可与使用可信历史记录的重建比较，不是冻结算法；禁止从战斗结束态补造过去感知。Episode 身份/起止/因果、增量交付、去重、证据 Schema 及 Processing / Retention / TTL / SourceReference 映射仍须设计。现有 Event-level OB / Outbox 是当前实现和可复用资产，不是永久目标；此决定替代“每个机械 Event 必须有独立 OB”的目标解释，不授权删除已有观察或历史记录。映射批准前既有 Inbox / Work / Gate / EVA、Game Time TTL、Pending 保护、模式独占、任务标识与完成协议继续有效，本批不重新设计这些协议。
 
 ## 8. Pending Choice / Reaction / Continuation（P0 语义，MVP 限制实现）
 
@@ -1045,20 +1063,20 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 | C-23 | CombatEpisode / EpisodeObservation 的共同协议？ | 一场完整战斗一个 CombatEpisode、整段经历只聚合已察觉部分 [DECIDED]；战时取证/战后聚合与可信历史重建比较 [PROPOSED]，身份/边界/因果、证据与生命周期映射 [OPEN; NOT IMPLEMENTED] |
 | C-24 | Mechanical Audit 分流、RE 阶段 Evidence 与历史摘要？ | 目标 [DECIDED]；需审核真实事件语义、感知/机械字段依赖、审计保留/重放和版本迁移，不能从最终状态或 intent_submitted 虚构外显阶段；共同 ABI [OPEN; NOT IMPLEMENTED] |
-| C-25 | Evennia 权威事实、数据库与提交边界如何映射？ | 采用方向及禁止相同事实双重权威 [DECIDED]；对象/领域服务/存储分工、缓存回滚与可靠通知须经 EB-1 / EB-2 验证 [OPEN; NOT IMPLEMENTED] |
-| C-26 | Coding Agent 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；来源/版本/权限/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
+| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线与单一事实权威 [DECIDED]；对象关系、提交/缓存映射和子系统替换 [OPEN]，组件或整体 Evennia 仅可选评估，不要求双写兼容旧形状 |
+| C-26 | 动态能力与 Session 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；Coding Agent 可选；来源/版本/权限/预算/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
 
-## 14. 建议实施顺序（后续验证，不是本批实现授权）
+## 14. 能力驱动的交错验证（后续计划，不是本批实现授权）
 
-**[DECIDED]** Evennia 采用决定替代 v0.11 中以自建 SM / SQLite 闭环为先的开发顺序；旧实现与历史证据保留。后续先按 [采用计划 §8](./EVENNIA_ADOPTION_PLAN.md#8-eb-1eb-3-验证计划-proposed-not-implemented) 执行阶段验证，各阶段结果目前均未取得：
+**[DECIDED]** 以现有 SM＋RE 推进游戏核心，替代 v0.12 的 Evennia 必经验证顺序。按 [演进计划 §8](./GAME_CORE_EVOLUTION_PLAN.md#8-主线能力轨道与早期-agentic-验证) 交错验证对象/动作组合、Encounter / Activity 与真实 RE、当前感知/Policy、Episode 经历和早期 Agentic 行为；这些是能力轨道，不是四个未经审计的代码 Batch 或必须串行的大工程。
 
-1. **EB-1 原生世界基础：** 两房间、门、NPC、文字交互、运行时对象创建/行为配置与正常重启持久性，证明实际复用框架。
-2. **EB-2 真实 RE 集成：** 固定一个已支持操作与版本，验证唯一权威、显式 RNG、幂等、冲突、故障、回滚后对象/缓存一致性及提交后可靠通知。无需同时升级所有 RE 协议；受限旧集成不等于完整 Stateless 迁移完成。
-3. **EB-3 运行机制与信息隔离：** 连续非 LLM 行为、目标离开后重查、受控版本切换、授权视图及最小 CombatEpisode 经历记录；不代表完整 Host、安全沙箱或通用 Continuation。
+先选择最小原创纵向场景，例如环境改变 → 可信感知 → NPC 调查/绕行/必要战斗 → 持久化，按实际依赖补足机制。一旦最小可信执行路径具备就接入受限真实模型，验证无专用分支的合理自然语言行动、世界后果消费、NPC 私有信息差异及自主计划真正执行；不等完整传统引擎或完整 Host，也不无限期推迟 Agentic 验证。至少一名敌方 Agent 的宏观自主性与既有模式独占/完成协议继续验收。
 
-若必须大范围重写框架、维持相同事实双重权威，或无法满足关键正确性，应停止整体迁移并保留可复用设计，不自动转接另一框架。阶段通过后才另行安排完整 Package / Host / NPC 认知集成与单人文字 MVP；至少一名敌方 Agent 的宏观自主性、既有模式独占/任务完成语义及私有内容边界仍须验收。完整 Coding Agent 扩展系统不阻塞 EB-1。
+真实模型实验提供语义/体验/自主性证据；确定性回归单独验证执行、权限、版本、幂等、RNG、延迟/重复/失败输出、提交故障和缓存一致性。两者不能互相冒充，本轮均未运行。受控动态扩展目标保留，Coding Agent 不是每个自由行动或首个纵向场景前置条件。
 
-RE 的能力/依赖盘点及 Stateless 迁移继续按独立切片推进，复用算法并去除隐藏状态；原有完整完成标准保留于 §14.1，不将其全部工作设为 EB-1 / EB-2 前置条件，不以 Adapter、文件数量或框架采用宣布规则迁移完成。
+Evennia EB-1～EB-3 仅为演进计划 §9 的**可选替换评估**，不阻塞主线；需要具体可复用能力、独立集成证据和后续工作比较才重新考虑整体采用。原生复用、真实 RE、私有视图、调度/后果及回滚缓存正确性须实证；重大接口差异本身不否决替换，Python/回调能力本身也不证明适用。
+
+RE 能力/依赖盘点与 Stateless 迁移继续按独立切片推进，复用算法并去除隐藏状态。§14.1 的完整完成标准保留，不把全部迁移设为最小能力/可选原型验证前提，也不以 Adapter、文件数量或框架研究宣布完成。
 
 ### 14.1 Stateful → Stateless 完成标准 `[DECIDED; NOT IMPLEMENTED]`
 
@@ -1066,14 +1084,14 @@ RE 的能力/依赖盘点及 Stateless 迁移继续按独立切片推进，复�
 - **旧依赖退出：** 最终 Rule Engine 求值与 SM 集成不再导入、构建、恢复或调用 `_LiveCombat`、`CombatHandle`、`_REGISTRY`、Stateful Combat Orchestrator；每个迁移切片提供依赖检查及实际执行证据。旧 API 只限隔离的回归对照；相关能力完成独立回归并切换全部受支持调用方后，移除其旧生产入口，能力清单完成后退出旧执行器。
 - **显式输入/输出：** 完整版本化 Snapshot、Typed Intent、Pinned RulesetBinding 和 Explicit RNGContext 足以求值；无隐藏可变 Session 状态或全局 RNG。同一固定输入得到相同结果，所有状态变化、候选事件、RNG 转换及实际 ReadSet 显式返回。
 - **规则与生命周期等价：** 复用正确算法，独立验证既有 Attack / Damage / Check / Save、资源归属、行动经济、移动、法术、效果、反应及跨回合生命周期等所保留能力；旧执行器对照不能替代独立期望结果，也不能把旧缺陷作为正确标准。
-- **单一提交域：** 可信运行层承接 SM 职责，在经验证的提交边界内校验并原子提交 Delta / RNG 及相关 Events / Receipt / 可靠通知记录；具体 Evennia 存储映射仍 OPEN。注入失败、冲突、重复命令、响应丢失和受支持恢复场景证明无部分写入、失败缓存泄漏、重掷骰或双扣费；未提交结果不进入 Perception / Narration。活跃战斗精确恢复仍遵守 MVP 的 Post-MVP 边界。
+- **单一提交域：** 可信运行层承接 SM 职责，在经验证的提交边界内校验并原子提交 Delta / RNG 及相关 Events / Receipt / 可靠通知记录；具体子系统替换的存储映射仍 OPEN。注入失败、冲突、重复命令、响应丢失和受支持恢复场景证明无部分写入、失败缓存泄漏、重掷骰或双扣费；未提交结果不进入 Perception / Narration。活跃战斗精确恢复仍遵守 MVP 的 Post-MVP 边界。
 - **进度指标：** 首先报告已消除/尚存的 Stateful 执行依赖，以及原有规则能力迁移覆盖；另报新规则覆盖和正确性，不以 Adapter、代码文件或新增规则数量宣称架构迁移完成。
 
 ### 本文批准条件
 
 - 所有 P0 输入/输出/状态/失败语义没有“谁负责提交”的歧义。
 - 提议的字段能完整表达目标规则语义并有可验证的实现路径；历史 Engine 仅用于查漏与回归，不限定目标结构，不能遗漏 Recharge/资源归属、Reaction、RNG 等状态。
-- 一次跨领域操作有可验证的单一原子提交域；Evennia 数据库/对象缓存/可靠通知映射须经 EB-2 验证，不能仅由旧 SQLite 设计推定通过。
+- 一次跨领域操作有可验证的单一原子提交域；实际提交实现、对象缓存和可靠通知必须有故障验证，不能仅由既有 SQLite 设计或可选框架能力推定通过。
 - 三种关系严格分开：**Proposal ≠ Evaluation ≠ Committed World Fact**；**Event Evidence ≠ NPC Belief**。
 - 明确哪些规则还没有足够的实现证据或必须在 MVP 中降级/拒绝。
 - 具体 ABI 评审通过前仍为草案，已有 [DECIDED] 架构约束继续有效；不得把任何目标接口当作已实现的公共 API。

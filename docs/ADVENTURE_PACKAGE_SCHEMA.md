@@ -1,6 +1,6 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.8（同步 Evennia 方向与受控 Session 扩展；固定冒险基线不变，具体 Schema 尚未冻结）
+> **状态**：Draft v0.9（同步 SM＋RE 主线与受控 Session 扩展；Coding Agent 可选，固定冒险基线不变，具体 Schema 尚未冻结）
 >
 > **日期**：2026-10-12
 >
@@ -8,7 +8,7 @@
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.12（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.14；[`EVENNIA_ADOPTION_PLAN.md`](./EVENNIA_ADOPTION_PLAN.md) v0.1；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.13（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.15；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.2；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -31,7 +31,7 @@
 - 把所有 D&D 法术、规则和怪物能力补齐；未知机制应标记为待映射/不支持。
 - 保证活跃 Combat 可以跨进程精确续玩（已明确放到 Post-MVP）。
 
-上述任意脚本限制针对静态包的直接执行权限，不禁止 MC §3.6 的受控 Session 扩展目标。配置/模板、已有能力组合与新增机制须分别验证并受控启用；回调、人工审批或 reload 不等于安全热部署，完整扩展系统不是 EB-1 前置条件。本批不重新设计 Package Schema。
+上述任意脚本限制针对静态包的直接执行权限，不禁止 MC §3.6 的受控 Session 扩展目标。配置/模板、已有能力组合与新增机制须分别验证并受控启用；回调、人工审批或 reload 不等于安全热部署，Coding Agent 仅为可选生成手段，不要求每个自由行动生成代码，也不以完整扩展系统阻塞早期 Agentic 验证。本批不重新设计 Package Schema。
 
 ### 1.3 设计取舍
 
@@ -41,7 +41,7 @@
 
 ## 2. 模块责任与数据所有权
 
-**Evennia 映射 `[DECIDED; OPEN]`：** 下表 SM 是逻辑领域职责，允许由 Evennia 对象系统与新增领域服务承接，不绑定旧类/表/仓库。不同表可保存不同事实，同一事实只有一个权威来源，授权视图/缓存不是第二权威；不得默认与旧 SM 双写同步。目标存储/提交/数据库配置待 EB 验证，旧 SM 暂保留为迁移资产和独立 Session 回归对照。
+**当前运行基础 `[DECIDED]`：** 以现有 SM＋RE 推进，以下 SM 为逻辑领域职责；保留可靠性与隐私语义，但允许重构/替换子系统，不冻结现有类/表/模块/接口。不同表可保存不同事实，同一事实只有一个权威来源，视图/缓存不是第二权威；禁止双重权威世界同步。替换原型使用独立测试 Session。整体 Evennia 迁移仅为 OPEN 可选研究，不是 Package 初始化前置条件。
 
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
@@ -408,7 +408,7 @@ bindings: []
 
 ## 9. 加载、运行、保存与回放协议
 
-**事态与规则边界 `[DECIDED]`：** Package EventDefinition / Signal 模板是静态定义；运行层管理 Mechanical Audit、WorldEvent、WorldEpisode / EpisodeObservation，规范集中于 MC §7.5。整场战斗一个 CombatEpisode，不默认每 Round / Action 都建 Episode，或每机械事件包装 WorldEvent / 独立 OB；NPC 整段观察只聚合已察觉部分，不泄漏隐藏内容/因果。战时记录/战后聚合待 EB-3 验证，可比较可信历史重建，禁止从结束态补造过去感知。Event-level OB / Outbox 是迁移资产而非永久目标。Package 不嵌入动态 Episode / Memory，不增加 Episode 文件；Schema / 生命周期映射 OPEN，本批不删除历史或修改 EVA 完成协议。
+**事态与规则边界 `[DECIDED]`：** Package EventDefinition / Signal 模板是静态定义；运行层管理 Mechanical Audit、WorldEvent、WorldEpisode / EpisodeObservation，规范集中于 MC §7.5。整场战斗一个 CombatEpisode，不默认每 Round / Action 都建 Episode，或每机械事件包装 WorldEvent / 独立 OB；NPC 整段观察只聚合已察觉部分，不泄漏隐藏内容/因果。战时记录/战后聚合待游戏核心场景验证，可比较可信历史重建，禁止从结束态补造过去感知。Event-level OB / Outbox 是当前实现和可复用资产而非永久目标。Package 不嵌入动态 Episode / Memory，不增加 Episode 文件；Schema / 生命周期映射 OPEN，本批不删除历史或修改 EVA 完成协议。
 
 RE 正常求值使用 SM 的完整当前机械状态与必要可信历史账本，审计记录另供确定性重放，不反复加载完整 Combat Event Log。一次请求尽量结算可连续效果，真正中途选择遵循目标 Interrupt / Continuation 的持久暂停/恢复与 RNG 一致性，不占 SQLite 长事务；共同 ABI、前缀提交和最小支持路径 [OPEN]。这些属于运行时契约，不通过冒险脚本或模板补造，亦不改变 MVP 战斗崩溃精确续玩后置边界。
 
@@ -557,9 +557,13 @@ Player intent / NPC decision proposal
 4. 明确认知覆盖与 Policy 绑定的最小 Schema；至少一名敌方 Agent 的独立宏观决定实际影响受控行为与后续认知，不要求每次战术调用 Sub-agent。
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
-**实施顺序建议**：先按采用计划验证 EB-1 原生世界、EB-2 固定真实 RE 操作、EB-3 运行机制/信息隔离，再决定 Package Loading / Session 初始化的目标映射与完整 Golden Adventure 集成；这替代旧版自建 SM 加载/存储优先顺序。包仍须验证后按需一次初始化，不因复用 Prototype 而重访重置。EB 不要求升级全部 RE 协议或提前完成整个 Package/Host/Coding Agent 系统；本批不实施。
+**实施顺序建议**：按演进计划 §8 的能力轨道，以最小审阅 Fixture / 初始化支持对象动作、真实 RE、NPC 私有视图与早期 Agentic 验证，随实际依赖交错推进；不等完整 Host 或整体框架迁移。包须验证后按需一次初始化，不因复用模板而重访重置。整体 Evennia 与 EB 验证仅为计划 §9 可选评估；本批不改整个 Package Schema 或实施系统。
 
-### v0.8 修订摘要
+### v0.9 修订摘要
+
+仅同步当前 SM＋RE 基础及可替换子系统，撤回 Evennia/EB 前置顺序；最小初始化与早期 Agentic 验证交错，Coding Agent 可选。固定冒险基线、获准 Session 扩展、CombatEpisode 与私有观察边界保留；未增加字段或修改示例，无代码、迁移或运行验收。
+
+### v0.8 修订摘要（历史，采用路线/强制 EB 顺序由 v0.9 撤回）
 
 仅同步 Evennia 可替换 SM 实现、固定冒险初始基线与获准 Session 扩展关系、整场 CombatEpisode 及 EB 优先顺序。未重设计整个 Schema、增加扩展字段或修改示例；迁移/运行验收未执行，具体协议保持 OPEN。
 

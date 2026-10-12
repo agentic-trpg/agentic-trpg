@@ -1,18 +1,20 @@
-# Agentic TRPG — Agent Architecture（MVP，Draft v0.12）
+# Agentic TRPG — Agent Architecture（MVP，Draft v0.13）
 
-> **文档状态**：Draft v0.12；Evennia 方向已决定，迁移/运行验证未执行；具体接口仍 Proposed / Not Implemented
+> **文档状态**：Draft v0.13；SM＋RE 游戏核心演进与早期 Agentic 验证交错；具体接口仍 Proposed / Not Implemented，本轮无运行验证
 >
 > **日期**：2026-10-12
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.12（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.14、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.14、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.8、[`EVENNIA_ADOPTION_PLAN.md`](./EVENNIA_ADOPTION_PLAN.md) v0.1
+> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.13（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.15、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.15、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.9、[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.2
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
 > **内容边界**：本文仅使用通用概念及原创合成示例，不包含 *First Blush* 正文、地图或实质性的改编剧情数据。该剧本仅作为**私有**端到端验收来源。
 >
-> **v0.12 修订主题**：游戏运行层优先采用 Evennia，SM 职责可迁移、Host 仍只管模型；区分当前感知、短期行动状态与长期认知，整场 CombatEpisode 观察聚合待 EB-3 验证。受控扩展目标不等于任意代码热部署，不重设计 EVA 标识或完成协议。
+> **v0.13 修订主题**：当前 SM＋RE 主线允许子系统重构/替换，以机制支持开放行动、持续世界后果及 NPC 私有认知；真实 Agentic 验证尽早交错，不等完整 Host。受控扩展不绑定 Coding Agent；保留 CombatEpisode、OB/EVA 生命周期及模型/权威状态边界。
+>
+> **v0.12 修订主题（历史，优先采用/强制 EB 顺序已由 v0.13 撤回）**：曾提出 Evennia 优先运行层；三类感知/行动/认知、CombatEpisode 与受控扩展原则保留，未取得迁移或运行证据。
 >
 > **v0.11 修订主题**：分离即时机械响应与 NPC 认知，Combat Policy 承担即时战术；WorldEpisode / EpisodeObservation 仅聚合授权已察觉阶段。保留敌方 Agent 宏观自主性验收，Episode / Policy / Continuation 具体 ABI 仍 OPEN / NOT IMPLEMENTED。
 >
@@ -30,9 +32,9 @@
 
 ## 0. 决策层级与需要澄清的冲突
 
-**已确认的产品原则**（遵循 Module Contracts v0.12、MVP Scope v0.14 与 State Machine v0.14）：
+**已确认的产品原则**（遵循 Module Contracts v0.13、MVP Scope v0.15 与 State Machine v0.15）：
 
-本文 SM 表示游戏领域的权威状态、授权与提交职责，允许由 Evennia 对象系统与新增领域服务承接，不绑定旧 SM 的类、表或仓库。一个事实只有一个权威来源，Host 不持有影子副本；SQLite、Event-level OB / Outbox 等既有细节按当前实现/迁移资产理解，不冻结目标存储或永久观察粒度。跨模块规范集中于 MC §0.2 / §3.6 / §7.5，采用计划只协调验证。
+本文 SM 表示游戏领域的权威状态、授权与提交职责，当前以 `trpg-state-machine`＋RE 为基础，允许基于证据重构/替换具体类、表、模块或管线。一个事实只有一个权威来源，Host 不持有影子副本；当前 SQLite、Event-level OB / Outbox 等实现与资产不冻结永久粒度。Evennia / CDDA / Ranvier 供机制/组件研究，整体框架迁移非前置条件。跨模块规范集中于 MC §0.2 / §3.6–§3.7 / §7.5，演进计划只协调验证，不另建规范。
 
 1. **DM Planner 是主持与协调决策者；DM Narrator 独立负责已确认事实呈现**：解释玩家表达、组织交互、作 GM 语义裁决、调用规则及叙述已确认结果；不代 NPC 决定个人目标和自主行为。
 2. **NPC Sub-agent 具有独立角色身份和私有上下文**：在需要时被调用；一个模型进程可服务多个角色，但每次调用只能接收该角色已获授权的信息。
@@ -57,7 +59,7 @@ Agent 模块负责有意义的**非确定性认知工作**，而不是成为第�
 | Agent DM | 如何理解玩家表达、应查看何种事实、是否需要 GM 语义裁决/检定、可**请求**激活哪位 NPC、如何呈现已提交结果 | 不可代替 NPC 作个人选择；不可未经授权修改 HP/Slot/道具归属；不可把叙事等于提交 |
 | NPC Sub-agent | 该 NPC 的发言、主观解释、目标/宏观行为及记忆更新**提议** | 不可读取别人的秘密/未外显 Intent；不可越权提交状态；不可替自己决定骰点或成为每次战术/Reaction 的执行前置 |
 | Agent Host / Orchestrator | 模型执行队列、调用、Context / Prompt / Cache、资源预算、超时重试取消、工具适配传输、运行时日志 | 不拥有或持久管理游戏状态、NPC 认知、领域任务完成或行为结果 |
-| 游戏运行层 / SM 领域职责 | 单一事实权威、NPC 私有状态、感知证据、Task / 模式 / Gate / Completion、时钟日程、验证及提交；Evennia 对象/领域服务映射 OPEN | 不承担 LLM 主观推理、物理 Context 管理及 D&D 机械公式重实现；不与旧 SM 双写同一事实 |
+| 游戏运行层 / SM 领域职责 | 单一事实权威、NPC 私有状态、感知证据、Task / 模式 / Gate / Completion、时钟日程、验证及提交；当前 SM 基础允许证据驱动的子系统替换 | 不承担 LLM 主观推理、物理 Context 管理及 D&D 机械公式重实现；不建立双重权威世界 |
 | Rule Engine | 检定、攻击、伤害、资源/回合/Condition 等受支持的机械**求值**（输出未提交的 State Delta） | 不负责塑造 NPC 角色动机、编剧情或决定哪个 NPC 知道什么 |
 
 **不变量：**
@@ -76,7 +78,7 @@ Agent 模块负责有意义的**非确定性认知工作**，而不是成为第�
 
 ```text
 Human Player -> DM Planner -> submit_command(TypedCommand) / SM authorization
-                   Target runtime: Evennia Objects + domain services [mapping OPEN]
+                   Game core: current SM + RE; subsystem evolution allowed
                                     |
                    Immediate path -> Combat Policy / deterministic mechanics
                                   -> RE for D&D only -> trusted Commit
@@ -98,14 +100,15 @@ Human Player -> DM Planner -> submit_command(TypedCommand) / SM authorization
                                     v
                        State Machine atomic Meta / Result / EVA completion
                    |- reliable Dialogue / Action Intent handoff
-                   '- independent command_id / Typed Command -> SM validated inputs
-                      Snapshot + Intent + pinned RulesetBinding + explicit RNGContext
-                      -> Stateless Rule Evaluation -> SM Atomic Commit / Command Receipt
+                   '- independent command_id / Typed Command -> SM authorization
+                      -> ordinary world handling OR D&D evaluation (validated Snapshot / Intent
+                         + pinned RulesetBinding + explicit RNGContext -> uncommitted Result)
+                      -> SM Atomic Commit / Command Receipt
                                     |
                       Perception / player-visible DM Narrator
 ```
 
-认知路径的逻辑信息流为 **可信游戏运行层 → Agent Host → NPC LLM → 可信游戏运行层**；这是责任与信任边界，不要求多个进程/服务，也不是即时机械执行的必经链。Evennia 目标数据库/提交映射待 EB-2 验证；模型厂商及传输形式仍待选择。本批不实现 Host。
+认知路径的逻辑信息流为 **可信游戏运行层 → Agent Host → NPC LLM → 可信游戏运行层**；这是责任与信任边界，不要求多个进程/服务，也不是即时机械执行的必经链。当前 SM＋RE 提供执行基础，替换提交实现须独立验证；模型厂商及传输形式仍待选择。本批不实现 Host，后续最小受限模型接入可支持早期 Agentic 验证，不等完整 Host。
 
 ### 2.1 Agent Host
 
@@ -266,9 +269,9 @@ NPC LLM 可基于授权经历提出“保护某人”“撤退”等宏观行为
 
 **集成验证边界**：即时战术、Reaction、自动效果与战斗触发不依赖 Planner / JEV / Memory Gate / EVA；机械察觉未知不能默认 Positive。一次 RE 请求尽量完成连续规则链，真正中途选择按 MODULE_CONTRACTS.md §8.3 Interrupt / Continuation 目标处理，不由 NPC 主观认知回路代替。必须验证至少一名敌方 Agent 的宏观选择真实影响 Policy、资源/Action Economy 与战后认知；不能冒充 PC、访问私有 Engine 状态或将固定 AI 当作 Agent 验收。当前 SM / RE 分支与接口差距见 MODULE_CONTRACTS.md §1.1。
 
-### 4.5 Coding Agent 动态扩展的边界 `[DECIDED; OPEN; NOT IMPLEMENTED]`
+### 4.5 受控动态扩展与可选 Coding Agent 的边界 `[DECIDED; OPEN; NOT IMPLEMENTED]`
 
-运行时创建内容、组合机制和安装 NPC 行为是目标能力，具体受控启用规范集中于 MODULE_CONTRACTS.md §3.6。配置/模板、已有能力组合与新增底层代码须分别验证，准备完成后才在安全边界启用；任意回调、人工审批、reload 均不等于安全热部署。扩展版本/在途操作绑定、行为状态迁移和失败处理仍 OPEN，版本回滚不撤销已提交事实。完整扩展系统不作为 EB-1 前置条件，不改变固定 Adventure Package 初始基线。
+运行时创建内容、组合机制和安装 NPC 行为是目标能力，受控启用规范集中于 MODULE_CONTRACTS.md §3.6–§3.7。配置/模板、已有能力组合与新增底层机制分别验证；前两类不要求代码生成，Coding Agent 仅为可选手段，不是每个自由行动或早期验证前置条件。新增代码需适用测试、权限/资源预算限制及版本化受控启用；回调、人工审批、reload 均不等于安全热部署。在途版本绑定、行为状态迁移、失败处理仍 OPEN，版本回滚不撤销已提交事实；固定 Adventure Package 初始基线不变。
 
 ## 5. Context Builder 与 NPC Active Context 生命周期
 
@@ -293,7 +296,7 @@ get_scene_view 给 NPC 返回信息时也必须经过 NPC Perception / 授权投
 
 只有不能确定性判断的 Signals 才由 SM 授权、Host 运行 **JEV Perception Judgment**：输入同 Observer / Event 的最小必要事件时可信上下文及待判断 Signals，可批量；输出按 Signal ID 的 Boolean。SM 校验请求项均且仅一个结果，无未知/重复 ID 或错误类型；缺失、超时、Schema 错误保留既有未完成工作，不能默认为 false，不新增 Signal Task ID / ACK。此 JEV Perception 职责只判断察觉，不生成 Signal、Observation 文本或 Belief / Goal / Plan / 世界状态；与独立 Memory Gate Judgment（§6.3a）/ NPC EVA 分开；正式 D&D 感知检定仍交 Rule Engine，复杂 RNG / 命令 / 异步事务编排 [OPEN]。
 
-该可选 JEV 仅服务后续认知观察准备，不替代必需的规则判定或可信事实。**整场战斗对应一个 CombatEpisode，EpisodeObservation 是 NPC 对整段经历的逻辑观察单位**；不默认每 Round / Action 都建 Episode，或每机械 Event 都有独立 OB。运行时感知支持即时行动；战时保存必要结果/证据、战后聚合为 [PROPOSED; OPEN; NOT IMPLEMENTED]，可与可信历史重建比较，禁止从结束态补造过去察觉。阶段结果不可变可追溯，聚合不得泄漏未察觉内容或隐藏因果。Schema / 增量 / 生命周期映射集中于 MODULE_CONTRACTS.md §7.5；Event-level OB / Outbox 是迁移资产而非永久目标，本批不删除记录或改变既有 EVA 协议。
+该可选 JEV 仅服务后续认知观察准备，不替代必需的规则判定或可信事实。**整场战斗对应一个 CombatEpisode，EpisodeObservation 是 NPC 对整段经历的逻辑观察单位**；不默认每 Round / Action 都建 Episode，或每机械 Event 都有独立 OB。运行时感知支持即时行动；战时保存必要结果/证据、战后聚合为 [PROPOSED; OPEN; NOT IMPLEMENTED]，可与可信历史重建比较，禁止从结束态补造过去察觉。阶段结果不可变可追溯，聚合不得泄漏未察觉内容或隐藏因果。Schema / 增量 / 生命周期映射集中于 MODULE_CONTRACTS.md §7.5；Event-level OB / Outbox 是当前实现与可复用资产，而非永久目标，本批不删除记录或改变既有 EVA 协议。
 
 同一 NPC / Event 的多个已察觉 Signals 默认聚合为一条 ObservationRecord，perceived_signals[] 仅含 Signal ID、渠道与授权 Content；全未察觉可无观察完成，分时新观察不强并。NPC Context 的事件内容仅是已感知且授权的 Signal Content；听见金属声不自动知道谁做了什么，是否理解或形成 Belief 仍由 NPC EVA 决定。感知完成不等于唤醒 NPC、改关系或行动成功，后续使用既有 Inbox / Gate / Mode Routing。
 
@@ -381,7 +384,7 @@ Evaluation ID 是任务与 Meta 幂等键，不是认证凭证。SM 仍核验可
 | `ObservationRecord` / Recent OB | State Machine Perception Projection / Inbox | NPC 已实际察觉的授权 Signals，直接承担短期感知记忆；Processing 与 Retention 独立 |
 | `CurrentPerceptualView` | State Machine Perception Projection | 当前时刻 Actor 可感知的场景状态；通常按需重建，而非长期记忆 |
 | 短期行动状态 | 可信运行层 / 非 LLM Policy 的活动控制 | 当前目标、行动阶段及必要前提；执行前重查目标/环境，不等同 Recent OB、长期认知或新增短期记忆系统；映射 OPEN |
-| `EpisodeObservation` | 目标运行层授权经历聚合 | NPC 整段 CombatEpisode 的已察觉部分，方案待 EB-3 验证，不是全知战斗摘要 |
+| `EpisodeObservation` | 目标运行层授权经历聚合 | NPC 整段 CombatEpisode 的已察觉部分，方案待游戏核心场景验证，不是全知战斗摘要 |
 | `NPCEvaluationResult` | 当前模式的 NPC LLM | 统一七字段非权威数据，均可为空 |
 | `EvaluationReceipt` | SM | evaluation_id 关联的原子 Meta / EVA 结构化反馈，独立于 Command Receipt |
 | `NPCMemoryRecord` / Long-term Episodic Memory | NPC EVA LLM 提议，SM 权限/来源/幂等验证后保存 | NPC 私有长期经历；Belief / Relationship / Goal / Plan 另属 NPC Meta，均不能自动变 World Fact |
@@ -633,7 +636,7 @@ NPC 是持续存在的逻辑角色，不是常驻 LLM 进程。Adventure Package
 
 日程模型为 MVP 的轻量**预定义活动**，而不是复杂自主社会模拟；不应每秒给数百 NPC 执行一轮动作或产生 LLM 请求。`activity_id`、`schedule_version`、`due_game_time`、`source_trigger_id` 及完成/取消回执需要可去重、可恢复。
 
-Evennia 的 Script / 活动控制复用是目标映射，具体调度与游戏时间衔接待验证。连续行动必须重新检查目标仍在场、权限及当前条件，不能因先前选择继续攻击已离开的目标；即时攻击、移动或持续效果不要求逐次 NPC EVA。
+Evennia Script / 活动控制、CDDA 短期活动与 Ranvier 小型行为是机制研究来源，不是已选框架映射（演进计划 §4）。当前 SM 的活动/Policy 子系统可据证据演进，游戏时间衔接仍须验证。连续行动必须重新检查目标仍在场、权限及当前条件，不能因先前选择继续攻击已离开的目标；即时攻击、移动或持续效果不要求逐次 NPC EVA。
 
 ### 9.5 Memory / Cognition / Behavior Trigger 是可联合的逻辑职责
 
@@ -683,24 +686,24 @@ Narrator 保持游戏世界内的沉浸表达，不向玩家叙事直接暴露 A
 
 ## 11. MVP 开发阶段与验收
 
-**当前优先顺序 `[DECIDED]`：** 按采用计划先 EB-1 原生世界、EB-2 固定真实 RE 集成、EB-3 连续行为/信息隔离/最小 CombatEpisode，再安排下列 Host / Agent 集成清单。此顺序替代旧版先完整自建 SM/Host 闭环的实施优先级；完整 Host、Coding Agent、安全沙箱或通用中断均不是 EB-1 前提，EB 验证也不代替至少一名敌方 Agent 宏观自主性的 MVP 验收。各 EB 尚未执行。
+**主线与早期验证 `[DECIDED]`：** 当前 SM＋RE 机制建设与 Agentic 验证交错推进（演进计划 §8）。最小可信动作/状态路径具备时，用受限真实模型验证自然语言能力组合、世界变化消费、NPC 私有信息/目标差异和宏观计划真正执行，不等完整传统引擎或完整 Host。延迟、重复及失败模型输出的授权/版本/幂等与一致性另做确定性回归，模型实验不替代这些证据。本轮未运行两类验证。下列 Host / Agent 清单不构成全量前置条件；完整 Coding Agent、沙箱、通用中断也不阻塞早期验证。v0.12 强制 EB 顺序撤回；EB-1～EB-3 只保留为可选 Evennia 评估，至少一名敌方 Agent 的宏观自主性验收不变。
 
 优先以**完全原创的合成冒险 Fixture**开发与公开测试，再以合法获取、人工审核的 *First Blush* 私有资料完成端到端验收；不要把受限制的剧情、地图或派生包随代码推送公开仓库。
 
-### Batch AG-1：Host / View / NPC Identity
+### 既有集成清单 AG-1：Host / View / NPC Identity
 
 - DM 输入回合工作流与 NPC 调用边界；Role-filtered Context Builder；按 NPC 隔离上下文。
 - 明确 Event Observation / Current Perceptual View 均由 Perception Projection 提供；创建、增量追加和释放 NPC 的逻辑 Context，不泄漏其他 NPC 的秘密。
 - 原创两个 NPC 各自具有不同秘密、目标及相互冲突的 Belief；不能从 Prompt、工具或日志交叉读取。
 - 验收：交错调用共享模型执行器，不串角色；同样的 WorldEvent 可产生不同合法 NPCView。
 
-### Batch AG-2：Typed Proposals / Authoritative Commit
+### 既有集成清单 AG-2：Typed Proposals / Authoritative Commit
 
 - 玩家/NPC 行动、GM 有限裁决、简单世界创造和 Conditional Effect 对接统一 submit_command；NPC Evaluation / 对话发布生命周期保持独立。
 - 至少覆盖可成功和被拒绝的取物/开门；错误身份、错误版本、模型自行宣告成功一律不能写权威状态。
 - 验收：一条闭环 `player input → NPC decision → world commit → DM narration`；重复提交幂等。
 
-### Batch AG-3：Mode Routing / Observation-driven NPC Evaluation
+### 既有集成清单 AG-3：Mode Routing / Observation-driven NPC Evaluation
 
 - 调用 `get_event_observations`、按需授权 Current Perceptual View、统一 Result 最小提交、原子 Meta、引用/任务/版本检查、SM 内部完成状态、超时重试、持久化恢复。
 - 验证 Evidence Persistence 与 Memory Consolidation 独立：关键承诺在事件提交时持久化；Memory Check 可返回 no-op，且不触发 Context Compaction。
@@ -708,7 +711,7 @@ Narrator 保持游戏世界内的沉浸表达，不向玩家叙事直接暴露 A
 - 验证 Interactive 独占、Inactive Gate / Background 一次调用、任务资格原子撤销与新建及内部 Processing Completion；接口仍为 Proposed / Not Implemented。
 - 验收：观察在 NPC 未激活期间不丢失；两个 NPC 对同一事实形成不同 Belief；不合法/越权来源引用被拒绝（不声称证明文本忠实）；不同 Session 不串 Memory。
 
-### Batch AG-4：Agent 宏观自主性 / Combat Policy / Full Vertical Slice
+### 既有集成清单 AG-4：Agent 宏观自主性 / Combat Policy / Full Vertical Slice
 
 - 验证敌方 NPC Agent 独立认知/宏观决定 → SM 合法采用 → Combat Policy 的即时 Typed Intent → RE / SM 提交 → 授权阶段观察及后续认知；不要求每次战术由 LLM 产生。
 - 用 MODULE_CONTRACTS.md §12.6 原创王宫拔剑 / 火球术场景检查即时路径无 Planner / JEV / Gate / EVA 依赖、机械未知不当已察觉、Episode 聚合不泄密；Episode / 通用 Continuation 仍待接口设计，不宣称场景已经可执行。
@@ -717,7 +720,7 @@ Narrator 保持游戏世界内的沉浸表达，不向玩家叙事直接暴露 A
 
 v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个大规模 Memory Agent 或独立“缓存基础设施”开发批次，避免 MVP 被性能优化吞噬。
 
-以上是**建议依赖顺序**，不意味着允许未经审阅连续推送开发批次。Agent Batch 与 State Machine Batch 应协商接口，不要让双方各自发明不兼容的数据结构。
+以上为既有能力与集成检查清单，不要求按编号串行完成或等全量 Host 后才试验 Agentic 行为。后续实现按实际依赖切片并审阅 SM / Agent / RE 交接，遵循 MODULE_CONTRACTS，不在本轮生成新代码批次或冻结接口。
 
 ### 11.1 原创合成测试清单
 
@@ -857,7 +860,8 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 | **AG-21** | 模式切换、EvaluationStatus / Result / Processing Completion | **已确认可靠性要求，协议 Proposed / Not Implemented**；取消并拒绝旧结果，已提交结果先对账；具体字段与预算待评审 |
 | **AG-22** | OB 短期记忆与双生命周期 | **[DECIDED] 2026-10-11**；Processing 不等 Retention，Game Time TTL、来源归档、过期 Pending 保护；无独立 Short-term Memory，接口/清理参数仍开放 |
 | **AG-23** | JEV 双职责与定期 EVA | **[DECIDED] 2026-10-11**；可共享模型但 Schema/权限分离，Interactive 可选 Gate / 无新 Background，最大调度等待严格短于生命周期且留余量；具体编码/模型/周期未冻结 |
-| **AG-24** | Evennia 运行与 Agent 认知分离 | **[DECIDED] 2026-10-12**；运行层可替换旧 SM 实现，Host 无权威游戏状态；连续行为、受控扩展与 CombatEpisode 映射待 EB 验证，EVA 标识/完成协议不重设计 |
+| **AG-24** | 运行与认知分离（v0.12 历史采用路线已撤回） | Host 无权威游戏状态、即时行为与认知分离、CombatEpisode 及受控扩展原则保留；Evennia 优先采用/强制 EB 顺序由 v0.13 撤回，EVA 标识/完成协议不重设计 |
+| **AG-25** | SM＋RE 主线与早期 Agentic 验证 | **[DECIDED] 2026-10-12**；机制与真实模型试验交错，代码负责可验证执行/后果，NPC 保留私有认知与宏观自主性；具体扩展/聚合协议 OPEN，未运行验收 |
 
 **最终执行架构已确认**：MODULE_CONTRACTS.md 规定 State Machine 持有全部权威 Runtime State；Rule Engine 是无独立权威状态、无 Legacy Stateful 执行依赖的 Stateless Rule Evaluation Engine，返回未提交结果，统一经 SM 事务提交。旧 Stateful API 只限 Transitional / Legacy 回归对照，退出条件见该契约 §14.1；旧版“双权威”表述不得作为目标或完成证据。Host 的模型调度、NPC 模式、Perception、Memory 和 Narration 职责不因此改变。
 
@@ -869,7 +873,11 @@ v0.2 的 Context 生命周期属于 AG-1/AG-3 的增量验收，不单列一个�
 
 ## 13. 变更说明与文档协作边界
 
-### v0.12 Evennia 运行与认知边界同步
+### v0.13 游戏核心与早期 Agentic 验证
+
+恢复当前 SM＋RE 主线，撤回 Evennia 必经路线；保留模型执行/权威状态分离、私有认知、CombatEpisode 与既有 EVA/OB 协议。机制研究与可选 Coding Agent 服务于开放行动和真正可执行的 NPC 计划，早期真实模型试验与确定性回归分开取证。本批只修文档，不实现 Host、扩展系统或运行测试。
+
+### v0.12 运行与认知边界同步（历史，采用路线/强制 EB 顺序由 v0.13 撤回）
 
 明确 Evennia 目标运行层与可替换 SM 实现、RE 规则求值及 Host 模型运行的分工；同步整场 CombatEpisode、三类感知/行动/认知信息及受控扩展。开发优先级改为 EB-1～EB-3，保留 NPC 宏观自主性和既有 EVA/OB 生命周期。本批仅文档，无迁移或运行验收结果。
 
@@ -904,13 +912,13 @@ OB 直接承担短期感知记忆，完成后到期前仍可用；Processing / R
 
 ### 与其它文档的正式分工
 
-- **`STATE_MACHINE_ARCHITECTURE.md` v0.14**：定义 SM 领域职责、当前 WorldEvent / OB / Outbox 迁移资产、权威提交与存档及待验证 Evennia 映射；本文件不重定义事务实现。
-- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.8**：定义 NPC 初始身份、初始知识、场景初态和声明式事件，以及固定冒险基线与获准 Session 扩展的边界；不存 NPC 动态推理上下文或后续记忆。
-- **`AGENT_ARCHITECTURE.md` v0.12**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；运行层承接 SM 领域任务与模式职责。
-- **`MODULE_CONTRACTS.md` v0.12 / Draft**：跨模块最高规范，含 Evennia 可替换实现、受控扩展、CombatEpisode 与既有 P0 / EVA 契约；具体 ABI / 新接口仍 Proposed / Not Implemented。本文 YAML **仅为示意**；采用计划不另立冲突接口规范。
+- **`STATE_MACHINE_ARCHITECTURE.md` v0.15**：定义当前 SM 基础、WorldEvent / OB / Outbox 可复用资产、权威提交与存档及可替换子系统；本文件不重定义事务实现。
+- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.9**：定义 NPC 初始身份、初始知识、场景初态和声明式事件，以及固定冒险基线与获准 Session 扩展的边界；不存 NPC 动态推理上下文或后续记忆。
+- **`AGENT_ARCHITECTURE.md` v0.13**：定义 NPC 模式独占、Host LLM Runtime、Context 生命周期与失败行为；运行层承接 SM 领域任务与模式职责。
+- **`MODULE_CONTRACTS.md` v0.13 / Draft**：跨模块最高规范，含 SM＋RE 演进、可组合机制、受控扩展、CombatEpisode 与既有 P0 / EVA 契约；具体 ABI / 新接口仍 Proposed / Not Implemented。本文 YAML **仅为示意**；演进计划不另立冲突接口规范。
 
 ### 仍应保持开放的技术问题
 
 NPC/普通怪物的认知覆盖、Combat Policy 算法/绑定/授权与目标转换、受控 NPC Intent 的跨版本 Consumer、Current View 的缓存 TTL/证据化方式、Memory Gate 重要性阈值、上下文压力指标/压缩算法、NPC 自动反应的深度预算、长时记忆合并/冲突消解等都需实测或下一文档再决定。不得把这些未验证细节写成已经交付的能力。
 
-**v0.12 的核心不变量：NPC 持久事实具有单一权威来源；当前模式的 LLM 提议主观认知与宏观意图，即时机制独立执行；Interactive 活跃时不额外启动 Background 认知；Perception、Memory 与 Context 各有生命周期；世界变化只由可信运行层提交。**
+**v0.13 的核心不变量：NPC 持久事实具有单一权威来源；当前模式的 LLM 提议主观认知与宏观意图，即时机制独立执行；Interactive 活跃时不额外启动 Background 认知；Perception、Memory 与 Context 各有生命周期；世界变化只由可信运行层提交。**
