@@ -14,17 +14,21 @@ The central design principle is simple:
 
 The project separates the AI Game Master, the authoritative game runtime, the rules engine, and the future visual presentation layer. The architecture is intended to be extensible beyond a single ruleset, although the first MVP focuses on a D&D adventure.
 
+**[DECIDED] 2026-10-12 revision:** Continue with **trpg-state-machine + trpg-rules-engine as the development and runtime foundation**, strengthening the programmatic game core while allowing substantial subsystem refactoring or replacement. The earlier unmerged Evennia-first decision is withdrawn. Evennia, CDDA, and Ranvier are sources of mechanisms and possible reusable components; adopting Evennia as a whole remains an **[OPEN]** option requiring separate evidence. See the [Game Core Evolution Plan](docs/GAME_CORE_EVOLUTION_PLAN.md). This docs-only revision performs no implementation or runtime validation.
+
+Open-ended player actions, persistent world consequences, and NPC private cognition/autonomy remain the product goals. LLMs interpret context and propose adjudication, compositions, and character plans; the game core executes supported capabilities and makes their consequences affect later behavior. Agentic validation starts alongside the smallest usable mechanisms, without waiting for a complete conventional engine or full Host.
+
 ## System architecture
 
 ```mermaid
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
-    Planner --> SM[State Machine<br/>Authoritative Runtime]
+    Planner --> SM[Game Core: current State Machine<br/>Trusted execution and commits<br/>Subsystem evolution allowed]
     SM -->|Authorize immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
     Policy -->|Typed Intent| SM
-    SM -->|Typed Snapshot + Intent + Pinned RulesetBinding + Explicit RNGContext| RE[Stateless Rule Evaluation Engine]
+    SM -->|D&D only: Snapshot + Intent + RulesetBinding + RNGContext| RE[Stateless Rule Evaluation Engine]
     RE -->|Uncommitted RuleEvaluationResult| SM
-    SM -->|Committed World Events| Perception[NPC Perception<br/>Authorized Observations]
+    SM -->|Permitted experiences / CombatEpisode target| Perception[NPC Perception<br/>Authorized Observations]
     Perception --> NPC[NPC Cognition and Macro Decisions<br/>via Agent Host]
     NPC -->|Dialogue / Action Intents / Meta Proposals| SM
     SM -->|Committed, authorized facts| Narrator[DM Narrator]
@@ -38,7 +42,7 @@ flowchart TD
 | **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
 | **NPC Sub-agents** | Independently interpret authorized experiences and propose dialogue, beliefs, memories, goals, and macro decisions. Immediate tactics use a controlled Combat Policy; they do not require an LLM call per action. |
 | **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
-| **State Machine** | Exclusively own all authoritative runtime state, including world, character, combat, inventory, effects, reactions, RNG, and persistent NPC state. Enforce authorization, versions, idempotency, atomic commits, persistence, and observation delivery; do not recalculate D&D mechanics. |
+| **Game Runtime / SM domain responsibilities** | Current SM foundation for authoritative world/mechanical/private NPC state and trusted commits. Preserve authorization, versions, idempotency, RNG, receipts, persistence, and reliable processing while allowing evidence-based subsystem replacement. One authoritative source per fact; no duplicate synchronized worlds. |
 | **Rule Engine** | Deterministically evaluate supported action legality, attacks, damage, checks, saves, action economy, movement, spells, effects, and reactions. Return typed, *uncommitted* results without independent authoritative runtime state. |
 | **Visual Presentation** | Future presentation of maps, tokens, scenes, and animations. It is outside the first MVP. |
 
@@ -49,17 +53,17 @@ StateSnapshot + Typed Intent + Pinned RulesetBinding + Explicit RNGContext
     → RuleEvaluationResult
 ```
 
-Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. Only the State Machine atomically commits state, RNG, authoritative events, receipts, and Outbox records; `accepted` does not mean committed.
+Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, composed from complete typed mechanical state components. Results use four statuses (`accepted`, `rejected`, `needs_choice`, `unsupported`) and include the applicable closed Typed StateDelta, ProposedEvents, RNGTransition, and ReadSet. The trusted runtime alone commits authoritative changes; `accepted` does not mean committed. These contracts remain target specifications, not a newly frozen ABI. Ordinary world operations need not invoke RE. D&D effects, reactions, and chained rules remain RE responsibilities rather than being duplicated in SM scripts or framework examples. Derived views and caches do not create another authoritative world.
 
 Immediate Mechanical Response is coordinated by the State Machine through trusted deterministic mechanisms, Combat Policy, and Rule Engine. Tactics, reactions, automatic effects, and combat triggers do not depend on DM Planner, JEV LLM, Memory Gate, or EVA. Required mechanical perception must be established through trusted deterministic/rule paths; unknown does not mean perceived. Agent Cognitive Response handles subjective interpretation, long-term memory, relationships, goals, macro decisions, and character dialogue afterwards.
 
-Normal rule evaluation targets current mechanical state plus necessary typed historical ledgers, while retaining audit history for deterministic replay. One request should resolve all continuously executable effects for its intent. Interrupt / Continuation targets durable pause/resume and consistent RNG without holding a SQLite write transaction while waiting; its ABI and supported MVP paths remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) distinguishes implemented development-branch work from remaining targets and the pinned/latest RE version gap.
+Normal rule evaluation targets current mechanical state plus necessary typed historical ledgers, while retaining audit history for deterministic replay. One request should resolve all continuously executable effects for its intent. Interrupt / Continuation targets durable pause/resume and consistent RNG without holding a database write transaction while waiting; its ABI and supported MVP paths remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) distinguishes implemented development-branch work from remaining targets and the pinned/latest RE version gap.
 
 The final goal is to refactor the Stateful Combat Engine into a Stateless Rule Evaluation Engine. Supported execution must not depend on legacy `_LiveCombat`, `CombatHandle`, `_REGISTRY`, or the Stateful Combat Orchestrator, including rebuilding them behind a permanent adapter. Correct Nat20 algorithms, resolvers, and declarative rules data may be reused with explicit state dependencies; local evaluation variables and temporary calculation contexts are allowed. Legacy Stateful APIs may remain briefly for isolated regression comparison, subject to the [migration completion criteria](docs/MODULE_CONTRACTS.md#141-stateful--stateless-完成标准-decided-not-implemented). Project specifications define the target; legacy code does not define the architecture.
 
 ### Events, perception, and NPC knowledge
 
-A committed world event is not automatically known to every character. The intended pipeline is:
+A committed world event is not automatically known to every character. The current event-level protocol and reusable implementation assets follow this pipeline when such events are recorded:
 
 ```text
 Event + Observable Signals → per-Signal Scope Discovery → Event-local Evidence
@@ -71,7 +75,7 @@ Event + Observable Signals → per-Signal Scope Discovery → Event-local Eviden
 
 NPCs receive only observations they could perceive and are authorized to know. Their beliefs and memories are separate from objective world facts. Event observations do not automatically trigger an LLM call or change a character's goals.
 
-Mechanical Audit does not automatically enter perception. A target WorldEpisode groups related WorldEvent stages across commands, preserving each stage's occurrence time, Signals, trusted Evidence, and confirmed causal order. EpisodeObservation is the target logical unit for an NPC's perceived parts of that episode; it cannot expose unseen stages or hidden causes. Its schema, incremental delivery, and lifecycle remain open, and existing stage observations stay immutable and traceable. Optional JEV prepares later cognitive observations; it cannot unlock immediate mechanical responses.
+Mechanical Audit does not automatically enter perception. **One complete battle corresponds to one CombatEpisode**, with EpisodeObservation as the NPC's logical observation of the whole experience. Rounds/actions do not each require an Episode, WorldEvent, or separate OB. Runtime perception can support immediate behavior; retaining necessary wartime perception results/evidence and aggregating afterwards is a proposed game-core validation approach, to compare with reconstruction from trusted history. Neither approach may invent past perception from the final state or expose unseen content or hidden causes. Existing stage results remain immutable and traceable; Event-level OB/Outbox is a current implementation and reusable asset, not a permanent target granularity. Schema and lifecycle mappings remain open, and existing records and EVA protocols are retained. JEV handles authorized perception/memory judgments, not required mechanical rules or trusted facts.
 
 ## First MVP
 
@@ -90,6 +94,8 @@ The selected private integration scenario is *First Blush* (D&D Duet), subject t
 
 **Not part of the first MVP:** multiplayer, permanent AI companions, automatic adventure-document ingestion / World Creation Agent, interactive tactical visualization, or guaranteed exact restoration of an interrupted active combat.
 
+Keep a lightweight text entry point; client reuse and infrastructure choices remain open. Maps, tokens, and animation remain later presentation work. Controlled runtime content/behavior extensions are a target capability. A Coding Agent is optional for generating new mechanisms, not a prerequisite for every free-form action; existing capabilities should compose where supported. Fixed Adventure Packages remain Session baselines; extensions must not silently rewrite them.
+
 See [MVP Scope](docs/MVP_SCOPE.md) for precise requirements and open decisions.
 
 ## Repositories
@@ -98,6 +104,8 @@ See [MVP Scope](docs/MVP_SCOPE.md) for precise requirements and open decisions.
 | --- | --- |
 | **[agentic-trpg/agentic-trpg](https://github.com/agentic-trpg/agentic-trpg)** | This repository: overall project direction, architecture decisions, cross-module interface contracts, MVP definition, and shared documentation. |
 | **[agentic-trpg/trpg-rules-engine](https://github.com/agentic-trpg/trpg-rules-engine)** | Rules engine implementation, tests, and mechanics-specific development. Its existing code and the target stateless evaluation boundary are not assumed to be identical. |
+| **[agentic-trpg/trpg-state-machine](https://github.com/agentic-trpg/trpg-state-machine)** | Current game runtime and development foundation, with verified integration/processing semantics and regression evidence. Refactor or replace unsuitable subsystems without freezing existing classes, tables, or interfaces. |
+| **`agentic-trpg/Evennia_base` — Deferred / Optional evaluation** | Reserved possibility for a separately authorized, concrete framework replacement evaluation. Not created and not a mainline prerequisite. |
 
 Other components are described in the architecture but are not represented here as already-published repositories.
 
@@ -109,7 +117,8 @@ The design documents are currently written primarily in Chinese. Start with MVP 
 | --- | --- |
 | [MVP Scope](docs/MVP_SCOPE.md) | Product goals, first playable milestone, acceptance boundaries, and deferred features. |
 | [Module Contracts](docs/MODULE_CONTRACTS.md) | Highest cross-module target interface specification: final stateless architecture, state ownership, requests/results, atomic commits, and migration completion criteria. Detailed ABI proposals remain subject to review. |
-| [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Session lifecycle, persistence, world events, NPC perception, authorization, and atomic commits. |
+| [Game Core Evolution Plan](docs/GAME_CORE_EVOLUTION_PLAN.md) | SM + RE evolution, mechanism/component research, composable world consequences, early interleaved Agentic validation, and optional Evennia evaluation. Subordinate to Module Contracts. |
+| [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Current SM foundation, authoritative execution, perception and cognition boundaries, and replaceable subsystem design. |
 | [Agent Architecture](docs/AGENT_ARCHITECTURE.md) | DM Planner/Narrator separation, NPC Sub-agents, Host responsibilities, and evaluation modes. |
 | [Adventure Package Schema](docs/ADVENTURE_PACKAGE_SCHEMA.md) | Static adventure content, validation, initialization, and runtime separation. |
 
@@ -126,12 +135,11 @@ The agreed invariants in Module Contracts establish architectural intent; draft 
 
 ## Development direction
 
-The current emphasis is to turn the documented contracts into a working vertical slice:
+Develop by capability and evidence, with interleaved validation rather than a mandatory framework migration sequence. The [plan §8](docs/GAME_CORE_EVOLUTION_PLAN.md#8-主线能力轨道与早期-agentic-验证) covers object/action composition, Encounter/Activity control and real RE integration, perception/Policy, CombatEpisode experience, and early Agentic behavior. A candidate original scenario links an environmental change to perception, NPC investigation/routing/combat, and persistence.
 
-1. Map existing rules capabilities to the target contract, complete snapshot dependencies, and remaining Stateful execution dependencies.
-2. Migrate selected existing rules into Stateless Evaluation, remove their legacy execution dependencies, and integrate typed commands, version checks, and State Machine atomic commits.
-3. Connect committed events to authorized NPC observations, evaluations, and reliable output delivery.
-4. Run an end-to-end text-based adventure and validate persistence, error handling, and recovery.
+Use real-model trials to assess language, adjudication, private perspectives, and autonomous plans as soon as a minimal execution path exists. Use deterministic regressions separately for execution, authorization, RNG, retries, conflicts, and failure consistency. A full Host and Coding Agent are not prerequisites; none of these trials ran in this docs-only batch.
+
+EB-1–EB-3 are retained only as optional Evennia replacement evaluation in plan §9. Research must not block SM + RE progress. Reconsider whole-framework adoption only with concrete native reuse, independent integration evidence, and a reasonable comparison of remaining work; stop that migration option if it requires duplicate authority or fails critical correctness. Prototype implementations use independent test Sessions.
 
 Measure refactor progress first by removed Stateful dependencies and migrated existing rules capabilities. Track new rules coverage separately; added adapters or files are not evidence of architecture migration.
 

@@ -1,0 +1,129 @@
+# Agentic TRPG — Game Core Evolution Plan
+
+> **版本**：v0.2 / Draft；**日期**：2026-10-12
+>
+> **当前方向 [DECIDED]**：以 `trpg-state-machine`＋`trpg-rules-engine` 为开发主线，借鉴成熟游戏系统，补强承接开放式行动与自主 NPC 的程序化游戏核心；允许实质性重构和替换不合适的子系统。
+>
+> **规范关系**：[MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.13 §0.2 / §3.6–§3.7 / §7.5 是跨模块规范；本文组织机制研究、候选场景和验证证据，不另立 ABI。配套 [SM](./STATE_MACHINE_ARCHITECTURE.md) v0.15、[Agent](./AGENT_ARCHITECTURE.md) v0.13、[MVP](./MVP_SCOPE.md) v0.15、[Adventure Package](./ADVENTURE_PACKAGE_SCHEMA.md) v0.9。
+>
+> **状态**：方向/原则 `[DECIDED]`；方案/验收目标 `[PROPOSED]`；未决协议 `[OPEN]`；尚未实现的目标 `[NOT IMPLEMENTED]`。以下不宣称代码、模型测试或运行验收已经完成，也不据机制研究断言现有系统完全缺失这些能力。
+
+## 1. 中心问题与原有产品目标
+
+中心问题是：**如何借助成熟游戏机制，补齐承接开放式行动与自主 NPC 的运行能力？** 开放式行动裁决、具有持续后果的动态世界、基于私有信息与认知自主行动的 NPC，都是项目原有目标，不由 Evennia 或 Coding Agent 引入。
+
+“程序化游戏核心”是无需 LLM 执行每一步机械过程的运行基础，不意味着静态世界、固定玩法或只接收预写动作。LLM 负责语义理解、情境/GM 裁决、人物认知和宏观提议；程序负责可验证执行、信息隔离和持久后果。先补最小执行能力，同时尽早接入真实 Agentic 验证，不采用“完成传统 RPG 后附加聊天 NPC”的路线。
+
+本分支 v0.1 的“优先采用 Evennia 已 DECIDED”在合并前撤回现行规范效力。Evennia、CDDA、Ranvier 是具体设计和组件的研究来源；Evennia 整体迁移为 `[OPEN]` 技术选项，需要实际证据，不是主线前置条件。保留有价值的机制分析、风险及比较标准，不整体回退原 Batch。
+
+## 2. 三层能力，单一可信运行边界
+
+| 层次 | 要承接的能力 | 本项目分工 / 验证重点 |
+|---|---|---|
+| 基础设施 | 存储、命令、连接、客户端、建造工具 | 可复用成熟独立组件；框架现成能力与项目适配工作分别记录，不能以属性/回调入口证明任意玩法已支持 |
+| 程序化机制 | 世界交互、动作生命周期、活动执行、感知、NPC Policy、游戏时间、战斗推进 | SM 协调可信状态/执行，D&D 规则由 RE 求值；新增事实必须被相关系统消费并产生可验证后果 |
+| Agentic 能力 | 开放式裁决、人物理解、私有认知、宏观计划、对白 | DM / NPC 提议，Host 执行模型；尽早验证提议进入真实执行、不同信息导致不同回应 |
+
+这是逻辑分层，不新增三个服务或仓库。Evennia 的对象、持久属性、命令、连接/客户端和建造能力可用于可选复用评估；项目的 D&D 语义、可信提交、信息隔离、活动/感知与认知联动仍须具体设计和验证。不能把“框架可扩展”写成完整能力证明，也不编造成本、工期或节省比例。
+
+## 3. 当前仓库职责与正确性
+
+| 仓库 / 职责 | 当前定位 | 约束 |
+|---|---|---|
+| `agentic-trpg/agentic-trpg` | 总控文档、契约与演进计划 | 本轮只修改 Markdown |
+| `agentic-trpg/trpg-state-machine` | **当前开发与运行基础** | 保留已验证能力和回归，不只是等待淘汰的迁移资产；类/表/模块/命令集合/Event 管线可依据证据重构或替换 |
+| `agentic-trpg/trpg-rules-engine` | 现有 D&D 规则求值基础 | 保留算法与已支持路径，不升级依赖或扩大完成声明；受限路径不代表整个规则族迁移完成 |
+| `agentic-trpg/Evennia_base` | **Deferred / Optional evaluation** | 仅具体替代验证获准时再考虑，本轮不创建；不展示可访问仓库，也不默认 fork 或复制 SM |
+| Agent Host | 模型执行与 Context 的逻辑职责 | 不拥有权威游戏事实；不要求先实现完整 Host 产品才验证 Agentic 行为 |
+
+保留同一事实单一权威、可信提交、授权、版本、幂等、RNG、回执、NPC 私有状态及可靠处理；这些原则不冻结旧实现，不为兼容旧接口否定更合理设计。禁止第二套平行权威世界或默认双向同步桥。替代原型与当前实现使用独立测试 Session，不共同控制同一生产 Session。
+
+普通世界交互不强制经过 RE；涉及 D&D 机械合法性、攻击、伤害、豁免、资源支付、持续效果、Reaction 或连锁结算时复用 RE，不能在 SM/行为脚本另写一份规则。RE 目标无权威跨请求状态，显式 RNG、返回未提交结果，`accepted ≠ committed`；本批不冻结共同 ABI。
+
+代码状态沿用 MC §1.1 的 **2026-10-12 前批静态审查基线**，本轮未刷新其他仓库 SHA / 分支 / 能力状态，不把当时 SM main 与开发分支的差异说成当前事实。任何实现任务开始前，应只读核对实际锁定版本和 Consumer；静态 Review 不等于完整集成测试。
+
+## 4. 成熟机制：来源、用途与复用方式
+
+下表“如何应用”是本项目候选设计 `[PROPOSED; NOT IMPLEMENTED]`，并非来源系统已满足本项目需求。当前先借鉴设计；直接依赖组件或迁移代码须另有具体证据，不要求全部自行重写，也不为少量能力引入第二套完整框架。
+
+| 来源 | 机制与官方依据 | 如何应用于本项目 | 限制 | 复用方式 |
+|---|---|---|---|---|
+| Evennia | [Commands](https://www.evennia.com/docs/latest/Components/Commands.html)：前置、解析/执行、后置钩子 | 分清动作校验、实际发生阶段与提交后后果，避免把 Intent 当成外显动作 | 钩子不自动提供原子性；yield 不持久保存暂停，InterruptCommand 不等于通用 Continuation | 借鉴动作阶段；具体独立组件依赖/代码迁移待评估 |
+| Evennia | [Combat Base](https://www.evennia.com/docs/latest/Howtos/Beginner-Tutorial/Part3/Beginner-Tutorial-Combat-Base.html) 的 CombatHandler；[Scripts](https://www.evennia.com/docs/latest/Components/Scripts.html) 的持久系统状态/可选定时 | 研究 Encounter Controller、持续活动与 NPC 行为的组织，减少散落的动作循环 | 教学战斗不是 D&D；不照搬行动顺序、墙钟计时或承诺任意崩溃续玩 | 借鉴 Controller / 活动处理；不默认引入整个运行框架 |
+| Evennia | [Objects](https://www.evennia.com/docs/latest/Components/Objects.html)、[Typeclasses](https://www.evennia.com/docs/latest/Components/Typeclasses.html)、[Prototypes](https://www.evennia.com/docs/latest/Components/Prototypes.html) | 研究对象模板、能力组合和扩展组织，使不同物体共享受控交互语义 | 添加属性不等于移动/感知/Policy 已消费它；模板更新不能覆盖固定包与历史 | 借鉴设计，组件/代码复用逐项审查 |
+| Evennia | [Attributes](https://www.evennia.com/docs/latest/Components/Attributes.html)、[Building](https://www.evennia.com/docs/latest/Howtos/Beginner-Tutorial/Part1/Beginner-Tutorial-Building-Quickstart.html)、[Web Client](https://www.evennia.com/docs/latest/Components/Webclient.html) | 比较持久属性、建造工具、文字入口等基础设施是否值得实际复用 | 可变 Attribute 可能自动保存；权限、缓存与提交适配未验证，不以基础设施代替项目机制 | 可选直接依赖能力评估；尚未接入 |
+| CDDA | [EOC 环境查询 / 视线 / 声音刺激](https://docs.cataclysmdda.org/JSON/EFFECT_ON_CONDITION.html) | 区分当前环境查询与专用感知刺激，让世界变化影响察觉与行为 | 来源视线/声音规则不是 D&D；同场景、局部通知均不证明已察觉 | 借鉴设计，不迁入 C++ 引擎 |
+| CDDA | [Activities](https://docs.cataclysmdda.org/PLAYER_ACTIVITY.html)：start / do_turn / finish / canceled 与序列化 | 组织短期行动目标/进度、开始/执行/完成/取消，目标失效时停止或重新决策 | 活动状态不是长期人物认知；取消/恢复语义须服从本项目已提交事实与 RNG | 借鉴状态生命周期，具体协议 OPEN |
+| CDDA | [Reality Bubble 坐标 / 分块加载](https://docs.cataclysmdda.org/c%2B%2B/POINTS_COORDINATES.html) | 研究按需要/活动范围推进模拟，避免无差别扫描全部 NPC | 这是局部模拟组织启发，不证明全部离屏行为可停止或可放弃必要后果 | 借鉴设计，不照搬尺度与完整开放世界模拟 |
+| Ranvier | [Scripting / Behaviors](https://ranviermud.com/building/scripting/)：可配置、可组合的小行为 | 组合调查、改道等受控行为；项目要求每次继续执行前重查目标、位置与授权 | 目标失效重查是本项目要求，来源接口不自动保证；配置/回调不等于安全热部署 | 借鉴设计；独立组件/代码需许可与依赖评估 |
+| Ranvier | [Room.emit](https://ranviermud.com/jsdoc/Room.html)：向局部对象转发选定事件 | 用局部变化通知使相关行为重新检查前提，减少全局广播 | 通知不是 WorldEvent、感知刺激或 OB 的同义词，也不自带可靠投递/权限 | 借鉴局部通知，不引入第二套 JS 游戏运行层 |
+
+直接依赖组件、迁移代码、借鉴设计分别记录实际采用范围、固定版本、依赖和许可。复制示例、contrib、插件或素材前逐项核对，不假定核心许可证覆盖全部内容；参见 [Evennia Contribs](https://www.evennia.com/docs/latest/Contribs/Contribs-Overview.html)。本轮未复制外部代码。
+
+## 5. 首个候选纵向场景：环境改变产生持续后果
+
+**[PROPOSED; NOT IMPLEMENTED]** 原创两个相连房间，通路旁有可移动物体，两个 NPC 拥有不同信息与目标。玩家用未预写专用剧情分支的合理自然语言要求移动物体、建立通路阻挡；Planner 理解/必要裁决后组合已有能力，SM 验证并真实执行。若已支持能力不足，明确缺口/拒绝/澄清，不伪造成功，也不要求每次自由行动生成代码。
+
+候选闭环是：**移动物体 → 建立阻挡关系 → 移动/感知/Policy 使用该事实 → NPC 调查、改道或合法交战 → 后果持久 → 移除障碍后相应限制解除**。通行、视线、声音的影响分别依已支持语义判断，不假定一件物体同时阻断全部渠道；涉及 D&D 判定仍交 RE。恢复通路不撤销已经发生的支付、观察、记忆或其他事实。
+
+检查事实不仅保存为描述：移动可行性、授权当前感知和 NPC 活动必须真正消费相应属性/关系。优先复用动作、属性和关系语义，避免每种物体组合一个专用命令或无语义 Flag；合理任务/剧情 Flag 仍可用，不开放任意 JSON Patch、SQL 或无授权属性修改。具体能力范围、几何/关系与动作阶段 Schema 均 OPEN。
+
+**未来通过证据：** 原始输入、能力组合/裁决依据、提交回执、状态及其消费结果；两个 NPC 各自获准信息/回应与实际动作；目标离开后重查；移除后的相应恢复、正常重启后的后果。确定性回归另外覆盖非法/越权、重复、版本冲突、故障回滚/缓存、迟到或失败模型结果。本轮未实现或运行该场景。
+
+## 6. 感知、短期行动与完整经历
+
+当前感知、短期行动状态、长期认知各司其职；即时行为可使用可信当前感知或机械判定，不等 EVA。JEV 仍仅在既有授权范围承担 Perception / Memory Gate 判断，不替代必需规则或可信事实；Host 负责模型执行，不拥有权威状态。
+
+MC §7.5 的方向保留：**整场战斗一个 CombatEpisode，EpisodeObservation 是 NPC 整段经历中实际察觉部分的逻辑观察单位**。不默认每 Round / Action 建 Episode，也不默认每机械事件包装 WorldEvent / 独立 OB。机械审计、局部通知、感知刺激与认知观察用途不同，不因此新增多套数据库、队列或事件总线。
+
+“战时保存必要结果/证据、战后聚合”为候选方案，可比较可信历史重建；证据、生命周期、增量/同步算法 OPEN。不能从最终世界状态补造历史，不能借 Episode 关联泄漏隐藏内容或因果。已有 OB、Evidence、Outbox 和历史数据保留，既有 EVA 标识/完成、TTL/Processing/Retention 语义不因本批被删除或重设计。
+
+## 7. 受控扩展，不绑定 Coding Agent
+
+动态 Agentic 行为是产品目标；Coding Agent 运行时生成代码只是可选实现手段。配置/模板更新、已有能力组合、真正新增底层机制分别处理，日常自由行动不必启动代码生成。测试、权限限制、资源预算、版本启用和安全边界不可省略；任意回调、人工审批或 reload 不等于安全热部署。新代码准备完成后受控启用，不承诺任意代码即时安全生效。
+
+在途操作版本绑定、行为状态迁移、安全切换点、失败停止/恢复、扩展来源/版本/启用记录仍 OPEN。插件版本回滚不撤销已提交事实；固定 Adventure Package 是 Session 初始基线，获准扩展或运行变化不可静默回写基线/改写历史。规范集中于 MC §3.6，本批不重设计整个 Package Schema。
+
+## 8. 主线能力轨道与早期 Agentic 验证
+
+以下为 `[PROPOSED; NOT IMPLEMENTED]` 验收目标，不是四批已审计代码任务、冻结接口或必须串行完成的大工程。先核对已有实现/回归覆盖，补最小缺口；各能力围绕 §5 场景交错推进，已有可用能力可直接进入验证。
+
+| 能力线索 | 候选设计 / 需要的通过证据 |
+|---|---|
+| 对象交互与动作阶段 | 可组合语义、前提重验、真实发生阶段与持久后果；新状态被移动/感知/行为实际消费，不只改变描述 |
+| Encounter / Activity 执行与真实 RE 整合 | 非 LLM 行动推进与开始/完成/取消；固定一个实际已支持 RE 操作验证状态/RNG/幂等/冲突/故障/提交后通知，不要求全部协议同时升级 |
+| 感知与 NPC 行为 | 当前授权视图、专用刺激、局部通知、短期目标与重查；不同信息/目标导致不同调查/改道/交战，未知不算已察觉 |
+| Episode 经历 | 最小整场 CombatEpisode 的部分观察、来源追溯、聚合重试与信息隔离；保留/重建方案比较，不能由结束态推历史 |
+| 早期 Agentic 联动 | 最小机制形成后立即交错验证合理自然语言的能力组合、世界变化影响后续行为、NPC 提议进入实际执行及模型异常的安全处理；完整 Host 不是前置条件 |
+
+**两类证据分开：** 实际模型测试验证语义理解、开放式裁决和人物体验；确定性回归固定已审查输入/模型结果，验证执行、权限、幂等、迟到/重复/失败、RNG 与一致性。模型成功话术不证明执行正确，确定性 fixture 也不证明真实 Agentic 体验。至少一名敌方 NPC 的 Agent 宏观自主性仍须按 MVP 验收，纯 Policy 不能替代。
+
+每条验证记录实际版本、Session、配置、命令与输出、范围和缺口；不把静态文档审查或未运行原型写成通过/失败证据。本轮不运行模型或游戏验证；不等待选型研究完成才补当前机制。
+
+## 9. 可选 Evennia 验证与重新选型条件
+
+EB-1～EB-3 仅是未来具体框架替代评估可复用的检查，**不是项目主线强制流程**，未执行。评估获准后使用独立测试 Session 与固定依赖版本，不与当前 SM 双控生产世界，也不以当前接口不同直接否定框架。
+
+| 可选检查 | 仍有价值的未来证据 |
+|---|---|
+| EB-1 原生基础设施复用 | 两房间、门、NPC、文字交互、运行时创建/行为配置、正常重启持久性；列出实际复用的对象/属性/模板/钩子/Script/建造工具/客户端，防止仅把框架当壳 |
+| EB-2 真实 RE 与故障一致性 | 一个固定已支持真实规则操作；唯一权威、显式 RNG、重复/冲突/故障和可靠提交通知；回滚后数据库、新查询、旧持有对象/Attributes/缓存与后续命令一致，不能只看 SQL 或重启 |
+| EB-3 调度与持续后果 | 连续行为、目标失效重查、受控版本切换、角色视图隔离、最小 CombatEpisode 和环境变化的持久后果；不等于完整 Host、安全沙箱或通用中断 |
+
+[Django Transactions](https://docs.djangoproject.com/en/5.2/topics/db/transactions/) 指出回滚不自动恢复模型内存字段/应用缓存，提交回调也不属于事务本体；[Evennia Attributes](https://www.evennia.com/docs/latest/Components/Attributes.html) 的缓存/可变值须固定版本实测。可靠交接不能仅以一次回调替代 Outbox 语义。这些风险保留为验证项，不是未经运行的否定结论。
+
+只有出现**具体可复用能力、独立集成结果和合理的后续工作量比较**，才重新讨论整体迁移。比较须覆盖实际原生复用、信息隔离、真实 RE、故障/缓存、运行调度及持续世界后果；Python 可扩展或动态回调不自动批准迁移。若需要大范围重写框架、相同事实双重权威或关键正确性无法满足，停止该整体迁移方案、保留可复用设计；这不停止 SM＋RE 主线，也不自动接入另一完整框架。可继续改变技术路线，但不能让研究阻塞机制开发；不预报成本、工期或尚未运行结果。
+
+## 10. 决定、开放事项与修订记录
+
+| 议题 | 当前状态 |
+|---|---|
+| SM＋RE 主线，补程序化核心并尽早交错 Agentic 验证 | [DECIDED]；具体机制/测试目标 [PROPOSED; NOT IMPLEMENTED]，先核对实际覆盖 |
+| 单一事实权威与可信提交、可替换子系统 | [DECIDED]；具体状态/动作/活动关系和替代边界 [OPEN] |
+| CombatEpisode / EpisodeObservation 与不泄密 | 方向 [DECIDED]；证据/生命周期/同步/聚合算法 [OPEN; NOT IMPLEMENTED] |
+| 动态扩展 / Coding Agent | 受控能力目标 [DECIDED]；代码生成手段可选，具体协议 [OPEN]，完整系统 [NOT IMPLEMENTED] |
+| Evennia 整体迁移 / Evennia_base | [OPEN] / Deferred / Optional evaluation；不构成主线依赖，本轮无仓库或运行实现 |
+
+**v0.2（2026-10-12，合并前修订）：** 文件由 `EVENNIA_ADOPTION_PLAN.md` 改名；撤回 v0.1 的 Evennia 优先采用决定及强制 EB 顺序，改为当前 SM＋RE 演进。保留官方研究、可组合机制、Episode、扩展与故障验证成果。v0.1 只是本分支未合并草案的历史，不作为现行规范。
+
+官方在线资料核对日期为 2026-10-12，`latest` 不是固定依赖版本。本轮仅文档修订，未实施游戏机制、框架迁移、模型测试或运行验收，未创建/删除/归档任何仓库。
