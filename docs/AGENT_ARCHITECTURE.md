@@ -1,16 +1,18 @@
-# Agentic TRPG — Agent Architecture（MVP，Draft v0.14）
+# Agentic TRPG — Agent Architecture（MVP，Draft v0.15）
 
-> **文档状态**：Draft v0.14；领域状态与共享提交，NPC Cognition 可持久管理 Meta；具体拆分/接口尚未实施，本轮无运行验证
+> **文档状态**：Draft v0.15；World / 角色 / 编排分责，已有受限实现见 MC §1.2；本轮无运行验证
 >
-> **日期**：2026-10-12
+> **日期**：2026-10-15
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.14（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.16、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.16、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.10、[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.3
+> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.15（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.17、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.17、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11、[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.4、[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.1
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
 > **内容边界**：本文仅使用通用概念及原创合成示例，不包含 *First Blush* 正文、地图或实质性的改编剧情数据。该剧本仅作为**私有**端到端验收来源。
+>
+> **v0.15 修订主题（2026-10-15）**：同步 MC 的 A1 / A2 和 World 事实边界；StateMachine 统一入口/装配、显式依赖与共享 SQLite，Host 只提议。物理遮蔽与感官源属于 World，发现/密码知识属于感知/知识，仍按实际阶段取证；Event / Episode / Observation、NPC EVA 和独立行动机制不另行改造。
 >
 > **v0.14 修订主题（2026-10-12）**：按 MC §0.3 替代旧 SM 独占所有状态限制。Cognition 管版本化 Meta，Perception 管授权观察，Combat Handler 管持久战斗流程，共享设施保障各次操作提交；Host/LLM 不继承内部领域写权限。EVA 与未来行动仍独立。
 >
@@ -34,9 +36,9 @@
 
 ## 0. 决策层级与需要澄清的冲突
 
-**已确认的产品原则**（遵循 Module Contracts v0.14、MVP Scope v0.16 与 State Machine v0.16）：
+**已确认的产品原则**（遵循 Module Contracts v0.15、MVP Scope v0.17 与 State Machine v0.17）：
 
-当前仍以 `trpg-state-machine`＋RE 为基础；目标内部责任以 MC §0.3 状态表为准，不再要求单一 SM 模块拥有全部状态。本文其余“SM”沿用现有任务/观察/命令协议入口，目标内部由 NPC Cognition、Perception、实体/效果领域及 Handler 负责，通过共享设施提交。类/表拆分尚未实施，Host 不持有影子事实。Evennia / CDDA / Ranvier 研究与可选整体迁移边界不变。
+当前仍以 `trpg-state-machine`＋RE 为基础；目标内部责任以 MC §0.3 状态表为准，不再要求单一 SM 模块拥有全部状态。本文其余“SM”沿用现有任务/观察/命令协议入口，目标内部由 NPC Cognition、Perception、实体/效果领域及 Handler 负责，通过共享设施提交。部分显式组合已实现，剩余目标见 MC §1.2 / A2；Host 不持有影子事实。Evennia / CDDA / Ranvier 研究与可选整体迁移边界不变。
 
 1. **DM Planner 是主持与协调决策者；DM Narrator 独立负责已确认事实呈现**：解释玩家表达、组织交互、作 GM 语义裁决、调用规则及叙述已确认结果；不代 NPC 决定个人目标和自主行为。
 2. **NPC Sub-agent 具有独立角色身份和私有上下文**：在需要时被调用；一个模型进程可服务多个角色，但每次调用只能接收该角色已获授权的信息。
@@ -125,7 +127,7 @@ Agent Host 严格是 **LLM Runtime / Orchestration Infrastructure**，属于 Age
 - 检查输出格式，执行 Tool Call 的受控适配与传输，以 evaluation_id + Result 递交 SM，分别反馈 EvaluationReceipt / Command Receipt；不语义筛选 Meta。
 - 向 SM 报告超时、取消、Context 可用性等运行时信号，由 SM 判断领域任务、模式与完成状态。
 
-Host **不拥有或持久管理** World / NPC Meta、ObservationProcessingStatus、游戏结果或任务完成决定；缓存和日志不成为第二权威。Session 管游戏时钟，Cognition 管 Schedule / Gate / 任务授权 / 模式，Perception 管观察生命周期，模型等待不占写锁。已审阅测试的内部模块可经受控领域/持久化接口管理本领域状态，不必反复包装成外部 Agent；Host/LLM 输出、Coding Agent 生成物及未验证脚本不继承这种信任。固定结构化协议与已有机制组合优先，未知字段不产生执行语义，禁止任意数据库/属性写入。
+Host **不拥有或持久管理** World / NPC Meta、ObservationProcessingStatus、游戏结果或任务完成决定；缓存和日志不成为第二权威。WorldFacts 管唯一世界时钟，Session 提供引用，Cognition 管 Schedule / Gate / 任务授权 / 模式，Perception 管观察生命周期，模型等待不占写锁。已审阅测试的内部模块可经受控领域/持久化接口管理本领域状态，不必反复包装成外部 Agent；Host/LLM 输出、Coding Agent 生成物及未验证脚本不继承这种信任。固定结构化协议与已有机制组合优先，未知字段不产生执行语义，禁止任意数据库/属性写入。
 
 ### 2.2 DM 与 NPC 使用不同的请求模板及权限
 
@@ -163,6 +165,8 @@ Narrator 可以收到**受控公开的叙事提示**，不必拥有 Planner 的�
 普通游戏命令统一 submit_command(TypedCommand)，包含 session_id / command_id、可信 principal_id、适用操作的 actor_id、command_type、expected_world_version、强类型 payload，按 MODULE_CONTRACTS.md §3 定义，不新增 Adjudication API。Actor 行动须真实 actor_id；受信系统/世界事件的 combat.start / rules.effect 等可无行动 Actor，但须验证 principal、机械来源与目标（AP-15）。强类型联合、source_ref / 来源权限字段仍 [PROPOSED / OPEN; NOT IMPLEMENTED]；不是将 actor_id 全局无约束可空。创建、NPC Evaluation、查询/回执入口继续独立。
 
 ### 3.2 场景主持与自由行动
+
+**World 与编排边界 `[DECIDED]`：** Planner 的意图仍经 StateMachine 统一命令入口；探索移动采用 Navigation / Activity + WorldHandler，战斗移动采用 CombatHandler + RE，共享唯一实际角色位置和对象事实。战斗开合/解锁/取放/破坏额外协调规则资格、资源、时序、触发与反应，不能绕过现有非战斗入口限制；Handler 只编排，规则判断/计算归 RE。当前受限实现及缺口见 MC §1.2，目标/候选 World 能力见专项草案。合法失败可能仍支付成本，Narrator 根据已提交结果描述，不能把 unsupported 或版本冲突讲成骰点失败。
 
 - **[DECIDED]** Adventure Package 是静态初始定义，不是 DM 创造力的上限。Planner 可以解释和创造情境，通过 SM 已支持的有限 Typed World Operations 提议简单 Object / World Fact / Scene Connection，不修改静态 Package，也不新增 World Creation Agent。
 - 已有对象优先使用可信 GM View 的 ID，新对象由 SM 分配稳定身份。叙事描述、未提交提议和已提交 Runtime World State 必须分开；不能信任 LLM 自报引用存在或状态已变。
@@ -295,6 +299,8 @@ get_scene_view 给 NPC 返回信息时也必须经过 NPC Perception / 授权投
 上下文安全边界应在**检索、投影与工具授权**阶段实现，不能将全量世界状态送进 Prompt 后仅靠“不要泄漏”约束。玩家输入、其他 NPC 发言和剧本文本均视为低信任数据，不具有系统级指令权限。
 
 ### 5.2 统一的 Perception 输入：事件与当前状态
+
+WorldFacts 提供客观空间、物理遮蔽和隐藏/感官来源；角色感官/机械状态来自 CharacterFacts / Effects。谁发现暗门、知道密码、形成信念属于 Perception / Knowledge / Cognition。World 能力组合不新增认知副本，不能用操作结束态重建历史察觉，也不改变下面既有 Event / Episode / Observation 和 EVA 职责。
 
 **Event Observation [DECIDED]**：SM 从已提交 WorldEvent 的 Observable Signals 形成事件时察觉证据。先按每个 Signal 的可计算 Scope Discovery 候选 NPC，再依据事件时感官、位置、明确遮挡及已支持机械约束确定性判断；未激活 NPC 同样可靠保存，不能用当前状态倒推历史。SM 在事件提交时已保存足够证据/稳定历史引用及可靠工作，无需完整 Snapshot；大型/全局事件允许分批、去重和恢复。Signal 最小候选 signal_id / channel / content / scope、模板/结果条件与传播字段见 MODULE_CONTRACTS.md §7，[PROPOSED / OPEN; NOT IMPLEMENTED]；感知 Scope 与机械 Effect Scope 独立，不另存重复 perception_scope。
 

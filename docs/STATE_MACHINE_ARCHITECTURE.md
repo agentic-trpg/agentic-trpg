@@ -1,12 +1,12 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.16（领域管理状态、共享提交；SM＋RE 当前基础不变；Handler 重构及新接口尚未实施）
+> **状态**：Draft v0.17（World 职责、A1 编排分离、A2 模块化；已核对受限实现，完整目标仍待落实）
 >
-> **日期**：2026-10-12
+> **日期**：2026-10-15
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.14（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.16；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.10；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.14；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.3（演进与验证计划）
+> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.15（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.17；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.15；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.4；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.1（候选组件设计）
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
@@ -14,14 +14,14 @@
 
 ## 1. 目标、边界和核心术语
 
-本文保留 State Machine 文件名与当前 SM 公开入口，区分现有实现和**按领域管理状态、按事实确定权威、按操作组织事务的目标设计**。MODULE_CONTRACTS.md v0.14 §0.3 的责任表替代旧的 SM 独占全部状态限制；`trpg-state-machine`＋RE 仍是开发基础，不要求 StateMachine 类或单一模块理解、保存和批准所有业务细节。以下现有 Task / Perception 协议中的“SM”指保留的逻辑入口，内部责任按该表分配；具体拆分尚未实施。
+本文保留 State Machine 文件名与当前 SM 公开入口，区分现有实现和**按领域管理状态、按事实确定权威、按操作组织事务的目标设计**。MODULE_CONTRACTS.md v0.15 §0.3 / §0.5–§0.6 规定领域归属、探索/战斗编排与模块化；`trpg-state-machine`＋RE 仍是开发基础。**StateMachine 是统一 API 与组件装配入口**，各子系统显式依赖协作，不要求中心类理解和批准所有业务细节。已实现的部分组合与仍存 Mixin 见 MC §1.2，不将目标拆分一概写成尚不存在。以下 Task / Perception 协议中的“SM”沿用该逻辑入口。
 
 **适用范围 `[DECIDED]`：** SQLite / WAL、具体表结构及 Event-level OB / Outbox 是当前 SM 实现或可复用设计资产，不是永久实现约束。保留授权、幂等、RNG、回执、故障一致性、NPC 私有状态与可靠处理语义，并通过回归证明替换后的正确性；不要求逐类逐表迁入另一框架。不同表可以保存不同事实，视图/缓存只是派生数据；禁止两份相同权威世界双向同步。替换原型与现有实现使用独立测试 Session。Evennia 整体采用仍 OPEN，可选评估不阻塞主线。
 
-目标内部协作承担六件事 `[DECIDED; NOT IMPLEMENTED]`，具体类/表/API `[OPEN]`：
+目标内部协作承担六件事 `[DECIDED]`；已有受限实现见 MC §1.2，新增类/字段/API `[OPEN]`：
 
 1. Session / 世界领域加载验证固定 Adventure Package，按各数据负责人接口一次初始化。
-2. Character / World Object 等领域保存各自负责的当前事实；角色在探索和战斗中共享同一 HP、位置、库存与实体身份。
+2. WorldFacts 保存场景/空间/对象/物体耐久/门锁/容器/物品实际关系；CharacterFacts / 机械组件保存唯一角色位置、HP、资源和装备。库存归属由 World 实例关系受控投影，不维护两份可独立修改的权威。
 3. 授权查询 / Perception 提供角色视图；共享对象接口不能泄漏秘密。
 4. Combat Handler / 相关领域组织显式事实、行动、绑定和 RNG 交 RE 求值；各领域应用未提交结果，共享设施在同一事务提交状态、RNG、事件和回执。
 5. 共享持久化与提交设施保障版本/原值、授权、幂等、回执、可靠通知及恢复；当前 Python + SQLite WAL 基础继续使用，MVP 安全续玩边界不变。
@@ -33,7 +33,7 @@
 |---|---|---|---|
 | **Adventure Definition** | 地点、静态世界事实、NPC 初始档案、剧情条件、规则绑定 | **不可变**（Session 固定版本） | Adventure Package 作者 / 验证器 |
 | **Session Runtime State** | 当前场景、场景实例、世界标记、物体归属、任务、NPC 记忆、事件记录 | **可变** | Session / 世界 / Cognition 等按事实分责，共享提交 |
-| **Mechanical Combat State** | 人物 HP/位置、行动预算、效果、回合、RNG 等组合视图 | **可变** | Character / Combat Handler / Effect 分别管理；RNG 经共享设施提交 |
+| **Mechanical Combat State** | 人物 HP/位置、行动预算、效果、回合、RNG 等组合视图 | **可变** | CharacterFacts / CombatRecords / Effects 分别管理；RNG 经共享设施提交 |
 | **LLM Evaluation Context** | DM Context；NPC 可复用 Interactive / 一次性 Background Context | **临时派生视图** | Agent Host 管生命周期；负责领域提供授权事实与证据 |
 
 **不变量（MODULE_CONTRACTS.md §0.3、§4–§6）**：静态模板不是当前状态；描述不是命令；提议不是提交；叙事不是规则结果。每项当前事实有一个负责领域，跨领域不可分割操作共享一次提交/回滚；RE 只求值。临时候选状态、事件缓冲区和规则上下文允许存在，不能把 Legacy 隐藏战斗对象恢复为长期权威。
@@ -66,7 +66,7 @@
 ```text
 Human Player / DM Planner -> submit_command / trusted authorization -> responsible Handler
    Current foundation: trpg-state-machine + RE; target domain split not implemented
-   Session | Character/World Object | Combat Handler | Effect: one authority per fact
+   Session | WorldFacts | CharacterFacts | CombatRecords | Activity | Effects
    Immediate path -> stateful Combat Handler -> player boundary OR Combat Policy
                   -> RE only when D&D adjudication required -> domain interfaces
                   -> one shared transaction: domain changes + RNG + receipt + outbox
@@ -100,7 +100,17 @@ Human Player / DM Planner -> submit_command / trusted authorization -> responsib
 
 DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。Python + SQLite WAL 是当前 SM 基线，不冻结未来实现；Jev 为可替换候选。普通世界操作不必进入 RE；D&D 规则沿用 RE，SM / 脚本不重复实现持续效果、Reaction 或连锁裁决。旧 Stateful Engine 仅为历史基线或隔离回归对照，最终执行路径及 SM 均不依赖 `_LiveCombat` 等 Legacy 对象。
 
-**2026-10-12 前批静态核对记录（本批未刷新）：** SM 开发集成分支 `058e79f` 已包含 Batch C 与 PERF-01/02，世界 Producer 已有受限 `event-evidence/4`；该次核对的 SM 远端 main 基线为 `b3f350f`。RE 阶段 Evidence、机械审计分流、Episode 聚合、通用 Continuation 尚未完成。SM 锁定 RE `602dcb8`（evaluator `/8`），与 RE main `38fcfcd`（`/35`）存在不兼容的 Request / Snapshot 差异；准确版本、核对范围与来源统一见 MODULE_CONTRACTS.md §1.1，非本轮运行验收声明。
+**当前静态核对（2026-10-15）：** SM 分支 `feat/sm-gc5-activity-feedback`，HEAD `1fa7cea5dab7bb95f3f6fa975f8e681c691937a6`，含未提交 GC5 工作；已提交基础有 WorldFacts / CharacterFacts / CombatRecords、WorldHandler / ActivityHandler / CombatHandler、共享 SQLite 和导航/门锁/物品切片。A1 / A2 部分实现，战斗世界互动、通用推进/Continuation、完整能力组件仍待落实。准确证据、当前锁定 RE `6755524` 与脏工作区边界见 MC §1.2；旧版本对照保留于 §1.1，不作为当前依赖。本批未运行跨仓库测试。
+
+### 2.1 A1：探索与战斗的操作编排分离 `[DECIDED]`
+
+探索移动采用 **Navigation / Activity + WorldHandler**，战斗移动采用 **CombatHandler + Rule Engine**；两者复用 CharacterFacts 唯一实际角色位置。Navigation 计划/目标、CombatSnapshot.actor_zone 是进度或投影，不保存独立可写的探索位置/战斗位置。战斗空间由实际世界空间映射，当前 `_current_cells` 复用同场景 cell；未来子地图/zone/跨场景的尺度、原点及落位转换 OPEN，无法表达时明确不支持，不通过战后同步双位置补救。
+
+开门、解锁、取放、破坏障碍共享 World 对象事实与能力操作。战斗入口额外经 RE 协调行动资格、资源、时序、触发与反应，Handler 编排并组织共同提交。当前非战斗入口的 combat guard、可达性、授权/凭据和装备/活动等限制仍有效；不能直接调用内部方法绕过。受控战斗执行上下文、规则 Delta 与回归证据未齐全前，不扩大现有支持。完整边界以 MC §0.5 和 [World 草案 §4](./WORLD_SUBSYSTEM_DESIGN.md#4-探索战斗与底层互动-decided) 为准。
+
+### 2.2 A2：StateMachine 模块化与职责边界 `[DECIDED]`
+
+按需组合 Handler / Service、Facts / Records、Supporting Components，以构造依赖和共享 SqliteStore 协作，逐步减少 Mixin / 隐式 `_conn` 依赖。Facts / Records 是领域读写组件，实际持久化在 SQLite；跨域操作共用提交边界，不由组件各自提交。不要求每个子系统有全部层次、不要求每种对象有专属 Handler、不引入强制 ECS。当前显式装配是基础，剩余模块化及完整 Effects 边界仍 OPEN；见 MC §0.6 / §1.2。
 
 ## 3. 运行时数据模型与状态所有权
 
@@ -122,14 +132,14 @@ DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层�
 | `last_world_event_seq` | 本 Session 已提交事件的稳定全序序号，观察记录据此引用及排序 |
 | `last_safe_checkpoint_id` | 最近可核验的非战斗安全恢复点；不意味着活跃战斗可精确恢复 |
 | `status` | `active`、`combat_unrestorable`、`completed`、`blocked_reconciliation` 等（候选） |
-| `active_combat_ref` | 指向 Combat Handler 负责的遭遇/流程状态，不依赖 Engine 私有 Handle |
+| `active_combat_ref` | 指向 CombatRecords 保存、CombatHandler 编排的遭遇/流程状态，不依赖 Engine 私有 Handle |
 | `created_at`, `updated_at` | 运行元数据，不直接决定游戏世界时间 |
 
 **注意**：`phase` 不等于每个场景固定的剧情幕数。玩家可合法往返 Scene，不应被强制套入不可逆的线性故事进度。
 
 ### 3.2 `WorldState`：会话全局事实
 
-世界领域负责 `flags`、`quest_state`、已解锁内容与 Scene 关系；`game_time` 使用 Session 时钟，`world_actor_locations` / 对象清单读取 Character / World Object 的同一实体事实。具体存储映射 `[OPEN]`，不是多份可独立写入的当前位置/归属。
+WorldFacts 管世界/场景/对象事实与唯一世界时钟（当前 game_tick）；Quest 保留任务状态责任。候选 `world_actor_locations` 只是 CharacterFacts 角色位置的派生查询，对象清单从 WorldFacts 读取；Session 引用时钟，不另存一份。候选存储映射 `[OPEN]`，不能独立改写位置/归属。
 
 约束：
 
@@ -164,7 +174,7 @@ Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两�
 
 ### 3.4a `CharacterState`、Combat Handler、Effect 与 RNG（分责、共同提交）
 
-Character / World Object 管当前 HP、资源、位置、库存/装备；Effect 管有效效果、来源、时钟、消耗及生命周期；Combat Handler 管参战关系、先攻/回合流程、待选窗口、已提交行动关联与推进进度。组合机械视图引用同一实体/效果事实，不生成另一份可写目录。共享提交设施管理权威 RNG 流/版本并提供显式 RNGContext；不为各 Handler 任意另开流。具体类/表/字段拆分 `[PROPOSED / OPEN; NOT IMPLEMENTED]`，逻辑责任已决定。
+CharacterFacts / 机械组件管角色唯一实际位置、HP、资源、装备；WorldFacts 管对象、物体耐久、门锁、容器和物品实际关系，机械库存按 World 实例投影并校验；Effects 管持续效果及自身进度；Activity 管正在进行的活动；CombatRecords 管参战/回合/待选与推进记录，CombatHandler 组织流程。Facts / Records 读写 SQLite，不是独立内存权威。组合机械视图引用同一实体/效果事实，RNG 经共享设施提交，不为各 Handler 任意另开流。已有实现与目标差异见 MC §1.2；World 候选字段按模板/实例/关联/派生分类见 [专项草案 §3](./WORLD_SUBSYSTEM_DESIGN.md#3-可选能力组合-decided-proposed)，不冻结 SQL 或协议。
 
 **[DECIDED; NOT IMPLEMENTED]** 完整 Combat Event Log 应退出普通 RE 输入；每回合使用标记、效果时钟、关键时间点等是必要当前机械状态，由规则计算并经负责接口共同提交，不另建重复的精简历史日志。本次有序 ProposedEvents / 结算结果在提交前仍为候选，审计与 Episode 证据按需保留，不自动回灌求值。当前 event_log 依赖先按 RE-HIST-01 审计真实读者并补状态；不置空日志、删历史表或删全部候选事件（MC §4）。
 
@@ -302,7 +312,7 @@ Planner 可通过有限 Typed World Operations 提出简单 Object / World Fact 
 1. 按 `(session_id, command_id)` 查询历史完成回执；同键相同内容返回原结果，**同键不同内容拒绝冲突**。
 2. 验证 expected_world_version、可信 principal 权限、适用分支的真实 Actor 控制权或受信机械来源/目标、当前 Phase、可见/可用对象与事件条件。
 3. 对需要机械规则的操作，先在**写事务外**调用 Rule Engine 求值得到 `accepted` / `rejected` / `needs_choice` / `unsupported`，保留预期版本与 RNG 转换；短事务内重验身份、版本及领域不变量，各负责接口共同提交全部 World / Character / Effect / Combat / RNG Delta、Events / Signals、阶段 Evidence / 稳定历史引用、Outbox、Receipt 与去重键。世界操作可直接准备候选变化；阶段取证约束见 §3.6 / §6.2。
-4. **事务提交完成后**才返回 `committed` 并允许 Agent DM 将其叙述为事实；失败/冲突不写任何部分 Delta。
+4. **事务提交完成后**才返回 `committed` 并允许 Agent DM 将其叙述为事实；非法命令、提交故障/版本冲突不写任何部分 Delta。合法尝试结果失败可能仍消耗资源/时间并产生实际动作，按规则结果原子提交成本、阶段证据、进度、事件与回执；不能把所有“失败”混为回滚。
 
 请求 payload 应使用稳定序列化计算指纹，以区分重复提交和同一 `command_id` 下的不同请求。当前 SM 使用单个本地 SQLite 原子事务；替换提交实现须证明等价正确性，不以两份权威副本同步替代原子性。
 
@@ -444,7 +454,7 @@ SM 维护 Pending OB 的定期/最长等待调度，**最大调度等待期限�
 
 Interactive / Background EVA 及已审核 Schedule / Policy 可提出 Action Intent，实际执行共用 Actor 授权 → Typed Command → 必要 Rule Evaluation → SM Commit，非机械操作沿用 §5.2。EVA 不执行动作；Meta 合法整批提交，Action Intent 非法单独拒绝、不回滚 Meta，合法意图独立交接和执行。command_id 独立稳定、派发重试复用；Command Receipt 与 EvaluationReceipt 分开。
 
-SM 管游戏时钟、日程、Trigger / 活动版本 / 到期时间 / 完成取消回执，重验存活、失能、地点和环境前提，控制领域防循环；Host 只管调用资源预算与模型队列。确定性安全暂停不等于 NPC 已形成新主观计划，Jev 仍非强制依赖。
+WorldFacts 管世界时钟；Activity、Cognition / Schedule 与相关支持组件在 SM 入口内协作，管理日程、Trigger / 活动版本 / 到期时间 / 完成取消回执，重验存活、失能、地点和环境前提，控制领域防循环；Host 只管调用资源预算与模型队列。确定性安全暂停不等于 NPC 已形成新主观计划，Jev 仍非强制依赖。
 
 **Mode Switching（Proposed / Not Implemented）不等待旧 EVA**：Background → Interactive，SM 在短 SQLite 事务撤销旧有效任务资格、保留已提交 Meta、移交未完成 Work、更新 interactive 状态并创建新 Evaluation ID。新 Interactive LLM 获最新完整授权 Meta、未完成 Observation 与当前玩家输入；Host 尽力取消旧 Invocation，不等待旧调用结束、失败回执或 ACK，SM 拒绝取消任务的迟到结果。若旧结果先提交，则保留原 Meta 和可靠交接，不重做。
 
@@ -469,7 +479,7 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 
 ### 7.1 启动 Encounter
 
-**[DECIDED; NOT IMPLEMENTED]** Combat Handler 组织遭遇生命周期，可以引用 Package 的可选 EncounterDefinition，也可基于当前权威状态动态组建 Encounter；动态参与者须具可信、规则验证的机械数据。Package 不执行启动，不因进入 Scene 新建或重置 NPC。Handler 具体 API / 持久模型 OPEN。
+**[DECIDED]** 当前 CombatHandler / CombatRecords 已有受限 Package 遭遇、检定/攻击/结束编排，见 MC §1.2；下述完整生命周期及通用动态组建仍为目标。可引用可选 EncounterDefinition，也可在获准能力范围内基于权威状态组建 Encounter；动态参与者须具可信、规则验证的机械数据。Package 不执行启动，不因进入 Scene 新建或重置 NPC。新增 Handler API / 完整持久推进模型 [OPEN; NOT IMPLEMENTED]。
 
 1. Handler 经授权边界核验 principal / 适用 Actor 或系统来源，从 Session、实体/效果负责人读取完整必要事实、规则绑定与既有 RNG，准备 NonCombatSnapshot。
 2. 复用 RuleEvaluationRequest / RuleEvaluationResult，候选 operation_kind=combat.start，强类型 payload 描述启动参数。Engine 计算先攻与机械初始化，在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；不注册独立权威战斗对象。
@@ -742,14 +752,14 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 | **SM-01** | 当前 SM 持久化基线 | Python + SQLite WAL、短事务及可靠持久化为当前实现基础；不永久冻结类/表/后端，改变实现须回归证明正确性 | **当前实现基线；后端非永久约束，见 MC §0.2** |
 | **SM-02** | 战斗中途精确恢复 | **MVP 不支持**，列入 Post-MVP；须有明确安全检查点、不可伪恢复及战后可靠结算 | **已确认** |
 | **SM-03** | 多 Agent 感知与记忆 | Event-level 流程保留为当前实现/资产；目标整场 CombatEpisode / EpisodeObservation，不要求每个机械事件独立 OB；任务与模型运行仍分离 | **[DECIDED]；目标映射未实现，见 MC §7.5** |
-| **SM-04** | 状态权威（v0.16 修订旧独占限制） | 每项事实有明确负责领域；各领域可持久管理状态，一次操作共享提交/回滚，RE 只求值，见 MC §0.3 / §6.5 | **[DECIDED] 2026-10-12 修订；具体拆分 OPEN / NOT IMPLEMENTED** |
+| **SM-04** | 状态权威（v0.16 修订旧独占限制） | 每项事实有明确负责领域；Facts / Records 读写 SQLite，一次操作共享提交/回滚，RE 只求值，见 MC §0.3 / §6.5 | **[DECIDED]；受限拆分已实现，完整边界仍 OPEN，见 MC §1.2 / A2** |
 | **SM-05** | 非交互 NPC 状态 | 简单游戏时钟日程；Inactive Lightweight Gate / Background Evaluation 可产生行动；不要求 Interactive Agent 激活或常驻 LLM | **已确认逻辑设计，具体阈值待实验** |
 | **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务/模式、EvaluationStatus / NPCStateVersion、原子 Meta 与可靠交接；切换直接取消旧有效 EVA 并新建、不等旧反馈；Host 管 Context / 模型 | **已确认原则；具体协议 Proposed / Not Implemented** |
 | **SM-07** | OB Processing / Retention / 调度 | OB 直接承担短期记忆；完成不等删除/长期 Memory；Game Time TTL、引用归档、到期保护 Pending Work；定期最大等待严格小于生命周期且留余量，Interactive 可选 Gate、无新 Background EVA | **[DECIDED] 2026-10-11；未实现** |
 | **SM-08** | Event-local / Signal-scoped Evidence | 逐 Event 对齐 Signals 实际阶段，逐 Signal 发现后取最小完整证据并集，Discovery 不判察觉；Event / Signals / Evidence / Outbox 同一 SQLite 事务，后续判断才形成 OB，见 MODULE_CONTRACTS.md §7 | **[DECIDED] 2026-10-12；开发分支世界路径已受限实现，RE 阶段协议 [OPEN; NOT IMPLEMENTED]，见 MODULE_CONTRACTS.md §1.1** |
 | **SM-09** | Evennia 优先采用（历史） | v0.14 曾提出优先整体采用及强制 EB 顺序，没有迁移或运行验收；有用机制研究与正确性原则保留 | **采用决定/强制顺序由 v0.15 / SM-10 撤回；整体迁移 [OPEN]** |
 | **SM-10** | SM＋RE 游戏核心演进 | 当前 SM＋RE 为开发/运行基础，基于证据重构/替换子系统；机制与早期 Agentic 验证交错，Evennia 仅可选评估 | **[DECIDED] 2026-10-12；具体机制/Schema [OPEN; NOT IMPLEMENTED]，无运行验收声明** |
-| **SM-11** | 有状态 Combat Handler | 持久遭遇/参战/等待/推进进度，组织规则求值和共同提交；不复制人物事实、不重算机械变化，见 §7 / MC §0.4 | **[DECIDED] 2026-10-12；API / 预算 / Continuation OPEN，重构 NOT IMPLEMENTED** |
+| **SM-11** | 有状态 Combat Handler | 持久遭遇/参战/等待/推进进度，组织规则求值和共同提交；不复制人物事实、不重算机械变化，见 §7 / MC §0.4 | **[DECIDED]；已有受限 Handler / Records，通用推进 / 预算 / Continuation OPEN / NOT IMPLEMENTED，见 MC §1.2 / A1** |
 | S04 | `Session.phase`、Flag、Condition AST 的最终字段 | 与 Package Validator 一起固定最小集合 | 待设计 |
 | S05 | `world_version` 与实体版本粒度 | MVP 先 Session 级版本；更高并发时评估细化 | 建议 |
 | S06 | NPC 认知 Agent 与即时 Combat Policy | 即时战术不依赖 LLM；至少一名敌方 NPC 独立认知/宏观决定并实际影响受控行为的验收保留，不要求其生成每次 Tactical Intent | [DECIDED]；策略/授权配置 [OPEN] |
@@ -770,6 +780,10 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 ---
 
 ## 13. 文档治理与下一步
+
+### v0.17 修订摘要（2026-10-15）
+
+细化 World / Character / CombatRecords / Activity / Effects 归属，明确 StateMachine 统一入口/装配、A1 两种编排共享唯一实际位置与对象能力、A2 按需显式组合及共享 SQLite。补充合法失败与拒绝/冲突区别；World 专项字段保持候选，感知/知识及 Event / Episode / Observation 机制沿用。当前实现证据更新到 MC §1.2，历史修订保留；后续 A1 / A2 统一登记 MC §13，不新增待办体系。本批仅文档检查。
 
 ### v0.16 修订摘要（2026-10-12）
 
@@ -825,6 +839,6 @@ OB 直接承担短期感知记忆，Processing 与 Retention 分离，SM 管 Gam
 - 公开仓库只存放通用 Schema、原创示例和程序代码；完整 First Blush 内容、地图与实质性转写继续留在合法权限下的本地私有资料中。
 - **文档优先级**：MODULE_CONTRACTS.md 是跨模块目标接口与所有权的最高规范；MVP Scope 约束产品范围，本文细化 SM 内部职责。历史代码与旧双权威用语不能覆盖这些目标约束，具体 ABI 的 Proposed / OPEN 状态保持不变。
 
-**下一步建议**：遵循 MODULE_CONTRACTS.md v0.14 §14 与演进计划 §8，审计当前依赖并选择最小能力场景，与早期 Agentic 验证交错取证；不是先做完整 Host，也不是先整体迁移框架。AGENT_ARCHITECTURE.md v0.14 的 Host 边界和既有 EVA 协议继续适用。README 为正式入口，不承担接口细节；本批不创建仓库或实施验证场景。
+**下一步建议**：遵循 MODULE_CONTRACTS.md v0.15 §14 与演进计划 §8，审计当前依赖并选择最小能力场景，与早期 Agentic 验证交错取证；不是先做完整 Host，也不是先整体迁移框架。AGENT_ARCHITECTURE.md v0.15 的 Host 边界和既有 EVA 协议继续适用。README 为正式入口，不承担接口细节；本批不创建仓库或实施验证场景。
 
 **本阶段最重要的完成标准不是“状态模型有多少类”，而是一个 Session 能在不重复执行规则、不泄漏 NPC 秘密、不重置场景的前提下，可靠地从剧本初态走到已持久化的结局。**

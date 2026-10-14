@@ -2,11 +2,11 @@
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**
 >
-> **版本：v0.16**
+> **版本：v0.17**
 >
 > **初稿日期：2026-10-09**
 >
-> **修订日期：2026-10-12；同步领域状态与共享提交决定，产品范围不变；仅文档，无运行验收**
+> **修订日期：2026-10-15；同步 World、A1 操作编排分离与 A2 模块化，产品范围不变；仅文档，无运行验收**
 >
 > **文档级别：项目级（跨 Repository）**
 >
@@ -40,7 +40,7 @@
 - **[已确认] World Creation Agent 后置：** MVP **不开发** PDF/HTML/Markdown 自动剧本解析、跨剧本通用编译器、World Creation Agent，亦不要求兼容 Gamebook-style Adventure。首个冒险采用**人工整理、人工审核**的本地 Adventure Package（也可以先用最小化结构化配置）驱动，作为未来 World Builder 的参考样本。
 - **[已确认] 视觉引擎后置：** 可交互的 Visual Representation / Presentation Engine、自动地图资产管线、实时视觉状态同步均在 MVP 后开发。少量不影响游戏状态的 AI 插画仍可选；本地 Golden Adventure 无插画也须可通关。
 
-**已批准的目标架构**：以 [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.14 为跨模块最高规范。**[DECIDED] 当前 SM＋RE 为开发/运行基础，允许证据驱动的子系统重构/替换**；同一事实只有一个权威来源，可信运行层提交，不冻结现有类/表/接口。撤回未合并的 Evennia 优先采用与必经 EB 顺序；整体迁移 OPEN，`agentic-trpg/Evennia_base` 为 Deferred / Optional evaluation，本批不创建。机制研究与主线验证见 [演进计划](./GAME_CORE_EVOLUTION_PLAN.md)。RE Stateless 目标/完成标准不变，不因文档修订扩大实现声明。
+**已批准的目标架构**：以 [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.15 为跨模块最高规范。**[DECIDED] 当前 SM＋RE 为开发/运行基础，允许证据驱动的子系统重构/替换**；同一事实只有一个权威来源，可信运行层提交，不冻结现有类/表/接口。撤回未合并的 Evennia 优先采用与必经 EB 顺序；整体迁移 OPEN，`agentic-trpg/Evennia_base` 为 Deferred / Optional evaluation，本批不创建。机制研究与主线验证见 [演进计划](./GAME_CORE_EVOLUTION_PLAN.md)。RE Stateless 目标/完成标准不变，不因文档修订扩大实现声明。
 
 开放合理行动、持久世界后果与 NPC 私有认知/自主性是原有产品目标。程序化核心提供可复用且后果可被后续机制消费的能力，LLM 负责语义/情境裁决及人物认知；不是完整传统 RPG 加聊天 NPC。真实 Agentic 验证应尽早与机制建设交错，不等完整 Host。
 
@@ -48,7 +48,7 @@
 
 **[已确认] DM 职责隔离**：DM Planner 负责游戏规划/主持与结构化提议；DM Narrator 只依据玩家可见的已提交结果进行叙事，不共享未经授权的 GM Secret/其他 NPC 私有认知，可使用同一 LLM 但需隔离上下文和权限。
 
-**[已确认，2026-10-11；2026-10-12 按领域责任修订] NPC 双模式 Evaluation**：NPC 身份共用同一 Session 实体关联；Cognition 管 Personality / Memory / Belief / Relationship / Goal / Plan 版本与 Task / Mode / Gate，Perception 管 Observation / Work / Completion / Retention，Session 提供游戏时钟。Host 只管模型及 Interactive / Background Context。Interactive 独占主观认知/自主行动，可选 Gate 分类但不逐 OB 强制、无新 Background EVA；Inactive Gate 路由优先/定期 Background 或受控 No-op，Background 不激活 Interactive Agent。简单日程、模式/版本失效和既有完成协议保留。
+**[已确认，2026-10-11；2026-10-12 按领域责任修订] NPC 双模式 Evaluation**：NPC 身份共用同一 Session 实体关联；Cognition 管 Personality / Memory / Belief / Relationship / Goal / Plan 版本与 Task / Mode / Gate，Perception 管 Observation / Work / Completion / Retention，WorldFacts 管世界时钟、Session 提供引用。Host 只管模型及 Interactive / Background Context。Interactive 独占主观认知/自主行动，可选 Gate 分类但不逐 OB 强制、无新 Background EVA；Inactive Gate 路由优先/定期 Background 或受控 No-op，Background 不激活 Interactive Agent。简单日程、模式/版本失效和既有完成协议保留。
 
 **[已确认，2026-10-11] OB 生命周期约束**：Recent OB 直接承担短期感知记忆，不另建 Short-term Memory；Processing 与 Retention 独立，Completed 在 TTL 前仍可用但不重排同一工作。Game Time 决定到期，待处理 Work 与受引用证据必须保护；定期 EVA 最大等待严格小于适用 OB 生命周期且留执行余量，不能保证异常时必然完成。长期 Memory 仍由 NPC EVA 可选提议；本次仅同步既有 MVP 可靠性约束，具体 TTL / Schema / 周期 / 清理算法未冻结。
 
@@ -56,7 +56,7 @@
 
 ## 1. 项目愿景与 MVP 定义
 
-**[DECIDED] 状态责任修订（2026-10-12）**：遵循 MODULE_CONTRACTS.md v0.14 §0.3 的责任表，各领域可管理并持久化自己的状态；每项事实有明确权威及写入责任，一次不可分割操作共享提交/回滚，替代旧“单一 SM 独占全部状态”限制。当前 SM＋RE 开发路线、产品范围和恢复保障不变；类/表/API 拆分及 Handler 重构仍未实施。
+**[DECIDED] 状态责任补充（2026-10-15）**：遵循 MODULE_CONTRACTS.md v0.15 §0.3 / §0.5–§0.6。领域管理事实、操作共享 SQLite 提交；StateMachine 统一入口/装配，A1 分开探索与战斗编排并复用位置/对象能力，A2 按需显式组合减少 Mixin。已有受限基础见 MC §1.2，完整目标仍 OPEN；产品与恢复范围不变。
 
 ### 1.1 项目愿景
 
@@ -78,7 +78,7 @@ MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块
 
 | 维度 | MVP 产品范围 | 决策状态 |
 | --- | --- | --- |
-| 首个 RuleSet | Rule Engine 采用 D&D 2024 / SRD 5.2.1 机械能力作为实现基线；First Blush 的旧版规则细节需要人工核对/适配，不将其他模块设计为 D&D 专用 | [建议] |
+| 首个 RuleSet | D&D 2024 修订规则：PHB 2024、DMG 2024、MM 2025、SRD 5.2.1；First Blush 旧版细节逐项核对/适配，不将其他模块设计为 D&D 专用 | [DECIDED] 设计基线；具体支持待验证 |
 | 冒险类型 | 单人叙事探索、NPC 互动、检定、具备战术规则的战斗、休息及任务推进，组成完整小型冒险 | [已确认] |
 | 玩家模式 | **一名真人玩家，只直接控制一名 PC** | [已确认] |
 | AI 队友 / 同伴 | **首版没有 AI 队友**；不做招募、组队控制、队友战斗管理及同伴专属玩法 | [已确认：不纳入 MVP] |
@@ -108,7 +108,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 | --- | --- | --- | --- | --- |
 | **Agent DM** | 解释玩家意图、主持场景、请求 SM 批准 NPC Evaluation、GM 难度/线索和叙事裁决、将已提交结果叙述给玩家 | **场景组织与语义裁决** | 直接代替 NPC Sub-agent 做人物决策；伪造命中/骰点、HP 或 Rule Engine 结果 | **核心** |
 | **NPC Sub-agent**（属于 Agent DM） | 基于 NPC 自身角色设定、当前知识、目标与记忆决定说什么、做什么；给出对话或结构化行动提议 | **角色层面的决策提议，不具备权威状态写入权限** | 查看角色不应知道的秘密；写 HP/Slot/世界状态；自行确认机械动作成功 | **核心内部能力** |
-| **State Machine 当前基础 / 目标领域模块** | Session、实体/世界、Effect、NPC Cognition、Perception 各管其事实；Combat Handler 管有状态流程；共享设施保障提交/恢复 | **每项事实一个负责领域，跨领域操作共同提交**（MC §0.3） | 单模块包揽全部业务；重复 HP/位置/背包；再实现 RE 规则；把模型提议当事实 | **核心；具体拆分未实施** |
+| **State Machine 当前基础 / 目标领域模块** | StateMachine 统一 API / 装配；WorldFacts、CharacterFacts、CombatRecords、Activity、Effects、认知/感知各管其事实，共享 SQLite 提交 | **每项事实一个负责领域，跨领域操作共同提交**（MC §0.3） | 单模块包揽全部业务；重复位置/物品归属；再实现 RE 规则；把模型提议当事实 | **核心；已有受限组合，完整目标待落实，见 MC §1.2** |
 | **Agent Host**（Agent DM 内部基础设施） | LLM 调用、Context / Prompt / Budget / Cache、Tool 传输与运行时日志 | 仅临时 Runtime Metadata | 权威游戏状态、NPC 认知、领域任务完成与游戏结果 | **核心内部能力** |
 | **Rule Engine** | Typed RuleSet、规则合法性、骰点、攻击/豁免、行动经济、战斗机械状态转换计算及拟议事件 | **明确支持的机械规则求值，不拥有独立权威运行态**，与发起提议的 Agent 无关 | 扮演 NPC、决定 NPC 的动机、管理剧情与完整世界 | **核心** |
 | **Visual Presentation** | 将来的地图、Token、动画与场景呈现 | **只拥有展示层状态** | 直接决定伤害、HP、位置或合法性 | **MVP 后** |
@@ -119,8 +119,8 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 当前 SM 为开发/运行基础，保留授权、可靠提交与私有状态等已验证语义，允许重构或替换子系统，不冻结现有实现。不同表可保存不同事实，授权视图/缓存不是第二权威；禁止两份相同世界双向同步。替换原型与现有实现使用独立测试 Session，以下所有权均指领域职责。
 
-- Character / World Object 管人物/物体的当前 HP、位置、归属、库存/资源；Effect 管有效效果、来源、时钟和生命周期；Combat Handler 管遭遇/参战/回合流程、待选决定与推进进度，不另存人物当前事实。RE 计算机械变化，PC/NPC 同一正确性标准。
-- Session 管身份/固定绑定/时钟和元数据；世界领域管 Scene / Quest 等；Cognition 管追加版本的 Meta / Task / Mode / Gate，Perception 管授权证据/观察/处理生命周期。各领域共用同一实体身份，历史 Goal 不全是当前任务，记忆不保证避免循环。
+- WorldFacts 管场景/空间/对象/物体耐久/门锁/容器/物品实际关系；CharacterFacts / 机械组件管角色唯一实际位置、HP、资源和装备；库存归属受控投影。Effects 管持续效果与自身进度；Activity 管进行中的活动；CombatRecords 管战斗运行记录，CombatHandler 编排，不另存人物当前事实。RE 计算机械变化，PC/NPC 同一正确性标准。
+- Session 管身份/固定绑定和元数据；WorldFacts 管世界时钟/Scene 等，Quest 保留任务状态责任；Cognition 管追加版本的 Meta / Task / Mode / Gate，Perception 管授权证据/观察/处理生命周期。各领域共用同一实体身份，历史 Goal 不全是当前任务，记忆不保证避免循环。
 - 共享提交设施负责授权、版本/原值、请求关联、幂等、RNG、原子性及可靠通知；领域仍检查自己的结构/引用/生命周期，不以通用提交层重写法术或能力判定。现有攻击适配白名单未经审计不得删除或冒称通用。
 - **Agent Host** 严格负责 LLM Runtime：模型调用、超时重试取消、Interactive / Background Context、Prompt / Builder / Token Budget / Cache、Tool 适配传输、Invocation 日志/延迟/Usage。仅临时 Runtime Metadata，不拥有或持久管理任何权威游戏状态、NPC 认知、观察完成或行为结果。SM 不执行 LLM 主观推理、不管理物理 Context。
 - NPC Sub-agent 只接收经过权限/知识筛选的角色视角上下文；做出角色决定，并输出**待验证**的对话或行动意图。Sub-agent 不能直接写入世界数据，也不能自行宣告命中、伤害或资源消耗。
@@ -243,6 +243,8 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 ## 4. Rule Engine 支持范围政策
 
+**设计基线 `[DECIDED]`：** D&D 2024 修订规则（PHB 2024、DMG 2024、MM 2025、SRD 5.2.1）。具体已启用内容仍须精选规则矩阵、来源核对和真实实现证据；不宣称覆盖全部规则书。World 组件字段是工程候选，不是官方数据库规范，已核对来源及待确认细节见 [World 草案 §1](./WORLD_SUBSYSTEM_DESIGN.md#1-基线范围与规则依据)。
+
 ### 4.1 范围分类（产品优先级）
 
 | 分类 | 定义 | 应对方式 |
@@ -263,7 +265,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 - Attack Roll、Damage、Crit、Resistance/Immunity/Vulnerability、Death Saves、Healing/Temporary HP。
 - 常见 Conditions、Exhaustion、Effect Lifecycle 与 Concentration。
 - 基础 2D Grid、LoS、Cover、范围目标和常用 AoE；不要求视觉地图。
-- 代表性 Spell/Feature/Item 的 Invocation 选择、支付、效果及失败回滚。
+- 代表性 Spell/Feature/Item 的 Invocation 选择、支付与效果；非法/冲突/提交故障回滚，合法失败按规则保留实际成本。
 - **单 PC + 敌方 NPC 的权威战斗执行：** 受控 Combat Policy 提交即时合法 Intent，SM 审核 Actor/策略/机械可知范围，RE 算全部机械结果；同时验收至少一名敌方 Agent 的独立宏观决定及真实行为影响，不能只用默认怪物 AI 证明自主性。
 - Rest/Recovery、战斗结果输出以及向世界状态的安全转交。
 
@@ -276,6 +278,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 - SRD 5.2.1 **全部**法术、Feat、Monster、Magic Item 与完整职业等级覆盖。
 - **AI 队友、常驻 NPC 同伴、招募/入队系统、由玩家直接管理一整支队伍**。这是已确认不纳入 MVP 的范围。
 - 复杂位面旅行、全面世界经济、真实物理模拟、完全开放的世界生成。
+- 车辆、荒野旅行、巢穴、位面和 Bastion 的完整子系统；均为后续扩展，World 组件目录不将其变成当前 MVP 门槛。
 - 全 3D 空间高度、复杂飞行体积、大型生物多格占位及所有立体 AoE。
 - 多人实时联机、分布式一致性、跨 Worker 战斗执行和生产级集群部署。
 - **每个 NPC 常驻独立模型/进程**、NPC 离屏永久行动、完全自主的 NPC 社会模拟、无界的多 Agent 对话或递归委派。**不排除每个活跃 NPC 有自己的逻辑 Sub-agent 和记忆上下文。**
@@ -371,7 +374,7 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 
 2026-10-09 历史审阅基准（当时 `main`：`64dd920`）包含 `PlayerIntent`、`CombatEvent`、`LiveCombatView`、`CombatOutcome`、HTTP Bridge 等；这不是本轮对最新实现的审计或最终接口定义。可以复用正确的规则算法、Resolver、声明式数据与独立回归用例，但须改造状态依赖与执行架构，旧 View / Handle / Stateful API 只属 Transitional / Legacy。
 
-**[必须优先验证的集成缺口]** 该历史基线的玩家入口与内置怪物策略不足以证明当前跨模块闭环。2026-10-12 前批有限静态核对记录见 MODULE_CONTRACTS.md §1.1（本批未刷新）：SM 开发分支已完成 Batch C / PERF-01/02，但锁定 RE 与 RE main 存在不兼容的协议版本差异；RE 阶段 Evidence、机械审计分流、Episode 聚合和通用 Continuation 未完成。MVP 仍需受 SM 授权的 NPC Typed Intent → Stateless Evaluation → 原子提交路径，Intent 可由 Combat Policy 产生；独立验收敌方 Agent 宏观决定的真实影响，不要求每次战术来自 LLM，不绕过到私有 Engine 或冒充 PC。
+**[必须优先验证的集成缺口]** 该历史基线的玩家入口与内置怪物策略不足以证明当前跨模块闭环。历史有限核对保留于 MC §1.1；2026-10-15 当前 SM checkout / 依赖与实现证据见 §1.2，不能把历史锁定版本当作当前。已有受限组合/导航/门锁/物品与战斗基础，完整战斗 World 集成、Episode / Continuation 等仍待落实；本批未运行集成测试。MVP 仍需受 SM 授权的 NPC Typed Intent → Stateless Evaluation → 原子提交路径，Intent 可由 Combat Policy 产生；独立验收敌方 Agent 宏观决定的真实影响，不要求每次战术来自 LLM，不绕过到私有 Engine 或冒充 PC。
 
 ### 6.5 NPC EVA / Action Execution / DM 分离（目标协议摘要）
 
@@ -401,7 +404,7 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 | A07 | 战斗转交世界 | 玩家 PC 与敌方 NPC 的机械状态按真实来源归属被 State Machine 安全提交，资源不误记到施法目标或其他角色 |
 | A08 | 休息与场景推进 | 玩家资源按已选规则恢复，世界时间/Scene 正确推进；若原剧本没有自然休息环节，允许独立集成测试验收，不修改原剧情 |
 | A09 | Session 保存与读取 | 重载非战斗 Session 后，PC、任务、Scene、NPC 重要记忆与人物关系一致 |
-| A18 | 领域事实与共享提交 | 同一角色探索/战斗共用当前 HP/位置；用药时库存/角色/效果/战斗等负责接口共同提交必要变化、RNG/事件/回执，失败一起回滚；accepted 不等 committed |
+| A18 | 领域事实与共享提交 | 同一角色探索/战斗共用 HP/实际位置；物品位置与库存投影不能独立改写归属。用药/互动经负责接口同事务提交必要变化、资源/RNG/事件/阶段证据/进度/回执；提交故障回滚，合法结果失败按规则可能仍扣成本；accepted 不等 committed |
 | A19 | DM Planner / Narrator 隔离 | Planner 可处理 GM 机密但 Narrator 不读取未公开秘密，不把未提交内容作为世界事实 |
 | A20 | NPC Lightweight Gate / Background Evaluation | Inactive NPC 目击重大事件可靠保留证据，必要时一次 Background Evaluation 提出可选认知/行动，重试不重复改变关系 |
 | A21 | NPC 日程合法性 | 游戏时钟触发活动，若地点/前提变化则安全中止；不常驻运行所有 NPC 的 LLM |
@@ -480,7 +483,7 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 
 | ID | 产品问题 | 当前决定或建议 | 状态 |
 | --- | --- | --- | --- |
-| D01 | 首版正式 RuleSet？ | 推荐 D&D 2024 / SRD 5.2.1，其他模块不绑定 D&D 专属机制 | [待决策：具体基线] |
+| D01 | 首版正式 RuleSet？ | 设计基线为 D&D 2024 修订规则：PHB 2024、DMG 2024、MM 2025、SRD 5.2.1；精选内容/规则来源仍逐项核实 | [DECIDED] 基线；具体覆盖/取值待确认，不等于全规则书支持 |
 | D02 | 首版重点角色等级？ | 候选 1–5 级，已有高等级实现保留 | [待决策] |
 | D03 | 真人玩家与角色数？ | **一个真人玩家，仅控制一个 PC** | **[已确认]** |
 | D04 | 首版精选 Spell / Feature / Item / Monster？ | 从单人冒险和共用机制反推 Rule Support Matrix | [待决策] |
@@ -512,7 +515,8 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | D30 | 完整事态观察与机械审计？ | 整场战斗一个 CombatEpisode，EpisodeObservation 聚合整段已察觉经历；机械审计不自动进入感知，Event-level OB 非永久粒度 | [DECIDED]；战时记录/战后聚合待验证，Schema / 生命周期 [OPEN; NOT IMPLEMENTED] |
 | D31 | 中途选择与正常求值历史依赖？ | 连续规则尽量一次求值；目标 Interrupt 可持久暂停/恢复、RNG 一致且不占长事务；正常求值不反复加载完整 Event Log | [DECIDED]；通用 ABI / 最小路径 [OPEN; NOT IMPLEMENTED] |
 | D32 | 游戏核心演进与动态扩展？ | 当前 SM＋RE 主线，可替换子系统；Evennia 整体迁移 OPEN，`Evennia_base` Deferred / Optional evaluation；扩展不改固定包，Coding Agent 可选 | [DECIDED] 2026-10-12；具体机制/扩展协议 OPEN，无运行验收，单人文字范围不扩大 |
-| D33 | 状态持有与事务组织？ | 领域可持久管理自己的事实，一次不可分割操作共享提交；有状态 Combat Handler 不复制人物当前状态 | [DECIDED] 2026-10-12，替代旧 SM 独占限制；具体类/表/API/预算 OPEN，未实施 |
+| D33 | 状态持有与事务组织？ | WorldFacts、CharacterFacts / 机械组件、CombatRecords、Activity、Effects 分责；Facts / Records 读写 SQLite，一次操作共享提交 | [DECIDED]；部分基础已实现见 MC §1.2，完整目标/预算 OPEN |
+| D34 | A1 / A2 与 World 设计如何落实？ | 探索 Navigation / Activity + WorldHandler；战斗 CombatHandler + RE；共用实际位置/对象能力。StateMachine 统一 API / 装配，按需显式组合减少 Mixin，不强制全层/ECS | [DECIDED] 方向，完整目标未完成；架构待办统一 MC §13 的 A1 / A2，字段候选见 World 草案，不设平行 Backlog |
 
 **当前下一步：** 按演进计划 §8 审计现有能力并选择最小原创纵向场景，游戏机制与早期真实 Agentic 证据交错推进；可选 Evennia 评估见 §9，不阻塞主线。完整产品仍须合法取得并核对 First Blush、人工准备本地内容与精选规则、验收敌方 Agent 宏观自主性。本批不实现或创建仓库。
 
@@ -524,6 +528,8 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 4. 最新实现是否已具备能力，始终以对应模块的实际代码、测试及审核清单为准。本文件的历史实现快照不作为持续更新的完成状态表。
 5. 每完成若干开发 Batch，应回看 MVP 场景是否更接近可玩状态；如果只是扩大规则条目但没有改善场景体验，需要重新考虑优先级。
 6. 文件审批人、文档维护流程以及决策记录位置：**[待决策]**。
+
+**v0.17 修订范围（2026-10-15）**：遵循 MC v0.15 细化 World / Character / CombatRecords / Activity / Effects、A1 / A2 和合法失败语义，更新设计规则基线，引用当前实现静态证据与 World 候选草案；不要求完成整个组件目录，不扩张单人文字/恢复范围，不修改运行代码。
 
 **v0.16 修订范围（2026-10-12）**：按 MC v0.14 同步领域状态责任、有状态 Combat Handler 与共享提交，修订旧 SM 独占限制；目标拆分不代表实现。规则/领域/提交校验、防旧防重、观察/认知隔离及 EVA 独立行动协议保留；后续定向验收见演进计划 §8.1。仅 Markdown，未实施 Handler 重构或 RE 日志解耦，不扩张产品范围。
 
