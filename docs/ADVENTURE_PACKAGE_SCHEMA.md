@@ -1,14 +1,14 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.10（领域状态与共享提交；固定冒险基线不变，具体 Schema / 拆分尚未冻结或实施）
+> **状态**：Draft v0.11（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
 >
-> **日期**：2026-10-12
+> **日期**：2026-10-15
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.14（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.16；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.3；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.15（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.17；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.4；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.1；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
@@ -41,20 +41,25 @@
 
 ## 2. 模块责任与数据所有权
 
-**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.14 §0.3 替代单一 SM 独占状态要求，各领域持久管理负责事实，一次操作共享提交。本文其余“SM”沿用当前加载/命令协议入口，具体内部类/表拆分仍 OPEN / NOT IMPLEMENTED。同一实体身份共用，视图/缓存不可独立写当前事实；Evennia 整体迁移仍可选 OPEN。
+**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.15 §0.3 / §0.5–§0.6 分责。StateMachine 统一入口/装配，Facts / Records 读写所属 SQLite 数据，一次操作共享提交；已实现部分拆分与公开能力见 MC §1.2，剩余目标 OPEN。本文其余“SM”沿用当前加载/命令协议入口；同一实体身份共用，视图/缓存不可独立写当前事实，Evennia 整体迁移仍可选 OPEN。
 
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
 | 剧本背景、场景结构、进入条件、起始模板 | Adventure Package 作者（MVP 手工） | Session / 世界领域 | 模板仅合法创建/首次实例化应用一次 |
-| PC Templates、职业/数值/装备的静态定义与审核 | Package 提供，玩家选择，规则验证 | Character / 库存负责领域 | 多模板只读，MVP 一玩家一 PC，无外部构建服务前提 |
+| PC Templates、职业/数值/装备的静态定义与审核 | Package 提供，玩家选择，规则验证 | CharacterFacts / 角色机械组件；World 实例位置关系 | 多模板只读；便携库存归属受控投影且同事务校验，不建另一份可写 owner |
 | NPC Profile、动机、初始可知事实与 Meta | Adventure Package | NPC Cognition，实体身份共用 | 保留来源/历史与当前版本，仅角色授权内容 |
 | NPC 认知、对白、宏观行为 | NPC Sub-agent 提议 | Cognition 验证 Meta；发布/行动独立授权 | Agent DM 不代人物选择；敌方宏观自主性仍验收 |
 | NPC 即时战术 / Reaction / 自动效果 | Combat Handler 组织 Policy / 可信机制 / RE | Combat / Character / Effect 等负责接口，共享提交 | 无认知 LLM 前置；机械察觉未知不算已察觉 |
-| Scene、Quest、物体归属、剧情标志、世界时间 | Package 初始模板 | 世界/物体负责领域；Session 时钟 | 授权结构化更新，不复制位置/归属 |
-| 攻击、豁免、伤害、集中、战斗位置、行动预算、RNG | RE 显式规则求值 | Character / Effect / Combat Handler 各管事实，RNG 经共享设施 | 未提交 Delta / 事件 / RNG 共同生效，不复制规则或人物当前事实 |
+| Scene、空间/障碍、对象/耐久/门锁/容器、物品实际关系、世界时间 | Package 初始模板 | WorldFacts；Quest 保留任务领域责任 | 授权结构化更新；角色位置由 CharacterFacts 唯一管理，Session 引用 World 时钟 |
+| 攻击、豁免、伤害、集中、移动、行动预算、RNG | RE 显式规则求值 | CharacterFacts / 机械组件、Effects、CombatRecords；RNG 经共享设施 | Handler 编排，必要 Delta / 事件 / 阶段证据 / 回执共同提交；合法失败可能仍支付成本 |
+| 进行中的活动与持续效果 | Package 仅提供定义/初值 | Activity 管活动进度；Effects 管效果进度 | World 空间与来源采用关联，不把动态进度回写静态模板 |
 | 玩家可见文本和可选插画 | Agent DM / 界面 | 非权威 | 不能把描述当成已经提交的状态变更 |
 
 **静态 / 动态边界**：Package 定义静态数据、规则绑定与初始模板，Session 固定批准绑定；后续实体/库存/效果/战斗事实由相应领域接口维护，不从 Package 重置或补写。RE 接收完整必要显式事实与 RNG，不从模板推断当前状态，不依赖 Legacy LiveCombat。共享提交不要求每个内部字段变化包装外部命令，默认进程内共享持久化，内部写入仍经负责接口；不新增分布式设施（MC §0.3 / §4–§6）。
+
+**World 能力候选 `[PROPOSED; OPEN]`：** 门/箱等按可选位置、耐久、开合、锁具、通路/容器能力组合，共享逻辑；模板只提供配置和初始值。候选字段按模板配置、持久实例、关联、派生查询分类见 [World 草案 §3](./WORLD_SUBSYSTEM_DESIGN.md#3-可选能力组合-decided-proposed)，优先复用现有 session_id / scene_id / object_id / instance_id、位置、门锁、物品结构。本文现有 YAML / JSON 示例不因此成为新组件的冻结 Schema，也不暗示当前 Validator 已接受这些候选字段。认知发现/密码知识仍由感知/知识组件管理。
+
+规则设计基线为 D&D 2024 修订规则（PHB 2024、DMG 2024、MM 2025、SRD 5.2.1），字段是工程设计；具体条目/来源核对与待确认项见 World 草案 §1。车辆、荒野旅行、巢穴、位面和 Bastion 是后续扩展，不要求静态包或当前 MVP 预先提供完整实现。
 
 固定包是 Session 初始基线。运行时新增对象、机制或 NPC 行为须作为获准 Session 扩展或运行态变化，不悄悄回写固定包，也不改变历史执行所依赖的定义。扩展来源、版本、启用记录及与 RulesetBinding 的关系 [OPEN; NOT IMPLEMENTED]，规范集中于 MC §3.6；扩展版本回滚不自动撤销已提交游戏事实。
 
@@ -143,7 +148,7 @@ adventure-pack/
 ### 4.3 Scene、Event 与时间
 
 - `scene.entered`、`scene.exited` 可作为结构化事件，不直接暗示剧本完成。
-- 游戏内轮数由 State Machine **最终已提交**的 `Turn/Round` 规则事件驱动；世界时间由 State Machine 管理。不得依赖 LLM 在文本中自行数回合。
+- 游戏内轮数由 State Machine **最终已提交**的 `Turn/Round` 规则事件驱动；世界时间由 WorldFacts 在 StateMachine 统一入口内管理，Session 引用同一时钟。不得依赖 LLM 在文本中自行数回合。
 - “第 N 回合”“获得某项线索后才能进入”“累计若干成功”需独立字段或累计状态，而非运行时解析自然语言。
 - 如果一个场景始终无法满足入口条件，系统要返回拒绝/解释，不能偷偷修改事实以确保剧情继续。
 
@@ -558,6 +563,10 @@ Player intent / NPC decision proposal
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：按演进计划 §8 的能力轨道，以最小审阅 Fixture / 初始化支持对象动作、真实 RE、NPC 私有视图与早期 Agentic 验证，随实际依赖交错推进；不等完整 Host 或整体框架迁移。包须验证后按需一次初始化，不因复用模板而重访重置。整体 Evennia 与 EB 验证仅为计划 §9 可选评估；本批不改整个 Package Schema 或实施系统。
+
+### v0.11 修订摘要（2026-10-15）
+
+同步 MC v0.15 的 World / Character / CombatRecords / Activity / Effects 归属、A1 / A2 与库存投影，链接 World 候选字段分类；沿用固定 Package 和一次实例化，不冻结新增 SQL / 公共 Schema，不将规则基线当成全规则书覆盖。本批不改示例或运行 Validator。
 
 ### v0.10 修订摘要（2026-10-12）
 

@@ -1,10 +1,10 @@
 # Agentic TRPG — Game Core Evolution Plan
 
-> **版本**：v0.3 / Draft；**日期**：2026-10-12
+> **版本**：v0.4 / Draft；**日期**：2026-10-15
 >
 > **当前方向 [DECIDED]**：以 `trpg-state-machine`＋`trpg-rules-engine` 为开发主线，借鉴成熟游戏系统，补强承接开放式行动与自主 NPC 的程序化游戏核心；允许实质性重构和替换不合适的子系统。
 >
-> **规范关系**：[MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.14 §0.3–§0.4 / §6.5 是领域状态、Handler 与共享提交的跨模块规范；§0.2 / §3.6–§3.7 / §7.5 的主线/机制/经历原则保留。配套 [SM](./STATE_MACHINE_ARCHITECTURE.md) v0.16、[Agent](./AGENT_ARCHITECTURE.md) v0.14、[MVP](./MVP_SCOPE.md) v0.16、[Adventure Package](./ADVENTURE_PACKAGE_SCHEMA.md) v0.10。
+> **规范关系**：[MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.15 §0.3–§0.6 / §6.5 是领域状态、A1 / A2 与共享提交的跨模块规范；§0.2 / §3.6–§3.7 / §7.5 的主线/机制/经历原则保留。配套 [SM](./STATE_MACHINE_ARCHITECTURE.md) v0.17、[Agent](./AGENT_ARCHITECTURE.md) v0.15、[MVP](./MVP_SCOPE.md) v0.17、[Adventure Package](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11、[World 专项草案](./WORLD_SUBSYSTEM_DESIGN.md) v0.1。
 >
 > **状态**：方向/原则 `[DECIDED]`；方案/验收目标 `[PROPOSED]`；未决协议 `[OPEN]`；尚未实现的目标 `[NOT IMPLEMENTED]`。以下不宣称代码、模型测试或运行验收已经完成，也不据机制研究断言现有系统完全缺失这些能力。
 
@@ -42,11 +42,13 @@
 
 普通世界交互不强制经过 RE；涉及 D&D 机械合法性、攻击、伤害、豁免、资源支付、持续效果、Reaction 或连锁结算时复用 RE，不能在 SM/行为脚本另写一份规则。RE 目标无权威跨请求状态，显式 RNG、返回未提交结果，`accepted ≠ committed`；本批不冻结共同 ABI。
 
-**Combat Handler `[DECIDED; NOT IMPLEMENTED]`** 管遭遇/参战/回合流程、等待决定、已提交行动与推进进度；根据已提交状态等玩家或调用非 LLM Policy，组织一次求值/共同提交，推进到下一决策边界、合法暂停或结束。RE 计算回合索引、资源恢复、效果到期，Handler 不重复加回合/扣费，一次攻击不默认结束回合；自动推进有界重试/无进展退出。API、预算、Continuation Schema OPEN。
+**Combat Handler `[DECIDED]`** 管遭遇/参战/回合流程、等待决定、已提交行动与推进进度；根据已提交状态等玩家或调用非 LLM Policy，组织一次求值/共同提交，推进到下一决策边界、合法暂停或结束。RE 计算回合索引、资源恢复、效果到期，Handler 不重复加回合/扣费，一次攻击不默认结束回合；自动推进有界重试/无进展退出。已有受限 CombatHandler / CombatRecords，完整推进、预算、Continuation Schema 仍 OPEN / NOT IMPLEMENTED，见 MC §1.2。
 
 RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状态/缓冲区允许存在。按需读取、类型调用、共享不可变值、可重建缓存可研究，不能用默认值漏依赖或直接删 Snapshot/Delta 校验，当前公开支持范围不变。完整日志退出普通求值是目标：RE-HIST-01 先审计真实读者、补齐使用标记/效果时钟/关键时间点等必要当前状态，不另建精简历史日志，不置空 event_log、删历史表或全部 proposed_events。本次有序候选结果和必要审计/Episode 证据仍保留，不宣称性能收益。
 
-代码状态沿用 MC §1.1 的 **2026-10-12 前批静态审查基线**，本轮未刷新其他仓库 SHA / 分支 / 能力状态，不把当时 SM main 与开发分支的差异说成当前事实。任何实现任务开始前，应只读核对实际锁定版本和 Consumer；静态 Review 不等于完整集成测试。
+代码状态更新到 MC §1.2 的 **2026-10-15 SM 静态核对**：分支 `feat/sm-gc5-activity-feedback@1fa7cea`，脏工作区 GC5 单列；已有组合/导航/门锁/取放与库存投影基础。A1 / A2 部分实现，当前非战斗操作不能在战斗中绕过 guard。MC §1.1 保留历史版本对照，本次未刷新 RE main 或运行跨仓库测试；静态核对不等于集成通过。
+
+**A1 / A2 `[DECIDED]`：** 探索移动由 Navigation / Activity + WorldHandler 编排，战斗移动由 CombatHandler + RE 编排，共享唯一实际角色位置和对象事实。StateMachine 为统一 API / 装配入口，子系统按需组合 Handler / Service、Facts / Records、Supporting Components，通过显式依赖与共享 SQLite 协作并逐步减少 Mixin；不机械分层、不按每种对象设 Handler、不强制 ECS。战斗投影映射、互动资格/资源/时序/反应和合法失败成本以 MC §0.5–§0.6 为准；World 候选字段按专项草案核对，后续工作仍在 MC §13 现有表登记。
 
 ## 4. 成熟机制：来源、用途与复用方式
 
@@ -113,7 +115,9 @@ MC §7.5 的方向保留：**整场战斗一个 CombatEpisode，EpisodeObservati
 | ID | 后续验收 | 必须提供的证据 |
 |---|---|---|
 | DS-01 | 探索/战斗引用同一角色 | 同一 Actor 的 HP、位置、背包只有一份当前权威，关系/缓存不可独立改写 |
+| DS-01 补充（A1 / A2） | 世界投影、互动复用及模块边界 | 记录 World→战斗空间映射；移动只落唯一角色位置；开合/解锁/取放/破坏复用能力，保留原入口限制并覆盖战斗资格/资源/时序/反应。便携归属与库存投影同事务且不可独立改写；显式依赖切片减少 Mixin，不要求全层/ECS |
 | DS-02 | 跨角色/效果/战斗原子回滚 | 注入领域验证/写入/COMMIT 失败，全部状态与 RNG、Receipt/Outbox 同成同败；旧引用、缓存、新查询及后续命令无失败结果泄漏 |
+| DS-02 补充（A1 / A2） | 合法失败与拒绝分流 | 合法尝试失败按规则共同提交成本、对象后果、进度、实际阶段证据和回执；非法/版本冲突/存储故障不伪装已发生尝试，不发布未提交阶段 |
 | DS-03 | 旧模型结果与重复请求 | 异步结果重验实际相关 world_version / npc_state_version、权限/前提；重复命令/响应丢失不重扣/重掷，单玩家也保留防旧防重 |
 | DS-04 | Handler 连续推进与暂停 | 推进到玩家/选择边界或结束；攻击不强制结束回合，机械回合/资源/效果仅应用一次；有界重试/无进展退出，不在写锁等玩家/模型/I/O |
 | DS-05 | 必要状态替代完整日志 | RE-HIST-01 审计读者并补齐依赖后，固定事实/行动/绑定/RNG，无完整日志输入仍产生相同机械结果、有序必要事件及 RNG 转换；审计保留独立验证 |
@@ -141,8 +145,9 @@ EB-1～EB-3 仅是未来具体框架替代评估可复用的检查，**不是项
 | 议题 | 当前状态 |
 |---|---|
 | SM＋RE 主线，补程序化核心并尽早交错 Agentic 验证 | [DECIDED]；具体机制/测试目标 [PROPOSED; NOT IMPLEMENTED]，先核对实际覆盖 |
-| 领域管理状态、事实确定权威、操作共享提交 | [DECIDED]，替代单模块独占限制；具体类/表/接口/字段拆分和替代边界 [OPEN; NOT IMPLEMENTED] |
-| 有状态 Combat Handler / 校验分责 / 普通求值退出完整日志 | 原则 [DECIDED]；API/预算/Continuation、读取接口与迁移细节 [OPEN]；Handler 重构及 RE 日志解耦 [NOT IMPLEMENTED] |
+| 领域管理状态、事实确定权威、操作共享提交 | [DECIDED]，替代单模块独占限制；已有受限拆分，完整职责/字段迁移 [OPEN]，见 MC §1.2 |
+| A1 探索与战斗的操作编排分离 / A2 StateMachine 模块化与职责边界 | [DECIDED]；已有部分基础，完整战斗 World 互动、空间映射扩展、剩余组合切片 [OPEN]，实施与验收未完成；统一待办见 MC §13 |
+| 有状态 Combat Handler / 校验分责 / 普通求值退出完整日志 | 原则 [DECIDED]；已有受限 Handler，完整推进/预算/Continuation、读取接口与全量日志解耦 [OPEN]；不据已有适配切片认定全部完成 |
 | CombatEpisode / EpisodeObservation 与不泄密 | 方向 [DECIDED]；证据/生命周期/同步/聚合算法 [OPEN; NOT IMPLEMENTED] |
 | 动态扩展 / Coding Agent | 受控能力目标 [DECIDED]；代码生成手段可选，具体协议 [OPEN]，完整系统 [NOT IMPLEMENTED] |
 | Evennia 整体迁移 / Evennia_base | [OPEN] / Deferred / Optional evaluation；不构成主线依赖，本轮无仓库或运行实现 |
@@ -151,4 +156,6 @@ EB-1～EB-3 仅是未来具体框架替代评估可复用的检查，**不是项
 
 **v0.3（2026-10-12）：** 遵循 MC v0.14，替代 SM 独占状态限制，确认领域持久化与共享提交、有状态 Combat Handler、校验分责及普通求值退出完整日志目标；新增 §8.1 有界验收，具体实现选择保持开放。未实施 Handler 重构或 RE 日志解耦。
 
-官方在线资料核对日期沿用前批的 2026-10-12，本批未重新开展框架研究；`latest` 不是固定依赖版本。本轮仅文档修订，未实施游戏机制、框架迁移、模型测试或运行验收，未创建/删除/归档任何仓库。
+**v0.4（2026-10-15）：** 以 MC v0.15 补充 A1 / A2、World 职责/组件方向与 DS-01 / DS-02 验收细化；更新当前 SM 静态证据，不把已有切片或未提交 GC5 视为完整目标完成。World 规则基线为 D&D 2024 修订规则（PHB 2024、DMG 2024、MM 2025、SRD 5.2.1），具体规则来源/待确认项见专项草案 §1；车辆/荒野旅行/巢穴/位面/Bastion 为后续扩展，非当前 MVP 必须项。
+
+框架研究在线资料日期沿用前批 2026-10-12，本批未重新开展框架研究；World 规则公开来源核对另见专项草案。`latest` 不是固定依赖版本。本轮仅文档修订和静态检查，未实施游戏机制、框架迁移、模型测试或运行验收，未创建/删除/归档任何仓库。

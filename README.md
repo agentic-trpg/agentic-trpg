@@ -18,20 +18,24 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 
 Open-ended player actions, persistent world consequences, and NPC private cognition/autonomy remain the product goals. LLMs interpret context and propose adjudication, compositions, and character plans; the game core executes supported capabilities and makes their consequences affect later behavior. Agentic validation starts alongside the smallest usable mechanisms, without waiting for a complete conventional engine or full Host.
 
-**[DECIDED] Domain state ownership, 2026-10-12:** Each current fact has an explicit authoritative source and writer. Domain modules may manage and persist their own state; changes belonging to one indivisible game operation share a commit or rollback. This supersedes the requirement that one SM module own and approve every business detail. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) is the cross-module specification; concrete classes, tables, and APIs remain open and unimplemented.
+**[DECIDED] Domain state ownership, supplemented 2026-10-15:** Each fact has one responsible domain. StateMachine remains the unified API and composition entry; explicit dependencies and shared SQLite transactions connect the subsystems. Facts / Records are domain data access components, with actual data persisted in SQLite. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) governs ownership; [§1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试) distinguishes existing implementation slices from target design and uncommitted SM work.
 
 ## System architecture
+
+The diagram shows target responsibilities. Existing implementation slices and remaining gaps are recorded in [Module Contracts §1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试).
 
 ```mermaid
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
-    Planner --> Entry[Authorized command entry<br/>Current SM foundation]
-    Entry --> Handler[Stateful Combat Handler / domain handlers<br/>Target responsibilities]
+    Planner --> Entry[StateMachine unified API / composition entry]
+    Entry --> Explore[Navigation / Activity + WorldHandler<br/>Exploration orchestration]
+    Entry --> Handler[CombatHandler + Rule Engine<br/>Combat orchestration]
     Handler -->|Immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
     Policy -->|Typed Intent| Handler
     Handler -->|Explicit facts + Intent + RulesetBinding + RNG| RE[Stateless Rule Evaluation Engine]
     RE -->|Uncommitted result| Handler
-    Handler --> Domains[Session / Character and World Object / Effect<br/>Each owns its facts and controlled writes]
+    Handler --> Domains[WorldFacts / CharacterFacts / CombatRecords<br/>Activity / Effects and other domains]
+    Explore --> Domains
     Domains --> Commit[Shared transaction / versions / idempotency<br/>RNG / receipt / reliable notification]
     Handler -->|Flow changes in the same transaction| Commit
     Commit -->|Committed evidence / CombatEpisode boundaries| Perception[NPC Perception<br/>Authorized Observations]
@@ -50,7 +54,8 @@ flowchart TD
 | **Agent DM** | Interpret player input, coordinate the adventure and NPCs, make authorized narrative/GM judgments, and narrate committed outcomes. The DM Planner and DM Narrator have separate contexts and permissions. |
 | **NPC Sub-agents** | Independently interpret authorized experiences and propose dialogue, beliefs, memories, goals, and macro decisions. Immediate tactics use a controlled Combat Policy; they do not require an LLM call per action. |
 | **Agent Host** | Execute LLM calls and manage prompts, contexts, invocation retries, and inference resources; it does not own authoritative game state. |
-| **Domain modules and shared commit facilities** | Session, Character/World Object, Effect, NPC Cognition, and Perception own their respective facts and controlled writes. Shared facilities enforce authorization, versions/original values, idempotency, atomicity, RNG commits, receipts, and reliable notifications. Current SM + RE remains the foundation; no duplicate HP, position, inventory, or entity directories. |
+| **StateMachine and domain components** | StateMachine provides the unified API and composition entry. WorldFacts owns scenes, space, objects, object durability, doors/locks, containers, and actual item location relations. CharacterFacts / mechanical components own actual actor position, HP, resources, and equipment. CombatRecords owns combat records; Activity owns ongoing activities; Effects owns lasting effects and their progress. Inventory ownership projections cannot be edited independently. |
+| **Shared commit facilities** | One SQLite transaction commits the operation's state, costs, RNG, events, stage evidence, progress, receipts, and reliable work. Enforce authorization, versions, idempotency, and rollback. A legal failed attempt may still spend resources; invalid commands and version conflicts are separate outcomes. |
 | **Combat Handler** | Persist encounter/participant/turn flow, pending decisions, committed action links, and progress. Organize evaluation and shared commits, then advance to the next decision boundary, legal pause, or end. RE computes mechanical turn/resource/effect changes; Handler does not apply them twice. Concrete API and scheduling budgets remain open. |
 | **Rule Engine** | Deterministically evaluate supported action legality, attacks, damage, checks, saves, action economy, movement, spells, effects, and reactions. Return typed, *uncommitted* results without independent authoritative runtime state. |
 | **Visual Presentation** | Future presentation of maps, tokens, scenes, and animations. It is outside the first MVP. |
@@ -66,7 +71,11 @@ Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, com
 
 Immediate Mechanical Response is organized by Combat Handler / responsible domain handlers through trusted mechanisms, Combat Policy, and RE. Tactics, reactions, automatic effects, and combat triggers do not depend on cognitive LLM calls. Required mechanical perception must have trusted evidence; unknown does not mean perceived. Handler advances from committed state with bounded retries and a no-progress exit; one attack does not automatically end a turn. NPC Cognition manages versioned private Meta while Host runs models. EVA completion, later actions, and perception processing retain separate transaction lifecycles.
 
-Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Removing the full Combat Event Log from ordinary inputs requires RE-HIST-01 reader/dependency auditing first; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.1](docs/MODULE_CONTRACTS.md#11-2026-10-12-跨仓库核对静态代码--review未重跑运行测试) retains the earlier static implementation and pinned/latest RE evidence.
+Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Full log removal still requires reader/dependency auditing and validation across supported paths; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.1–§1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试) separates historical evidence from the current SM checkout; this docs-only batch ran no runtime tests.
+
+**A1 — Separate exploration and combat orchestration:** The target assigns exploration movement to Navigation / Activity + WorldHandler and combat movement to CombatHandler + RE, using one actual actor position. Combat space projects world space with explicit mapping boundaries. Opening, unlocking, moving items, and breaking obstacles are to reuse object facts and capability operations; combat additionally coordinates eligibility, costs, timing, triggers, and reactions through RE. Current foundations are partial; existing noncombat entry restrictions remain effective until a supported combat integration replaces them.
+
+**A2 — StateMachine modularity and responsibility boundaries:** Subsystems use Handler / Service, Facts / Records, and Supporting Components as needed, gradually replacing Mixins with explicit composition. This does not require every layer in every subsystem, a handler for each object type, or an ECS rewrite. The [World design draft](docs/WORLD_SUBSYSTEM_DESIGN.md) describes optional capabilities and candidate fields, grouped as template configuration, persistent instance state, relations, and derived queries; SQL and cross-module protocols remain open.
 
 Default deployment continues in process with shared persistence. Reviewed internal modules may collaborate through controlled domain interfaces and a shared transaction context without wrapping every field change as JSON, RPC, or an external command. Shared storage does not authorize arbitrary table writes. One continuously executable operation commits together, with no write lock held while waiting for a player, model, external I/O, or long evaluation; neither a whole battle nor an entire NPC plan is one long transaction.
 
@@ -101,7 +110,7 @@ The initial milestone is a **locally runnable, text-first, single-player adventu
 
 The MVP can support a selected rules subset, but every selected mechanism must use the stateless evaluation boundary. Passing that subset does not establish that the entire Stateful Engine migration is complete.
 
-The selected private integration scenario is *First Blush* (D&D Duet), subject to content rights and manual rules adaptation. **The original adventure text, maps, and unauthorized derivative content are not distributed in this repository.** D&D SRD 5.2.1 is the proposed initial mechanical baseline; final compatibility is governed by the relevant specifications and implementation tests.
+The selected private integration scenario is *First Blush* (D&D Duet), subject to content rights and manual rules adaptation. **The original adventure text, maps, and unauthorized derivative content are not distributed in this repository.** The design baseline is D&D's 2024 revised rules: PHB 2024, DMG 2024, MM 2025, and SRD 5.2.1. Concrete enabled rules require verified sources and implementation evidence; this does not claim complete rulebook coverage. Sources and unresolved details are listed in the [World draft](docs/WORLD_SUBSYSTEM_DESIGN.md#1-基线范围与规则依据).
 
 **Not part of the first MVP:** multiplayer, permanent AI companions, automatic adventure-document ingestion / World Creation Agent, interactive tactical visualization, or guaranteed exact restoration of an interrupted active combat.
 
@@ -130,6 +139,7 @@ The design documents are currently written primarily in Chinese. Start with MVP 
 | [Module Contracts](docs/MODULE_CONTRACTS.md) | Highest cross-module target interface specification: final stateless architecture, state ownership, requests/results, atomic commits, and migration completion criteria. Detailed ABI proposals remain subject to review. |
 | [Game Core Evolution Plan](docs/GAME_CORE_EVOLUTION_PLAN.md) | SM + RE evolution, mechanism/component research, composable world consequences, early interleaved Agentic validation, and optional Evennia evaluation. Subordinate to Module Contracts. |
 | [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Current SM foundation and target domain modules, stateful Combat Handler, shared commits, perception and cognition boundaries. File name retained. |
+| [World Subsystem Design](docs/WORLD_SUBSYSTEM_DESIGN.md) | Optional world capabilities, candidate fields and data ownership, exploration/combat interaction reuse, and verified versus unresolved rules. Subordinate to Module Contracts. |
 | [Agent Architecture](docs/AGENT_ARCHITECTURE.md) | DM Planner/Narrator separation, NPC Sub-agents, Host responsibilities, and evaluation modes. |
 | [Adventure Package Schema](docs/ADVENTURE_PACKAGE_SCHEMA.md) | Static adventure content, validation, initialization, and runtime separation. |
 
@@ -150,7 +160,7 @@ Develop by capability and evidence, with interleaved validation rather than a ma
 
 Use real-model trials to assess language, adjudication, private perspectives, and autonomous plans as soon as a minimal execution path exists. Use deterministic regressions separately for execution, authorization, RNG, retries, conflicts, and failure consistency. A full Host and Coding Agent are not prerequisites; none of these trials ran in this docs-only batch.
 
-The [domain migration acceptance targets](docs/GAME_CORE_EVOLUTION_PLAN.md#81-领域分责的分阶段验收-proposed-not-implemented) cover shared character facts, cross-domain rollback, stale/duplicate results, Handler advancement, log-independent mechanics/RNG, and immutable historical observations. Public entries and regressions may remain during migration, with one writer per fact throughout. This batch changes documentation only; Handler refactoring and RE log decoupling have not been implemented.
+The [domain migration acceptance targets](docs/GAME_CORE_EVOLUTION_PLAN.md#81-领域分责的分阶段验收-proposed-not-implemented) cover shared character facts, world/combat mapping, interaction reuse, inventory projections, legal failed attempts, rollback, stale/duplicate results, Handler advancement, mechanics/RNG, and immutable historical observations. Public entries and regressions may remain during migration, with one writer per fact throughout. A1 / A2 use the [existing contracts work table](docs/MODULE_CONTRACTS.md#13-尚需显式批准或验证的开放问题). Current SM has partial foundations; full target conformance remains open. Vehicles, wilderness travel, lairs, planes, and Bastion are future extensions, outside the current MVP gate. This batch changes documentation only.
 
 EB-1–EB-3 are retained only as optional Evennia replacement evaluation in plan §9. Research must not block SM + RE progress. Reconsider whole-framework adoption only with concrete native reuse, independent integration evidence, and a reasonable comparison of remaining work; stop that migration option if it requires duplicate authority or fails critical correctness. Prototype implementations use independent test Sessions.
 

@@ -1,14 +1,14 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
-> **版本：** v0.14 / Draft for Review
+> **版本：** v0.15 / Draft for Review
 >
-> **日期：** 2026-10-12
+> **日期：** 2026-10-15
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.16、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.10、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.16、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.14、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.3（演进与验证计划，遵循本文）
+> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.17、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.17、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.15、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.4、[World Subsystem Design](./WORLD_SUBSYSTEM_DESIGN.md) v0.1（专项草案，遵循本文）
 >
 > **历史代码核对基线（§1 历史表沿用 v0.1，2026-10-12 前批有限核对见 §1.1）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
@@ -29,6 +29,8 @@
 **规范层级 `[DECIDED]`：** 本文是跨模块目标接口与状态所有权的最高权威规范；MVP Scope 定义产品范围，State Machine / Agent Architecture 和 Adventure Package Schema 在此契约内细化职责，Game Core Evolution Plan 记录能力演进、机制研究与验证门槛，README 提供入口。项目目标约束实现，旧 Nat20 / Rule Engine 代码只作为待重构的实现和回归证据，不能反过来限定目标架构。本文中的 [DECIDED] 约束持续有效；文档整体 Draft 不撤销这些决定，也不把 [PROPOSED] / [OPEN] 的具体 ABI 字段或实现选择升级为已批准。
 
 **v0.14 修订摘要（2026-10-12）：** 按领域管理状态、按事实确定权威、按操作组织事务（§0.3）。建立状态责任表，确认有状态 Combat Handler（§0.4），将规则、领域和提交校验分责（§6.5）；保留现有公开协议及历史代码基线。原则已决定，具体拆分、Handler API 与日志解耦尚未实施。
+
+**v0.15 修订摘要（2026-10-15）：** 细化 §0.3 的 World / Character / CombatRecords / Activity / Effects 归属，补充 A1 探索与战斗的操作编排分离、A2 StateMachine 模块化与职责边界（§0.5–§0.6）；§1.2 重新只读核对 SM 代码并区分已提交实现与脏工作区。保留历史决策记录，以本次补充替代旧的合并所有权和“Handler 尚不存在”现状描述；不改运行代码、不冻结 Schema / ABI。World 候选组件见专项草案；后续工作仍登记在 §13。
 
 **必须满足的不变量 `[DECIDED]`：**
 
@@ -77,25 +79,45 @@ RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG �
 
 | 逻辑领域 | 逻辑数据负责人 / 当前权威事实 | 规则计算者 | 提交执行者 | 派生读取者 |
 |---|---|---|---|---|
-| Session | Session 管理职责：身份、固定 Package/Ruleset 绑定、运行元数据、控制关联及游戏时钟 | RE 计算适用的规则时间变化；绑定验证不产生另一份配置 | Session 受控接口参与共享事务 | Host、查询和其他 Handler 读取授权绑定/时钟 |
-| Character / World Object | 人物与物体领域：同一实体的当前 HP、位置、归属、库存/装备与资源事实；World/Scene/Quest 各自维护相应世界事实 | RE 计算机械变化；普通世界操作由相应领域计算 | 各数据负责人通过受控接口参与共享事务 | Combat Handler、Scene、Policy、视图/缓存引用同一实体 |
-| Combat Handler | 遭遇、参战关系、先攻/回合流程、待选窗口、已提交行动关联及继续推进所需进度 | RE 计算回合索引、行动预算、资源恢复等机械变化 | Handler 管理流程并应用 RE 结果，与其他领域共同提交 | Policy、UI、Episode 聚合器读取授权流程投影 |
-| Effect | 有效效果、来源/目标、效果时钟、消耗及生命周期状态 | RE 计算建立/消耗/到期/连锁规则 | Effect 受控接口与角色、战斗等共同提交 | 规则输入组装、Perception、Policy 读取适用效果 |
+| Session | 身份、固定 Package/Ruleset 绑定、运行元数据、控制关联；引用 World 的唯一世界时钟 | RE 计算适用的机械时间变化；绑定验证不产生另一份配置 | Session 受控接口参与共享 SQLite 事务 | Host、查询和其他 Handler 读取授权绑定/时钟 |
+| WorldFacts | 世界时钟、场景、空间/地形/障碍、对象、物体耐久、门锁、容器及物品实际位置/携带/容纳/附着关系；Quest 保留任务领域责任 | RE 判断涉及规则的合法性与计算；普通关系变化由领域验证 | WorldHandler / Service 经 WorldFacts 参与共享事务 | Navigation、CombatHandler、RE 输入组装及 Perception 查询客观事实 |
+| CharacterFacts / 角色机械组件 | 唯一实际角色位置、HP、资源、装备和角色机械状态；库存中的物品归属按 World 实例关系投影 | RE 计算机械变化；Character 校验结构与领域不变量 | CharacterFacts / 机械组件受控接口共同提交 | 探索与战斗引用同一 actor_id；机械 Snapshot / 库存视图不成为第二份位置/归属权威 |
+| CombatRecords | 遭遇、参战关系、先攻/回合运行记录、待选窗口、已提交行动关联及推进进度；不持有独立当前人物/对象事实 | RE 计算回合索引、行动预算、资源恢复等机械变化 | CombatHandler 编排，由 Records 及相关 Facts 接口共同写入 | Policy、UI、Episode 聚合器读取授权流程投影 |
+| Activity | 进行中的活动、目标、步骤、游标、阻塞/取消/完成状态；不另存实际角色位置 | RE 计算适用规则；Navigation / Activity 组织计划与进度 | ActivityHandler / ActivityRecords 与相关 Facts 共同提交 | 调度、Policy 与授权活动查询 |
+| Effects | 持续效果、来源/目标、生命周期及效果自身进度/时钟；空间锚定引用 World | RE 计算建立/消耗/到期/连锁规则 | Effects 受控组件与 World、Character、CombatRecords 等共同提交 | RE 输入组装、Perception、Policy 查询适用效果；Activity 不复制效果进度 |
 | NPC Cognition | Memory / Belief / Relationship / Goal / Plan 的追加版本历史、当前版本与 Goal/Plan 状态；Evaluation Task、模式及认知完成关联 | NPC LLM 提议主观更新；领域确定性验证 | Cognition 接口在 EVA 完成事务提交整批 Meta、唯一 Result 与可靠交接 | Host Context Builder / 对应 NPC 仅读授权 Meta |
 | Perception / Observation | 授权感知依据、不可变阶段证据、观察、Inbox / Work 及处理/保留生命周期 | 可信确定性路径、受限 JEV 判断；正式机械检定由 RE | 证据随来源操作共同提交；后续投影/处理按既有可靠事务推进 | NPC Cognition、Host、授权查询；不能读出他人秘密 |
 | 共享提交设施 | 事务、版本/原值、请求关联、幂等回执、权威 RNG 流/版本及可靠通知记录 | 不复制 RE 的法术/能力判定 | 提供统一事务上下文，检查共同提交条件，协调全部参与写入与 COMMIT/ROLLBACK | 各领域、恢复/审计及可靠投递读取相应结果 |
 
-这些是逻辑职责，不要求新建同名类、库、服务或实体目录；具体类、表、字段归属及拆分保持 `[PROPOSED / OPEN; NOT IMPLEMENTED]`。共享身份由既有 Session 实体身份机制关联；Combat Handler 不另存可独立修改的当前 HP、位置或背包，参战关系、Snapshot 和缓存不是另一份当前权威。Effect 引用同一来源/目标，NPC 认知与客观事实继续分离。
+这些是逻辑职责；**Facts / Records 是领域数据读写组件，实际数据持久化在 SQLite**，不是另一个内存数据库。现有同名组件的受限实现见 §1.2；新增组件/字段与完整职责迁移仍 `[PROPOSED / OPEN]`，不能按名称判定完成。共享身份沿用 `session_id`、`scene_id`、`actor_id`、`object_id` / `instance_id`，不新建平行目录。CombatHandler 不另存可独立修改的当前 HP、位置或物品归属；参战关系、Snapshot、冻结的终结记录和缓存不是另一份当前权威。
+
+**库存边界：** 当前便携物品以 `objects.object_id` 复用 `instance_id`，`carrier_id` 或 `scene_id + cell` 表达实际位置。`WorldFacts.transfer_item` 改位置，`CharacterFacts.project_item_transfer` 同事务维护机械 `InventoryState.entries` 与 `characters.inventory_json` 的 carried-slug 投影；`validate_portable_inventory` 校验完整便携子集后才按角色筛选。持久化投影仍不得独立改写物品归属；既有非便携机械条目、数量/充能与装备绑定不能因投影而丢失。统一装备实例绑定、容器嵌套和消耗联动仍 OPEN，不能把全部库存说成已完全统一。
 
 默认沿现有**进程内、共享持久化**路线演进。经审阅测试的内部 Handler 可通过受控领域接口、进程内类型调用和共享事务上下文共同完成操作，不必把每个字段变化包装成外部 TypedCommand、JSON 或 RPC。共享数据库不赋予任意模块写所有表的权限：写入经数据负责人接口，遵守共同边界。跨领域操作不拆成各领域先提交再补偿；不新增微服务、多数据库、分布式锁、两阶段提交或完整事件溯源平台。
 
 内部信任仅适用于已审阅测试、职责与目标范围受控的实现；Host/LLM 输出、Coding Agent 生成物和未验证脚本不能继承该权限。固定执行协议优先：DM/NPC 提结构化意图或机制组合，只有新底层能力才考虑 §3.6 受控代码扩展。未知字段不产生语义，不能任意写数据库/属性。手动交互与可信自动世界效果使用不同来源校验，但均遵守目标范围、领域不变量与共同提交条件。
 
-### 0.4 Combat Handler：有状态的流程组织者 `[DECIDED; NOT IMPLEMENTED]`
+### 0.4 Combat Handler：有状态的流程组织者 `[DECIDED]`
 
 应建立/补齐 Combat Handler 职责，允许持久管理遭遇生命周期、当前等待的决定、已提交行动关联与继续推进所需信息。它根据已提交状态等待玩家或调用非 LLM Combat Policy，组织一次行动的 RE 求值和跨领域提交，再推进至下一决策边界、合法暂停或战斗结束，并协调同一个 CombatEpisode 的开始/结束。它不只是不断向中心 SM 申请操作的无状态空壳，也不包揽 Perception、JEV、EVA 或叙事。
 
-回合索引、资源恢复、效果到期等机械变化由 RE 计算，Handler 应用/管理其结果，不能再次递增回合或重复扣资源；一次攻击不默认等于回合结束。自动推进须有有界重试与无进展退出，失败/冲突按既有命令键和回执恢复，禁止无限循环。Handler API、调度预算、Continuation Schema 与具体持久模型均 `[OPEN]`，并未成为当前受支持公共接口。
+回合索引、资源恢复、效果到期等机械变化由 RE 计算，Handler 应用/管理其结果，不能再次递增回合或重复扣资源；一次攻击不默认等于回合结束。自动推进须有有界重试与无进展退出，失败/冲突按既有命令键和回执恢复，禁止无限循环。**当前已有受限 CombatHandler / CombatRecords（§1.2）**；完整推进、通用中途选择和 Episode 协调仍是目标设计。新增 Handler API、调度预算、Continuation Schema `[OPEN; NOT IMPLEMENTED]`，不能据类存在扩大公共支持范围。
+
+### 0.5 A1：探索与战斗的操作编排分离 `[DECIDED]`
+
+StateMachine 保留统一 API / 可信命令入口，按操作上下文分派。探索移动由 **Navigation / Activity + WorldHandler** 组织逐步执行、前提重验和活动进度；战斗移动由 **CombatHandler + Rule Engine** 组织规则判断、行动资源、时序、触发和反应。两条路径只写 CharacterFacts 的唯一实际角色位置，不保存可独立修改的探索位置/战斗位置。活动目标、计划路径和战斗投影都不是当前实际位置。
+
+战斗空间是世界空间的机械投影：沿用同一场景/角色/对象身份，把实际位置映射为 RE 能表示的 cell / zone，连同地形、障碍和通路组装规则输入。当前 `_current_cells` 从角色事实读取同场景 cell；`actor_zone` 在活跃战斗中为派生输入，结束时可冻结审计。未来子区域、坐标原点/尺度或多场景映射 `[OPEN]`，须明示正向与落位转换及适用版本；无法无歧义映射的空间/障碍应报不支持。不能用开战复制、战后双向同步两份位置解决边界。
+
+**互动复用 `[DECIDED]`：** 探索和战斗中的开门、解锁、取放、破坏障碍共享对象事实与底层能力操作；战斗入口额外经 RE 验证/计算行动资格、成本、时序、触发与反应，再由 Handler 协调共同提交。World 保留可达/授权/能力/关系不变量，RE 负责涉及规则的判断与计算，Handler 不写另一套规则公式。当前非战斗入口的活跃战斗禁用、装备/效果/凭据等限制继续有效；**不能直接调用内部方法绕过这些限制**。战斗复用需要显式受控执行上下文、受支持的规则 Delta 和回归证据，协议未定，不因本文开放现有命令。当前开合、凭据门锁、取放等是受限基础；容器取放、破坏与战斗互动是待落实目标。
+
+### 0.6 A2：StateMachine 模块化与职责边界 `[DECIDED]`
+
+StateMachine 是统一 API 与组件装配入口，各子系统通过构造参数等显式依赖协作，共享一个 SqliteStore / 事务上下文。按需要由 **Handler / Service**（操作流程）、**Facts / Records**（所属事实/运行记录读写）、**Supporting Components**（导航、规则适配、时间、事件取证等支持能力）组成；不要求每个子系统具备全部层次，也不要求每种对象专设 Handler，不引入强制 ECS 重构。World 的可选能力组合是项目领域设计，不是 ECS 迁移承诺。
+
+现有显式装配是起点；逐步减少仍通过 Mixin 和共享 `_conn` 隐式协作的路径。每个切片明确读写负责人、依赖、事务参与方式和对外兼容边界；不得将中心 SM 的全部业务搬到一个同样庞大的 WorldHandler。Effects 可先复用现有角色机械组件与 PackageEffects 支持，不宣称独立 Effects 服务已经存在。
+
+**共同提交 `[DECIDED]`：** 一次不可分割操作的所属状态变化、资源结算、RNG、正式事件、实际阶段证据、活动/战斗进度、触发采用记录及回执/可靠工作在一个 SQLite 提交边界同成同败；组件不各自 COMMIT。需要等待外部结果时退出写事务并重验版本。合法尝试的结果失败可能仍支付行动/时间/资源，按 RE 结果提交实际成本和失败事件；非法命令、版本冲突和提交故障不能冒充一次已发生尝试，也不能消耗未获准资源。后续独立命令或既有异步 Observation / EVA 事务沿既有可靠交接推进，不声称跨两个提交原子。阶段证据不由操作结束态重建，Event / Episode / Observation 分工沿用 §7。
 
 ## 1. 实际代码基线与迁移缺口
 
@@ -114,7 +136,7 @@ RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG �
 
 ### 1.1 2026-10-12 跨仓库核对（静态代码 / Review，未重跑运行测试）
 
-以下为前一批静态核对的日期化记录；本次 docs-only 修订保留原 SHA / 分支 / 能力范围，未刷新其他仓库现状或运行测试。后续实现/可选验证前重新只读记录实际锁定版本，不把历史 main 与开发分支状态混同。
+以下为前一批静态核对的日期化记录，保留原 SHA / 分支 / 能力范围。**当前 SM 核对见 §1.2**；本批未刷新 RE main 或重跑运行测试，不能将本节旧锁定版本用于当前 SM，也不把历史 main 与开发分支状态混同。
 
 | 基线 | 已核对事实与限制 |
 |---|---|
@@ -132,6 +154,23 @@ SM 的 `pyproject.toml` / `uv.lock` 将 Engine 与 SRD 同时锁定为 **`602dcb
 | Evaluator | `dnd5e-evaluation/8` | `dnd5e-evaluation/35` |
 
 依据版本常量及模型，而非锁定提交中较旧的说明文字。RE main 已有更多受限 Stateless 路径及预声明 Reaction，但仍有 Legacy 依赖、完整 `CombatState.event_log` 字段与开放的 C-04 / C-15 / C-16；不等于已满足本次全部目标。升级前须独立审核 Snapshot / Delta / RNG / RulesetBinding 与 SM Consumer，不因本轮文档更新自动升级依赖或冻结共同 ABI。审阅来源：[SM Batch C](https://github.com/agentic-trpg/trpg-state-machine/blob/058e79f300016f7397f0c3401bc03b58554e2b71/docs/reviews/SM_PER3_REVIEW.md)、[SM PERF-01/02](https://github.com/agentic-trpg/trpg-state-machine/blob/058e79f300016f7397f0c3401bc03b58554e2b71/docs/reviews/SM_PERF01_PERF02_REVIEW.md)、[RE 本地协议](https://github.com/agentic-trpg/trpg-rules-engine/blob/38fcfcd4c3a744b30f792775415e798b323d4331/docs/dev/stateless-evaluation.md)。
+
+### 1.2 2026-10-15 SM 当前实现核对（静态代码，未运行测试）
+
+只读仓库 `D:/Projects/agentic-trpg/trpg-state-machine`，remote 为 `https://github.com/agentic-trpg/trpg-state-machine.git`，分支 `feat/sm-gc5-activity-feedback`，HEAD **`1fa7cea5dab7bb95f3f6fa975f8e681c691937a6`**。工作区有已修改文件及未跟踪 GC5 文件；下表基础能力同时核对已提交 HEAD，GC5 另列，**不代表当前远端 main、已部署状态或本批运行验收**。总控仓库及其父目录、SM 根目录未发现 `AGENTS.md`；总控仓库只有 Markdown，未发现已配置文档检查脚本/CI。
+
+| 范围 | 实际代码证据（已提交 HEAD，路径在 `src/trpg_state_machine/`） | 实现状态及缺口 |
+|---|---|---|
+| 统一入口与显式组合 | [service.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/service.py)：装配 SqliteStore、WorldFacts、CharacterFacts、CombatRecords、WorldHandler、ActivityHandler、RulesAdapter、CombatHandler | **部分实现** A2；NPC / Perception / Command 等仍为 Mixin，`_conn` 仍是过渡依赖；不是零基础，也不是全部模块化完成 |
+| Facts / Records 与事务 | [domain_facts.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/domain_facts.py)、[storage.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/storage.py)：要求写作用域、不自行提交；SQLite 短事务与 savepoint，HEAD 迁移至 Schema 25 | **已实现的受限基础**；完整新组件集合/跨域故障验收未在本批验证 |
+| 探索移动 / 活动 | [activity_handler.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/activity_handler.py)、`activity_records.py`、`navigation_plan.py`、`navigation_driver.py`、`spatial.py`：活动持久进度、World 执行、CharacterFacts.move 写 `actors.current_scene_id/cell` | **已实现的受限探索路径**；Activity 拒绝活跃战斗，不是通用所有活动/导航完成 |
+| 战斗 / 空间 | [combat_handler.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/combat_handler.py)、[rules_adapter.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/rules_adapter.py)：受限遭遇/检定/攻击/结束编排，`_current_cells` 读取实际位置，终结时 freeze_positions | **部分实现** A1；当前适配为受限规则切片，不能据投影宣称战斗移动/动态障碍/全部互动已经接通；通用推进/Continuation 仍目标 |
+| 门 / 通路 / 物品 | [spatial.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/spatial.py)、`lock_package.py`、`item_package.py`、`domain_facts.py`：共享门、两侧通路、公开持有凭据门锁、单实例取放及库存投影 | **已实现的受限非战斗基础**；撬锁/密码/容器/耐久破坏未核实为公共支持；装备 slug 歧义、效果及施法材料绑定等明确拒绝 |
+| 入口保护 | [session_access.py](https://github.com/agentic-trpg/trpg-state-machine/blob/1fa7cea5dab7bb95f3f6fa975f8e681c691937a6/src/trpg_state_machine/session_access.py) `_world_operation_capability`；`spatial.py` `_spatial_combat_guard` | 活跃战斗拒绝普通移动、开合、取放、门锁等；移动阻挡物与关闭的通路门可能阻止战斗初始化；共享互动尚需战斗集成，不能解除 guard 代替实现 |
+| 世界时间 / Effects / 事件 | `game_time.py`、`package_effects.py`、`event_capture.py`、`event_persistence.py`、`CharacterFacts.rule_components` | 已有 game_tick / 日程、受限包后果及机械效果组件、实际阶段取证/持久化基础；不是完整环境、陷阱或持续魔法区域系统；保留 Event / Episode / Observation 既有职责 |
+| GC5 工作区增量 | 修改中的 `service.py` / `storage.py` 等及未跟踪 `activity_feedback.py`、`npc_activity_feedback.py`、`_migration_26.sql` | **未提交、未验证**；只记录存在，不纳入 HEAD 能力完成声明，不以工作区 Schema 26 代替已提交 Schema 25 |
+
+本次读到 `pyproject.toml` / `uv.lock` 的 Engine / SRD 固定为 **`675552406e67470bf3456fe90e88c4f1595bf324`**；适配器候选消息为 `engine-evaluation/23`、Snapshot `/17`。这是 SM Consumer 的静态事实，不是最新 RE 全量审计，也不宣布冻结跨模块协议。`tests/test_domain_runtime.py`、`test_gc1_doors_and_effects.py`、`test_navigation_activities.py`、`test_item_transfers.py`、`test_lockable_passages.py` 等仅作为已有用例的证据，本批未执行它们。World 更广组件清单均为目标/候选，详见 [专项草案](./WORLD_SUBSYSTEM_DESIGN.md)。
 
 ## 2. 统一标识、版本和契约通则（P0）
 
@@ -1106,9 +1145,11 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 | C-23 | CombatEpisode / EpisodeObservation 的共同协议？ | 一场完整战斗一个 CombatEpisode、整段经历只聚合已察觉部分 [DECIDED]；战时取证/战后聚合与可信历史重建比较 [PROPOSED]，身份/边界/因果、证据与生命周期映射 [OPEN; NOT IMPLEMENTED] |
 | C-24 | Mechanical Audit 分流、RE 阶段 Evidence 与必要当前机械状态？ | 目标 [DECIDED]；需审核真实事件语义、感知/机械字段依赖、审计保留/重放和版本迁移，不能从最终状态或 intent_submitted 虚构外显阶段；共同 ABI [OPEN; NOT IMPLEMENTED] |
-| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；具体类/表/字段、对象关系、提交/缓存映射和子系统替换 [OPEN]，组件或整体 Evennia 仅可选评估，不要求双写兼容旧形状 |
+| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.2。World 候选组件/字段分类见专项草案 §3；其余关系/提交/缓存及替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
 | C-26 | 动态能力与 Session 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；Coding Agent 可选；来源/版本/权限/预算/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
-| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；具体 API、调度预算、Continuation Schema、读取依赖表达及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不改变当前支持接口或直接删除校验 |
+| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.2。完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
+| A1 | 探索与战斗的操作编排分离 | [DECIDED] §0.5；当前探索活动/共享位置/受限战斗编排为部分基础（§1.2）。后续验证战斗移动与 World 投影、共享开合/解锁/取放/破坏的规则资格/成本/反应、入口 guard 和原子失败语义；完整集成 [OPEN; NOT IMPLEMENTED] |
+| A2 | StateMachine 模块化与职责边界 | [DECIDED] §0.6；显式组合已有受限实现（§1.2）。逐步减少 Mixin，明确 Facts / Records 与支持组件依赖、库存投影单一权威、共用事务及回滚；不机械分层、不按物体设 Handler、不强制 ECS；剩余切片 [OPEN] |
 
 ## 14. 能力驱动的交错验证（后续计划，不是本批实现授权）
 
