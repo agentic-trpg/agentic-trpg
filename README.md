@@ -38,7 +38,7 @@ flowchart TD
     Explore --> Domains
     Domains --> Commit[Shared transaction / versions / idempotency<br/>RNG / receipt / reliable notification]
     Handler -->|Flow changes in the same transaction| Commit
-    Commit -->|Committed evidence / CombatEpisode boundaries| Perception[NPC Perception<br/>Authorized Observations]
+    Commit -->|Committed evidence / Turn/Round Episode boundaries| Perception[NPC Perception<br/>Authorized Observations]
     Perception --> NPC[NPC LLM / Macro Decisions<br/>via Agent Host]
     NPC -->|Meta Proposals| Cognition[NPC Cognition<br/>Versioned Meta / tasks]
     Cognition -->|Atomic Meta completion and reliable handoff| Commit
@@ -95,7 +95,7 @@ Event + Observable Signals → per-Signal Scope Discovery → Event-local Eviden
 
 NPCs receive only observations they could perceive and are authorized to know. Their beliefs and memories are separate from objective world facts. Event observations do not automatically trigger an LLM call or change a character's goals.
 
-Mechanical Audit does not automatically enter perception. **One complete battle corresponds to one CombatEpisode**, with EpisodeObservation as the NPC's logical observation of the whole experience. Rounds/actions do not each require an Episode, WorldEvent, or separate OB. Runtime perception can support immediate behavior; retaining necessary wartime perception results/evidence and aggregating afterwards is a proposed game-core validation approach, to compare with reconstruction from trusted history. Neither approach may invent past perception from the final state or expose unseen content or hidden causes. Existing stage results remain immutable and traceable; Event-level OB/Outbox is a current implementation and reusable asset, not a permanent target granularity. Schema and lifecycle mappings remain open, and existing records and EVA protocols are retained. JEV handles authorized perception/memory judgments, not required mechanical rules or trusted facts.
+Mechanical Audit does not automatically enter perception. NPCs participating in a particular combat receive Turn Episode signals; external NPCs receive Round Episode signals, including the final partial round. Mechanical Events do not generate individual cognitive signals or require a per-action perception evidence chain. Perception filters scope and receiving abilities, batches judgments per NPC/Episode, and exposes only authorized perceived content. Non-combat Events retain independent stage evidence. Current-Turn Reactions use deterministic CombatPolicy and RE without waiting for EVA; committed Meta projects bounded, versioned parameters for later decisions. Episode schemas, participation transitions, migration and recovery remain open and unimplemented; historical records and idempotency evidence are retained.
 
 ## First MVP
 
@@ -156,7 +156,7 @@ The agreed invariants in Module Contracts establish architectural intent; draft 
 
 ## Development direction
 
-Develop by capability and evidence, with interleaved validation rather than a mandatory framework migration sequence. The [plan §8](docs/GAME_CORE_EVOLUTION_PLAN.md#8-主线能力轨道与早期-agentic-验证) covers object/action composition, Encounter/Activity control and real RE integration, perception/Policy, CombatEpisode experience, and early Agentic behavior. A candidate original scenario links an environmental change to perception, NPC investigation/routing/combat, and persistence.
+Develop by capability and evidence, with interleaved validation rather than a mandatory framework migration sequence. The [plan §8](docs/GAME_CORE_EVOLUTION_PLAN.md#8-主线能力轨道与早期-agentic-验证) covers object/action composition, Encounter/Activity control and real RE integration, perception/Policy, Turn/Round Episode experience, and early Agentic behavior. A candidate original scenario links an environmental change to perception, NPC investigation/routing/combat, and persistence.
 
 Use real-model trials to assess language, adjudication, private perspectives, and autonomous plans as soon as a minimal execution path exists. Use deterministic regressions separately for execution, authorization, RNG, retries, conflicts, and failure consistency. A full Host and Coding Agent are not prerequisites; none of these trials ran in this docs-only batch.
 
@@ -173,3 +173,5 @@ Architecture and implementation discussions are welcome. When proposing a change
 ## Licensing and content
 
 This meta-repository currently has no repository-level `LICENSE` file; do not assume a license for its contents. Separate repositories may have their own licenses. Adventure and ruleset source material may also have independent copyright and licensing restrictions; do not commit protected third-party adventure content without the necessary rights.
+
+[Module Contracts](docs/MODULE_CONTRACTS.md) remains authoritative; the [v0.4 review](docs/reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) is a preserved snapshot. Each NPC has one bounded Recent OB List sliding by game time, with only `pending` and `processed` cognition states. Every new OB gets a Gate decision; no-EVA decisions mark it processed. Each EVA freezes the complete authorized recent list, including processed context, and completes only its fixed pending coverage. This 2026-10-17 synchronization changes documents only.

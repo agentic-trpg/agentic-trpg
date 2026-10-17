@@ -1,16 +1,18 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.11（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
+> **状态**：Draft v0.12（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
 >
-> **日期**：2026-10-15
+> **日期**：2026-10-17
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.15（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.17；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.4；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.1；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.16（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.18；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.5；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.2；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
+
+**2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
 ## 1. 目的与非目标
 
@@ -179,7 +181,7 @@ adventure-pack/
 | `deterministic_policy` | 经审核的有限行为策略 / 即时 Combat Policy | 非 LLM；受 SM 授权，不能伪称独立认知 Agent |
 | `scripted_event` | 无自主决策的客观事件、情节援助、环境危险 | 不能作为长期 NPC 队友系统 |
 
-**控制分层 `[DECIDED]`：** NPC Sub-agent 保留独立认知与宏观行为，受控 Combat Policy 承担即时战术，SM 协调确定性机制与 RE，不等待 Planner / JEV LLM / Memory Gate / EVA；所需机械察觉必须可信，未知不算已察觉。至少一名敌方 Agent 的宏观决定必须实际影响后续受控行为及战后认知，纯固定策略不能完成此验收；不再要求每次 Tactical Intent 来自 Sub-agent。
+**控制分层 `[DECIDED]`：** NPC Sub-agent 保留独立认知与宏观行为，受控 Combat Policy 承担即时战术，SM 协调确定性机制与 RE，不等待 Planner / JEV LLM / Cognition Gate / EVA；所需机械察觉必须可信，未知不算已察觉。至少一名敌方 Agent 的宏观决定必须实际影响后续受控行为及战后认知，纯固定策略不能完成此验收；不再要求每次 Tactical Intent 来自 Sub-agent。
 
 同一 NPC 可以同时拥有认知 Agent 与即时 Combat Policy。`controller.kind` 是既有候选控制描述，不能据单个枚举把两层设为互斥；认知覆盖、Policy 绑定/版本、目标转换和权限的具体 Schema [PROPOSED / OPEN; NOT IMPLEMENTED]，本轮不新增正式字段、控制 API、Agent 或仓库。Package 只提供经审核的初始策略/约束定义，实际采用、后续目标/策略和合法执行由 SM 管理，不能从自然语言策略直接执行动作。
 
@@ -200,7 +202,7 @@ adventure-pack/
 5. `memory_policy`：哪些**已提交**的重要互动才允许成为记忆，谁有权读取；原始私有推理轨迹不作为世界事实存储。
 6. `secrets`：只有具该角色权限的上下文可见；不能以一个 `dm_only` 密文的引用自动授权给 NPC。
 
-NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。MVP 首次构建/重建 Context 提供完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 和有效 Recent OB（含 Completed），待处理 Work 单独关联，Host 只组装、不语义筛选；已有 Interactive Context 后续增量追加，不要求每次全量重注入。OB 直接承担短期感知记忆；Game Time TTL、Processing / Retention、引用归档与 Pending Work 恢复均为 SM 运行时契约，见 MODULE_CONTRACTS.md §7.4 / §9，不新增 Package 短期 Memory 或冻结 TTL 字段。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
+NPC Agent 输入应是 State Machine 从上述字段**按当前权限投影出的 NPC View**，而不是冒险包的原始全量文件。MVP 首次构建/重建 Context 提供完整授权 Profile、Episodic Memory、Belief History、Relationship、Goal、Plan 和有效 Recent OB（含 processed），待处理 Work 单独关联，Host 只组装、不语义筛选；已有 Interactive Context 后续增量追加，不要求每次全量重注入。OB 直接承担短期感知记忆；Game Time TTL、Processing / Retention、引用归档与 Pending Work 恢复均为 SM 运行时契约，见 MODULE_CONTRACTS.md §7.4 / §9，不新增 Package 短期 Memory 或冻结 TTL 字段。任何对话或行动都先成为提议，再经授权/验证转换为正式世界变更。NPC 的谎言、预测或临时想法不等于事实已经改变。
 
 ---
 
@@ -413,7 +415,7 @@ bindings: []
 
 ## 9. 加载、运行、保存与回放协议
 
-**事态与规则边界 `[DECIDED]`：** Package EventDefinition / Signal 模板是静态定义；运行层管理 Mechanical Audit、WorldEvent、WorldEpisode / EpisodeObservation，规范集中于 MC §7.5。整场战斗一个 CombatEpisode，不默认每 Round / Action 都建 Episode，或每机械事件包装 WorldEvent / 独立 OB；NPC 整段观察只聚合已察觉部分，不泄漏隐藏内容/因果。战时记录/战后聚合待游戏核心场景验证，可比较可信历史重建，禁止从结束态补造过去感知。Event-level OB / Outbox 是当前实现和可复用资产而非永久目标。Package 不嵌入动态 Episode / Memory，不增加 Episode 文件；Schema / 生命周期映射 OPEN，本批不删除历史或修改 EVA 完成协议。
+**事态与规则边界 `[DECIDED; NOT IMPLEMENTED]`：** Package 只提供静态 EventDefinition／Signal 模板；运行层为本场参战 NPC 交付 Turn 来源、外部交付 Round 来源。机械 Event 不逐条生成认知信号或感知证据链；同 NPC／Episode 合批，范围与接收能力过滤继续有效，只聚合已提交来源。非战斗阶段证据保留，提前结束发布最后未满轮。Schema／参战切换／迁移恢复 OPEN；既有观察、进度和幂等证据保留。Package 不嵌入动态 Episode／Memory，也不新增 Episode 文件；正式规范见 MC §7.5。
 
 RE 普通求值目标使用领域提供的完整必要当前机械事实；使用标记/效果时钟/关键时间点不另存精简历史日志。RE-HIST-01 审计读者、补齐依赖后再移除完整日志耦合；审计/Episode 证据保留，不置空 event_log、删历史表或全部 proposed_events。一次请求尽量结算可连续效果，真正中途选择遵循目标 Interrupt / Continuation 的持久暂停/恢复与 RNG 一致性，不占 SQLite 长事务；共同 ABI、前缀提交和最小支持路径 [OPEN]。这些属于运行时契约，不通过冒险脚本或模板补造，亦不改变 MVP 战斗崩溃精确续玩后置边界。
 

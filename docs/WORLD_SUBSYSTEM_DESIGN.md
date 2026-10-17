@@ -1,10 +1,12 @@
 # Agentic TRPG — World Subsystem Design
 
-> **版本**：v0.1 / Draft；**日期**：2026-10-15
+> **版本**：v0.2 / Draft；**日期**：2026-10-17
 >
-> **规范关系**：[Module Contracts](./MODULE_CONTRACTS.md) v0.15 §0.3 / §0.5–§0.6 为最高职责规范；本文细化 World 候选能力。配套 [State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.17、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.4、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11。
+> **规范关系**：[Module Contracts](./MODULE_CONTRACTS.md) v0.16 §0.3 / §0.5–§0.6 为最高职责规范；本文细化 World 候选能力。配套 [State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.18、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.5、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.12。
 >
 > **状态**：职责/复用方向 `[DECIDED]`；组件和字段 `[PROPOSED; OPEN]`；超出 MC §1.2 受限实现的能力是目标设计，不能宣称已支持。本文不冻结 SQL Schema、跨模块消息或公共操作集合；仅修改总控文档。
+
+**2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
 ## 1. 基线、范围与规则依据
 
@@ -51,7 +53,7 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 墙体遮挡、暗门的物理伪装、锁的客观机制和感官源存在性属于 World。谁发现暗门、听到了什么、知道密码或相信门后有宝物，属于 Perception / Observation / Knowledge / NPC Cognition；不能用 `discovered_by` 一类世界对象字段替代角色认知记录。World 可保存受控机制引用，但密码知识、秘密与发现结果只能通过授权视图/证据进入角色上下文。
 
-光源/声音来源、通路、物理 Cover、视觉遮蔽、声音传播分别建模/查询，不能用一个 `hidden` 或 `blocks_passage` 同时解释所有规则。角色感官能力和机械 Conditions 来自角色/Effects；Perception 按实际事件阶段证据判断。World 提供来源和客观环境，不能直接写“所有同场景 NPC 已发现”。
+光源/声音来源、通路、物理 Cover、视觉遮蔽、声音传播分别建模/查询，不能用一个 `hidden` 或 `blocks_passage` 同时解释所有规则。角色感官能力和机械 Conditions 来自角色/Effects；Perception 在非战斗按实际阶段证据判断，战斗按固定 Episode 过滤依据判断。World 提供来源和客观环境，不能直接写“所有同场景 NPC 已发现”。
 
 ## 3. 可选能力组合 `[DECIDED; PROPOSED]`
 
@@ -86,7 +88,7 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 **战斗移动目标：** `StateMachine → CombatHandler → RE → CharacterFacts + CombatRecords + 相关领域共同提交`。从实际世界位置组装战斗空间投影，RE 计算移动资格/成本、触发与反应，结果落回唯一实际角色位置及相关记录。当前 `_current_cells` 使用同场景网格坐标；未来子地图原点/尺度/zone、跨场景与动态障碍映射保持 OPEN。无法表达的范围/障碍显式不支持；战后冻结记录只供审计，不能反向覆盖角色位置。
 
-**共享互动目标：** 开门、解锁、取放、破坏障碍按能力调用共同领域操作。探索入口执行适用授权、可达性、凭据/活动约束及需要的 RE 检定；战斗入口额外经 RE 协调行动资格、行动资源、时序、触发与反应。Handler 组织顺序、阶段取证和提交，不能自定规则公式。门/箱/容器共享开合和锁具能力，不复制对象事实或取放权威。
+**共享互动目标：** 开门、解锁、取放、破坏障碍按能力调用共同领域操作。探索入口执行适用授权、可达性、凭据/活动约束及需要的 RE 检定；战斗入口额外经 RE 协调行动资格、行动资源、时序、触发与反应。Handler 组织顺序、适用记录通道和共同提交（非战斗阶段取证，战斗审计／Episode 来源），不能自定规则公式。门/箱/容器共享开合和锁具能力，不复制对象事实或取放权威。
 
 **当前限制是实施边界：** `_world_operation_capability` 拒绝活跃战斗的非战斗命令；`_spatial_combat_guard` 拒绝部分动态障碍/关闭通路门；物品/锁具还有公开性、凭据、装备、效果/活动等限制。复用须先设计受控战斗执行上下文及 Delta 适配，并逐项证明原有限制仍正确或已有明确替代；不得删除 guard 或直接调用内部 `_operate*` 作为“支持战斗互动”。撬锁、强行破门、箱内取物只是目标例子，不是当前支持声明。
 
@@ -101,9 +103,17 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 | 合法尝试成功或结果失败 | RE 或受控非机械政策确定实际后果；合法失败**可能仍消耗**行动、时间、工具/资源并产生可观察动作，必要变化原子提交 | 用已提交结果叙述；accepted 不保证任务目标成功，不能把结果失败统一回滚为未尝试 |
 | 存储/提交故障或响应未知 | 失败事务整体回滚；未知先查原回执 | 防止重复扣费/重掷，不把传输失败当角色尝试失败 |
 
-实际阶段捕获 Evidence：例如取物前的地面源位置、放下后的实际源位置，或破坏前后的可观察分支，不能在操作全部结束后用当前坐标补造先前视听。可信阶段可先缓冲，最终与对应 Event / Signals / 可靠工作共同提交；缺失阶段明确记录缺口，不能让 JEV 猜历史。
+非战斗实际阶段捕获 Evidence：例如取物前的地面源位置、放下后的实际源位置，或破坏前后的可观察分支，不能在操作全部结束后用当前坐标补造先前视听。可信阶段可先缓冲，最终与对应 Event / Signals / 可靠工作共同提交；缺失阶段明确记录缺口，不能让 JEV 猜历史。
 
-沿用 MC §7 的 **Event / Episode / Observation** 职责、事件时证据、Outbox、游标与既有 NPC EVA/Knowledge 管线，不新增世界专属感知队列/记忆体系。战斗整段 Episode 的目标聚合只使用已授权阶段，不能泄漏未察觉内容。提交后需独立机械命令的后果按现有稳定 command_id 可靠交接，不宣称两个已提交操作可一起回滚；异步感知/认知处理仍在各自可靠事务完成。
+沿用 MC §7 的 **Event / Episode / Observation** 职责、事件时证据、Outbox、游标与既有 NPC EVA/Knowledge 管线，不新增世界专属感知队列/记忆体系。战斗本场参战 NPC 接收 Turn 来源，外部接收 Round 来源；按范围／接收能力过滤，同 NPC／Episode 合批，不逐机械 Event 发信号或另建逐动作感知证据链。提交后需独立机械命令的后果按现有稳定 command_id 可靠交接，不宣称两个已提交操作可一起回滚；异步感知/认知处理仍在各自可靠事务完成。
+
+### 5.1 空间、容量、时间与效果协作
+
+未知重量／容量只阻止依赖该信息的操作，移出未知容器不被无关容量检查锁死；检查源／目标／祖先及受影响关系闭包。SpatialProjection 分开表达移动阻挡、视觉遮挡、Cover 和光照，不互相推断，附版本、单位与未知部分，不禁止 RE 已支持的合法特殊移动。
+
+沿用唯一 game_tick，TimeBinding 单位／精度／转换待冻结，旧 tick 不自动改称秒。整个 Round 约六游戏秒，各 Actor Turn 不重复增加整轮时长；认知交付粒度不创建不同流速的时钟。时间推进按有序到期边界处理，遇规则／选择／等待先提交合法边界和恢复进度，不先跳终点再补中间后果。
+
+Effects 管完整身份（现有 RE 为 target_id／id／origin）、Condition 多来源、专注及期限；World 管空间锚点，Character 读有效投影。取消单一来源不清其他来源，结束战斗／切场景不默认删除效果。Activity 每步重验事实，领域变化与游标共同提交，取消不撤销已发生步骤。完整接口仍待实现，未支持生命周期保持 unsupported，见 MC §6.6。
 
 ## 6. 后续落实与修订关系
 
@@ -111,4 +121,4 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 仍待确认：最小场景所需能力与规则来源、坐标/战斗投影映射、装备实例与容器可访问性、物体耐久/破坏及连带后果、锁具检定/密码授权、时间单位/推进策略、环境/陷阱/区域逐规则 Delta、支持组件依赖与故障验证。新增字段/规则不能由本草案直接视作运行能力。
 
-本草案细化 MC v0.14 的领域所有权决定，不撤销其单一事实权威、共享提交或 Host / RE 边界；与旧“Character / World Object 合并责任”表述冲突时，采用 MC v0.15 §0.3。历史 ADR / 决策登记及历史实现快照保留，不另建 ADR 体系；本次没有运行实现、Schema 迁移、规则依赖升级或全规则书覆盖验收。
+本草案细化 MC v0.14 的领域所有权决定，不撤销其单一事实权威、共享提交或 Host / RE 边界；与旧“Character / World Object 合并责任”表述冲突时，采用 MC v0.16 §0.3。历史 ADR / 决策登记及历史实现快照保留，不另建 ADR 体系；本次没有运行实现、Schema 迁移、规则依赖升级或全规则书覆盖验收。
