@@ -1,12 +1,14 @@
 # Agentic TRPG — Game Core Evolution Plan
 
-> **版本**：v0.4 / Draft；**日期**：2026-10-15
+> **版本**：v0.5 / Draft；**日期**：2026-10-17
 >
 > **当前方向 [DECIDED]**：以 `trpg-state-machine`＋`trpg-rules-engine` 为开发主线，借鉴成熟游戏系统，补强承接开放式行动与自主 NPC 的程序化游戏核心；允许实质性重构和替换不合适的子系统。
 >
-> **规范关系**：[MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.15 §0.3–§0.6 / §6.5 是领域状态、A1 / A2 与共享提交的跨模块规范；§0.2 / §3.6–§3.7 / §7.5 的主线/机制/经历原则保留。配套 [SM](./STATE_MACHINE_ARCHITECTURE.md) v0.17、[Agent](./AGENT_ARCHITECTURE.md) v0.15、[MVP](./MVP_SCOPE.md) v0.17、[Adventure Package](./ADVENTURE_PACKAGE_SCHEMA.md) v0.11、[World 专项草案](./WORLD_SUBSYSTEM_DESIGN.md) v0.1。
+> **规范关系**：[MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.16 §0.3–§0.6 / §6.5 是领域状态、A1 / A2 与共享提交的跨模块规范；§0.2 / §3.6–§3.7 / §7.5 的主线/机制/经历原则保留。配套 [SM](./STATE_MACHINE_ARCHITECTURE.md) v0.18、[Agent](./AGENT_ARCHITECTURE.md) v0.16、[MVP](./MVP_SCOPE.md) v0.18、[Adventure Package](./ADVENTURE_PACKAGE_SCHEMA.md) v0.12、[World 专项草案](./WORLD_SUBSYSTEM_DESIGN.md) v0.2。
 >
 > **状态**：方向/原则 `[DECIDED]`；方案/验收目标 `[PROPOSED]`；未决协议 `[OPEN]`；尚未实现的目标 `[NOT IMPLEMENTED]`。以下不宣称代码、模型测试或运行验收已经完成，也不据机制研究断言现有系统完全缺失这些能力。
+
+**2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
 ## 1. 中心问题与原有产品目标
 
@@ -80,11 +82,11 @@ RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状�
 
 ## 6. 感知、短期行动与完整经历
 
-当前感知、短期行动状态、长期认知各司其职；即时行为可使用可信当前感知或机械判定，不等 EVA。JEV 仍仅在既有授权范围承担 Perception / Memory Gate 判断，不替代必需规则或可信事实；Host 负责模型执行，不拥有权威状态。
+当前感知、短期行动状态、长期认知各司其职；即时行为可使用可信当前感知或机械判定，不等 EVA。JEV 仍仅在既有授权范围承担 Perception / Cognition Gate 判断，不替代必需规则或可信事实；Host 负责模型执行，不拥有权威状态。
 
-MC §7.5 的方向保留：**整场战斗一个 CombatEpisode，EpisodeObservation 是 NPC 整段经历中实际察觉部分的逻辑观察单位**。不默认每 Round / Action 建 Episode，也不默认每机械事件包装 WorldEvent / 独立 OB。机械审计、局部通知、感知刺激与认知观察用途不同，不因此新增多套数据库、队列或事件总线。
+**Episode 目标边界 `[DECIDED; NOT IMPLEMENTED]`：** 本场参战 NPC 接收角色 Turn 来源，外部接收 Round 来源；机械 Event 不逐条生成认知信号或逐动作感知证据链。同 NPC／Episode 合批判断，按范围与接收能力过滤，只汇总已提交来源，提前结束也交付最后未满轮。非战斗保留独立 Event 阶段证据；Schema、切换去重与恢复待冻结，历史数据／可靠进度保留。正式契约见 MC §7.5；Package 不嵌入动态 Episode／Memory 或新增 Episode 文件。
 
-“战时保存必要结果/证据、战后聚合”为候选方案，可比较可信历史重建；证据、生命周期、增量/同步算法 OPEN。不能从最终世界状态补造历史，不能借 Episode 关联泄漏隐藏内容或因果。已有 OB、Evidence、Outbox 和历史数据保留，既有 EVA 标识/完成、TTL/Processing/Retention 语义不因本批被删除或重设计。
+聚合在 Turn／Round 关闭后可靠发布，固定过滤依据，不从当前态补造必需历史；来源覆盖、参战切换和迁移恢复仍 OPEN，不要求战斗逐动作感知取证。旧 OB／Outbox 和幂等证据保留。
 
 ## 7. 受控扩展，不绑定 Coding Agent
 
@@ -101,7 +103,7 @@ MC §7.5 的方向保留：**整场战斗一个 CombatEpisode，EpisodeObservati
 | 对象交互与动作阶段 | 可组合语义、前提重验、真实发生阶段与持久后果；新状态被移动/感知/行为实际消费，不只改变描述 |
 | Encounter / Activity 执行与真实 RE 整合 | 非 LLM 行动推进与开始/完成/取消；固定一个实际已支持 RE 操作验证状态/RNG/幂等/冲突/故障/提交后通知，不要求全部协议同时升级 |
 | 感知与 NPC 行为 | 当前授权视图、专用刺激、局部通知、短期目标与重查；不同信息/目标导致不同调查/改道/交战，未知不算已察觉 |
-| Episode 经历 | 最小整场 CombatEpisode 的部分观察、来源追溯、聚合重试与信息隔离；保留/重建方案比较，不能由结束态推历史 |
+| Episode 经历 | 最小 Turn／Round Episode 授权观察、来源追溯、聚合重试与信息隔离；固定过滤依据与恢复验证，不能由结束态推历史 |
 | 早期 Agentic 联动 | 最小机制形成后立即交错验证合理自然语言的能力组合、世界变化影响后续行为、NPC 提议进入实际执行及模型异常的安全处理；完整 Host 不是前置条件 |
 
 **两类证据分开：** 实际模型测试验证语义理解、开放式裁决和人物体验；确定性回归固定已审查输入/模型结果，验证执行、权限、幂等、迟到/重复/失败、RNG 与一致性。模型成功话术不证明执行正确，确定性 fixture 也不证明真实 Agentic 体验。至少一名敌方 NPC 的 Agent 宏观自主性仍须按 MVP 验收，纯 Policy 不能替代。
@@ -121,7 +123,7 @@ MC §7.5 的方向保留：**整场战斗一个 CombatEpisode，EpisodeObservati
 | DS-03 | 旧模型结果与重复请求 | 异步结果重验实际相关 world_version / npc_state_version、权限/前提；重复命令/响应丢失不重扣/重掷，单玩家也保留防旧防重 |
 | DS-04 | Handler 连续推进与暂停 | 推进到玩家/选择边界或结束；攻击不强制结束回合，机械回合/资源/效果仅应用一次；有界重试/无进展退出，不在写锁等玩家/模型/I/O |
 | DS-05 | 必要状态替代完整日志 | RE-HIST-01 审计读者并补齐依赖后，固定事实/行动/绑定/RNG，无完整日志输入仍产生相同机械结果、有序必要事件及 RNG 转换；审计保留独立验证 |
-| DS-06 | 当前变化不改历史 | 后续 HP/位置/效果/Meta 变化不改写终结 CombatEpisode 或阶段证据/历史观察，只聚合实际经历，不由结束态补过去察觉 |
+| DS-06 | 当前变化不改历史 | 后续 HP/位置/效果/Meta 变化不改写已关闭 Turn／Round Episode 或阶段证据/历史观察，只聚合实际经历，不由结束态补过去察觉 |
 | DS-07 | 内部接口与认知边界 | 内部受控调用可共享事务，LLM/未验证脚本不能直接写数据或越权读秘密；整批 Meta、独立行动结果与既有 Work/Completion/模式失效仍正确 |
 
 优化拷贝/读取/校验须另测缓存失效、正常重启与回滚一致性，再报告性能；不以删校验换简化。通用提交设施不重写法术/能力判定，规则适配/攻击白名单须审计覆盖范围。细粒度版本、读写集和锁策略按证据选择，不逐字段过度设计。
@@ -134,7 +136,7 @@ EB-1～EB-3 仅是未来具体框架替代评估可复用的检查，**不是项
 |---|---|
 | EB-1 原生基础设施复用 | 两房间、门、NPC、文字交互、运行时创建/行为配置、正常重启持久性；列出实际复用的对象/属性/模板/钩子/Script/建造工具/客户端，防止仅把框架当壳 |
 | EB-2 真实 RE 与故障一致性 | 一个固定已支持真实规则操作；唯一权威、显式 RNG、重复/冲突/故障和可靠提交通知；回滚后数据库、新查询、旧持有对象/Attributes/缓存与后续命令一致，不能只看 SQL 或重启 |
-| EB-3 调度与持续后果 | 连续行为、目标失效重查、受控版本切换、角色视图隔离、最小 CombatEpisode 和环境变化的持久后果；不等于完整 Host、安全沙箱或通用中断 |
+| EB-3 调度与持续后果 | 连续行为、目标失效重查、受控版本切换、角色视图隔离、最小 Turn／Round Episode 和环境变化的持久后果；不等于完整 Host、安全沙箱或通用中断 |
 
 [Django Transactions](https://docs.djangoproject.com/en/5.2/topics/db/transactions/) 指出回滚不自动恢复模型内存字段/应用缓存，提交回调也不属于事务本体；[Evennia Attributes](https://www.evennia.com/docs/latest/Components/Attributes.html) 的缓存/可变值须固定版本实测。可靠交接不能仅以一次回调替代 Outbox 语义。这些风险保留为验证项，不是未经运行的否定结论。
 
@@ -148,7 +150,7 @@ EB-1～EB-3 仅是未来具体框架替代评估可复用的检查，**不是项
 | 领域管理状态、事实确定权威、操作共享提交 | [DECIDED]，替代单模块独占限制；已有受限拆分，完整职责/字段迁移 [OPEN]，见 MC §1.2 |
 | A1 探索与战斗的操作编排分离 / A2 StateMachine 模块化与职责边界 | [DECIDED]；已有部分基础，完整战斗 World 互动、空间映射扩展、剩余组合切片 [OPEN]，实施与验收未完成；统一待办见 MC §13 |
 | 有状态 Combat Handler / 校验分责 / 普通求值退出完整日志 | 原则 [DECIDED]；已有受限 Handler，完整推进/预算/Continuation、读取接口与全量日志解耦 [OPEN]；不据已有适配切片认定全部完成 |
-| CombatEpisode / EpisodeObservation 与不泄密 | 方向 [DECIDED]；证据/生命周期/同步/聚合算法 [OPEN; NOT IMPLEMENTED] |
+| Turn／Round Episode / EpisodeObservation 与不泄密 | 方向 [DECIDED]；证据/生命周期/同步/聚合算法 [OPEN; NOT IMPLEMENTED] |
 | 动态扩展 / Coding Agent | 受控能力目标 [DECIDED]；代码生成手段可选，具体协议 [OPEN]，完整系统 [NOT IMPLEMENTED] |
 | Evennia 整体迁移 / Evennia_base | [OPEN] / Deferred / Optional evaluation；不构成主线依赖，本轮无仓库或运行实现 |
 
