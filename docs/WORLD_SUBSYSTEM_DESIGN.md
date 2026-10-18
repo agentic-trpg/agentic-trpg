@@ -1,12 +1,14 @@
 # Agentic TRPG — World Subsystem Design
 
-> **版本**：v0.2 / Draft；**日期**：2026-10-17
+> **版本**：v0.3 / Draft；**日期**：2026-10-18
 >
-> **规范关系**：[Module Contracts](./MODULE_CONTRACTS.md) v0.16 §0.3 / §0.5–§0.6 为最高职责规范；本文细化 World 候选能力。配套 [State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.18、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.5、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.12。
+> **规范关系**：[Module Contracts](./MODULE_CONTRACTS.md) v0.17 §0.3 / §0.5–§0.6 为最高职责规范；本文细化 World 候选能力。配套 [State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.19、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.6、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.13。
 >
-> **状态**：职责/复用方向 `[DECIDED]`；组件和字段 `[PROPOSED; OPEN]`；超出 MC §1.2 受限实现的能力是目标设计，不能宣称已支持。本文不冻结 SQL Schema、跨模块消息或公共操作集合；仅修改总控文档。
+> **状态**：职责和 Scene 目标结构 `[DECIDED]`；新增字段／ABI `[PROPOSED; OPEN]`；独立 Scene 组件 `[NOT IMPLEMENTED]`；超出 MC §1.3 受限实现的能力是目标设计，不能宣称已支持。本文不冻结 SQL Schema、跨模块消息或公共操作集合；仅修改总控文档。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
+
+**2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
 ## 1. 基线、范围与规则依据
 
@@ -24,14 +26,16 @@ World 覆盖世界时间、场景、空间/地形/障碍、基础对象、位置
 
 ### 1.1 当前实现与目标的区别
 
-实际 checkout / SHA / 脏工作区和静态证据统一见 [MC §1.2](./MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试)。本批未运行 SM、RE 或真实模型测试。
+当前远端 SHA、代码／测试源码和历史 PROGRESS 引用统一见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)；§1.2 保留 2026-10-15 GC5 脏工作区快照。本轮定向静态调查，未运行 SM／RE 测试或完成全量代码审阅。
 
-| 能力 | 本次确认的基础 | 仍为目标/未核实范围 |
+| 能力 | 当前 main 已实现 | 合并沿革／仍为目标 |
 |---|---|---|
-| 时间、场景、空间 | game_tick、一次实例化/重访、网格位置、障碍与通路查询 | 日历/天气/任意空间尺度及完整时间驱动后果未核实 |
-| 对象、门锁、物品 | WorldFacts / WorldHandler、共享门的开合及通路关系、持有公开凭据开锁、便携实例地面/携带切换与库存投影 | 可选能力的完整组合模型、通用耐久破坏、容器嵌套、附着、撬锁/密码未核实为受支持操作 |
-| 编排与存储 | StateMachine 显式装配部分组件，共享 SqliteStore；Navigation / Activity 的非战斗执行；受限 CombatHandler | A1 / A2 部分实现；战斗世界互动/移动扩展及全部 Mixin 退出未完成 |
-| 感知/效果 | 事件阶段取证、已有感知机制、受限 PackageEffects 和角色机械效果组件 | 通用 World 感官/环境/陷阱组件与持续魔法区域集成未核实；不据本文宣布 Episode / Continuation 已实现 |
+| 物体查询与分派 | WorldObjectService 及 Openable／Container／ObjectSpatial／Light／Mechanism 的受限组合 | 完整战斗费用、魔法生命周期、真实物体攻击、NPC 新意图转换仍未完成 |
+| Openable | 共享开合／锁／闩／卡住方向／操作侧／触及；真实 RE 非战斗 PickLock、ForceOpen、ClearJam；查询复用资格，提交前重验 | 仅应用已配置的成功后果；强行开启不等于真实伤害／破坏。战斗与 Arcane Lock／Knock 仍 [NOT IMPLEMENTED] |
+| Container | PutItem／TakeItem、相关子树及原／目标祖先容量／fit 检查、最多两层容器、祖先访问与 Openable 只读接口复用、同事务库存投影 | 部分数量转移、实例装备／调谐／效果生命周期仍未实现；内部耐久应用和待实现内容物摧毁规则不算交付 |
+| WorldTimeService | world-time/1 秒制固定绑定与 legacy game-clock/1；Package 默认／创建整体覆盖／持久化，换算、昼夜／边界查询、推进委托 | TimeDriver／倍率、Round 接线、Activity／Effects／燃料与环境消费、秒制 NPC／OB／Gate 未完成 |
+| ObjectSpatial | 当前 main `97c5af1` 已合入 `feat/object-spatial-service@0c2c4c7`：朝向／旋转、完整占地、候选验证、接触查询与独立移动阻挡／困难地形／视觉遮挡／Cover 投影；原 main `a897ae5` 只有较早基础 | 综合 Terrain／Perception／Light／Combat／RE 仍未接通，无挡雨／挡风接口；开始时未合并的状态只保留为调查沿革 |
+| Scene 与环境 | WorldHandler／WorldFacts 有初始化、访问、Flags、网格／通路及移动基础 | SceneService／GridService／TerrainService／EnvironmentService 的独立组件均为已确认目标 [NOT IMPLEMENTED]；不能据现有基础宣布四服务已存在 |
 
 ## 2. 职责与依赖 `[DECIDED]`
 
@@ -41,13 +45,48 @@ StateMachine 是统一 API 和组件装配入口；WorldHandler / Service 编排
 
 World 的对象位置查询可以解析携带者的实际角色位置，不能复制一份可写角色坐标。Effects 区域引用 World 空间，World 的光照/阻挡等查询消费相关效果；效果实例、集中与到期不在 World 再存一套。物体耐久与角色 HP 分责，Creature/Actor 的伤害不能因使用“对象”统称转到 World。
 
+### 2.0 World 与 Scene 的结构 `[DECIDED]`
+
+以下为目标责任图。main 已有 WorldObjectService 与 WorldTimeService；SceneService 为目标，尚未独立实现。WorldHandler 保留操作入口与协调，WorldFacts 提供受控事实接口，所有写入共用 SQLite 事务。
+
+```mermaid
+flowchart TD
+    SM[StateMachine 统一入口与装配] --> WH[WorldHandler 操作入口与协调]
+    WH --> WO[WorldObjectService 物体查询与能力分派]
+    WH --> SC[SceneService 场景子系统协调 目标]
+    WH --> WT[WorldTimeService 统一游戏时间]
+    WO --> WF[WorldFacts 受控事实读写]
+    SC --> WF
+    WT --> WF
+    WF --> TX[共享 SQLite 事务]
+```
+
+顶层只展示 SceneService；内部四组件责任如下。不要求所有查询经过 SceneService，可按需要直接使用内部只读能力。正式名称沿用 WorldTimeService，TimeService 仅是讨论简称。
+
+| Scene 内组件 | 目标责任 [DECIDED] | 代码状态 |
+|---|---|---|
+| SceneService | 初始化、进入／离开、访问记录、Flags、生命周期及内部协调 | 独立实现 [NOT IMPLEMENTED]；现有路径仍在 WorldHandler／WorldFacts |
+| GridService | 网格定义、坐标有效性、邻接、距离等基础空间能力 | 独立实现 [NOT IMPLEMENTED]；复用既有 GridScene／GridTopology／canonical_cell_id，不重写 D&D 距离／范围规则 |
+| TerrainService | 地表、地面高度、困难地形及通行属性；基础地形与受控变化 | 独立实现／综合合并 [NOT IMPLEMENTED]；对象造成的困难地形等读取 ObjectSpatial 投影，不复制为另一份可写地形 |
+| EnvironmentService | 基础环境管理，结合局部空间防护与有效 Effects，查询位置／区域的实际环境 | 独立实现 [NOT IMPLEMENTED]；当前空间防护、环境消费尚无完成依据 |
+
+WorldHandler 已迁出的业务包括对象能力分派、开合／锁具／门闩转换、容器操作、空间物体布置、灯光／机关及时间换算／推进委托。仍保留场景初始化和进入／离开、Flags／访问记录编排、角色移动、通路／共享门端点、传统拾取／放下部分路径、拓扑／触及／授权辅助及最终一致性协调；不是仅剩空路由器。完整退出这些业务和 Mixin 仍对应 A2；空间／战斗接线对应 A1，不能标记整体迁移完成。
+
+### 2.0a 共享空间与环境边界 `[DECIDED; NOT IMPLEMENTED]`
+
+所有组件共用 Scene Grid 与坐标标识，不各建一套 Cell。Character 拥有角色实际位置；WorldObject 拥有物体位置与动态空间贡献；Terrain 拥有基础地形及受控变化。空间派生结果不成为另一份可写事实，Grid 沿用既有几何规则。
+
+环境初值来自 Package，运行变化保存在 Session 的 World 状态。可选一批场景设置天气，不引入世界→地区→场景天气继承；作用域为整个场景或明确区域。首次进入前对场景环境的受控修改必须保存，后续初始化只补未建立基础，不能被模板覆盖；重访也不重置。有效 Cell 环境按需组合查询，不要求预先逐格持久化最终结果。具体字段、覆盖优先级与版本／迁移仍 [OPEN]，不是新增公共 ABI。
+
+挡雨、挡风、视觉遮挡和移动阻挡各自独立，不能相互推导。当前 ObjectSpatial 已有的视觉／Cover 贡献不提供挡雨／挡风；这些防护尚待实现与消费者验证。Effects 保存法术效果来源、范围和生命周期；Environment 只消费其环境贡献，不复制权威或期限。天气生成、气候继承、流体模拟不作为前置；角色暴露进度归属仍 [OPEN]，本轮不替它选择所有者。
+
 ### 2.1 身份、位置关系与库存
 
 沿用现有 `session_id`、`scene_id`、`actor_id`、`object_id`，便携 `instance_id` 与 `objects.object_id` 是同一实例身份；不按名字另建 WorldEntity / InventoryItem 目录。模板绑定沿用 Package / 数据修订，新增关系键须先核对已有字段，本文字段拼写仅作候选。
 
-当前便携物品落地为 `scene_id + cell`，携带为 `carrier_id`；位置互斥且引用有效。目标扩展为置于容器或附着于对象时，同一物品仍只有一个直接实际位置关系，容纳/附着链不得成环；沿父关系解析实际空间。装备是角色机械绑定，不能自动等同位置；被装备实例仍须属于合法持有关系，取放应维护或拒绝无法安全解除的绑定。
+当前便携物品落地为 `scene_id + cell`，携带为 `carrier_id`；位置互斥且引用有效。main 已支持置于容器；附着于对象仍为目标。对这些位置关系，同一物品仍只有一个直接实际位置关系，容纳/附着链不得成环；沿父关系解析实际空间。装备是角色机械绑定，不能自动等同位置；被装备实例仍须属于合法持有关系，取放应维护或拒绝无法安全解除的绑定。
 
-`WorldFacts.transfer_item → CharacterFacts.project_item_transfer` 在同事务更新 World 位置、机械 `InventoryState.entries` 和 carried-slug 投影，并以 `validate_portable_inventory` 校验完整便携子集，再按角色投影。**持久化的库存投影不是另一份可独立改写的物品归属权威**。当前 `item_json` 含 item_slug、quantity、charges_remaining_per_unit 等，转移不能重置数量/充能或丢失非便携条目；相关规则消耗须按受控机械结果共同更新。slug 装备不能无歧义识别实例、活动效果/施法材料绑定等当前限制保留。容器内可访问性、递归携带重量、资源耗用与统一实例装备协议 `[OPEN]`。
+`WorldFacts.transfer_item → CharacterFacts.project_item_transfer` 在同事务更新 World 位置、机械 `InventoryState.entries` 和 carried-slug 投影，并以 `validate_portable_inventory` 校验完整便携子集，再按角色投影。**持久化的库存投影不是另一份可独立改写的物品归属权威**。当前 `item_json` 含 item_slug、quantity、charges_remaining_per_unit 等，转移不能重置数量/充能或丢失非便携条目；相关规则消耗须按受控机械结果共同更新。slug 装备不能无歧义识别实例、活动效果/施法材料绑定等当前限制保留。容器祖先可访问性与容量所需递归重量已有受限实现；部分数量转移、资源耗用及统一实例装备／调谐／效果生命周期协议仍 `[OPEN; NOT IMPLEMENTED]`。
 
 ### 2.2 客观世界与认知
 
@@ -59,11 +98,11 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 对象只装配需要的能力：**门 = 基础对象 + 位置 + 可选耐久 + 开合 + 可选锁具 + 通路关联**；**箱子 = 基础对象 + 位置 + 可选耐久 + 开合 + 可选锁具 + 容器**。箱子可没有锁，门可不可破坏，光源可附着于任意合适对象；能力缺失不伪造默认行为。木门、铁门以模板材质/规则参数区分，共用能力操作逻辑，不分别实现木门/铁门处理器。
 
-以下按组件列候选字段及用途。**T = 模板配置**（固定定义/初始值）；**S = 持久实例状态**（只由所属接口写）；**R = 关联**（引用同 Session 已有身份/来源）；**D = 派生查询**（可缓存，不能独立修改）。表中全部字段 `[PROPOSED; OPEN]`；与现有字段同义时复用现有结构，新增拼写不意味着新增 SQL 列或冻结跨模块协议。R 可持久化，但须指定唯一关系负责人；D 如物化，须有失效/一致性规则。
+以下按组件列候选字段及用途。**T = 模板配置**（固定定义/初始值）；**S = 持久实例状态**（只由所属接口写）；**R = 关联**（引用同 Session 已有身份/来源）；**D = 派生查询**（可缓存，不能独立修改）。表中拼写与尚未实现的扩展字段 `[PROPOSED; OPEN]`；已有代码字段／协议以 MC §1.3 固定源码为准，此表不重新冻结；与现有字段同义时复用现有结构，新增拼写不意味着新增 SQL 列或冻结跨模块协议。R 可持久化，但须指定唯一关系负责人；D 如物化，须有失效/一致性规则。
 
 | 组件 / 用途 | T：模板配置候选 | S：持久实例候选 | R：关联候选 | D：派生查询候选 |
 |---|---|---|---|---|
-| 世界时间：推进共同时间 | `time_unit`、`initial_tick`、可选 `calendar_ref`，定义刻度/显示；不预设战斗秒数 | 复用 `game_tick`，保存唯一已提交时间 | 复用 `session_id`；活动/效果引用同一时基 | 日期/昼夜、下一到期点；不另开可写探索/战斗时钟 |
+| 世界时间：推进共同时间 | 已有完整 TimeBinding 配置，版本 world-time/1；legacy 保留 game-clock/1，见 MC §1.3 | 复用 game_tick 与固定绑定，保存唯一时间 | 复用 session_id；活动／效果接线仍待完成 | 已有日期／昼夜／边界换算；有序到期消费者待实现，不另建探索／战斗时钟 |
 | 场景：实例化与边界 | 复用 Scene 定义、初始 flags、空间配置，提供首次基线 | 复用 scene_instances 的 flags / visited_count，保留回访后果 | `scene_id`、Package 版本/定义引用 | 当前在场角色/对象与授权出口；不按静态 actor_ids 重生角色 |
 | 空间 / 地形 / 障碍：导航和机械输入 | 复用 grid、blocked_cells、地形定义；候选 `terrain_ref` / `geometry_ref` 描述成本/形状 | 候选地形覆盖/障碍实例变化，保存实际改变 | scene_id、对象/区域与 passage 引用 | 可通行边、距离、占用、LoS / Cover 输入；规则成本由 RE 算 |
 | 基础对象：身份与能力装配 | 复用对象定义；候选 `template_ref`、`capabilities`、`material_ref` 表达可支持能力/材质 | 复用 objects 实例身份/普通 state；候选启用/失效状态 | session_id / object_id、Package 定义 | 可用能力集合、授权描述；不按名称推断新能力 |
@@ -74,7 +113,7 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 | 容器 / 物资资源：容纳与有限存量 | 候选 `capacity_ref`、`accepts_ref`、`resource_kind`、`initial_quantity`，约束内容/计量 | 候选容器自身状态、未实体化物资的 `remaining_quantity`；实体物品不再计一份可写数量 | 容纳关系反向查询；实物实例/补给来源引用 | 内容列表、剩余容量/可访问性/合计重量；角色资源池留在 Character 机械组件 |
 | 光源：提供客观照明 | 候选 `light_profile_ref`、`fuel_policy_ref`，定义范围/消耗来源 | 候选 `enabled`、实际燃料存量；有物品充能时引用原实例余额 | 来源 object_id / actor_id / effect_id、空间锚点 | 当前受照区域与强度；燃料/充能不在两处独立扣减 |
 | 遮蔽 / 遮挡：按渠道描述物理影响 | 候选 `occlusion_profile_ref`、`cover_geometry_ref`、`channel_mask`，分别表达视线/声音/机械遮掩 | 候选启用状态或几何变化，必要时直接派生自门/障碍状态 | 对象/地形/效果来源及空间 | 各渠道连通、视觉遮蔽与 Cover 候选；不直接得出角色已察觉 |
-| 环境：持续客观条件 | 候选 `environment_profile_ref`、作用域与规则引用，表达天气/温度/水体等 | 候选当前强度/状态、已提交变化时间 | scene / region、来源效果与世界时间 | 某位置适用环境集合；机械伤害/豁免由 RE 算，非全物理模拟 |
+| 环境：持续客观条件 | 候选环境初值、整场景／明确区域与规则引用 | Session World 保存受控变化，首次进入前修改不被覆盖 | scene_id 或一批 scene_ids、区域、效果来源及世界时间；不建天气继承树 | 按位置／区域组合实际环境，消费空间防护与有效 Effects；无逐格最终态权威，机械结算归 RE |
 | 陷阱 / 危险：受控触发与后果 | 候选 `trigger_ref`、`resolution_ref`、`reset_policy`，绑定已支持规则/包声明 | 候选 armed / disabled / spent、剩余使用次数与触发采用记录 | 对象/区域、触发 Event、后续稳定 command_id | 可触发候选/受影响对象；发现/识破知识不存入陷阱状态 |
 | 隐藏与感官来源：提供察觉依据 | 候选 `concealment_ref`、`sensory_profile_ref`，描述物理伪装与光/声等源 | 候选源启停、伪装实际状态及变化时间 | source object/actor/effect、空间与已提交阶段 | 供 Signals / Scope Discovery 的客观来源和环境；发现结果由既有感知组件管理 |
 | 通用交互：按能力复用操作 | 候选 `interaction_refs`、支持操作/前提政策、规则/裁决引用 | 通常不复制事实；确有需要仅存交互自身冷却/使用进度 | actor、目标能力、Activity / Command / Event 关联 | 当前授权可用性；query 不支付资源，执行时重验 |
@@ -90,7 +129,7 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 **共享互动目标：** 开门、解锁、取放、破坏障碍按能力调用共同领域操作。探索入口执行适用授权、可达性、凭据/活动约束及需要的 RE 检定；战斗入口额外经 RE 协调行动资格、行动资源、时序、触发与反应。Handler 组织顺序、适用记录通道和共同提交（非战斗阶段取证，战斗审计／Episode 来源），不能自定规则公式。门/箱/容器共享开合和锁具能力，不复制对象事实或取放权威。
 
-**当前限制是实施边界：** `_world_operation_capability` 拒绝活跃战斗的非战斗命令；`_spatial_combat_guard` 拒绝部分动态障碍/关闭通路门；物品/锁具还有公开性、凭据、装备、效果/活动等限制。复用须先设计受控战斗执行上下文及 Delta 适配，并逐项证明原有限制仍正确或已有明确替代；不得删除 guard 或直接调用内部 `_operate*` 作为“支持战斗互动”。撬锁、强行破门、箱内取物只是目标例子，不是当前支持声明。
+**当前限制是实施边界：** `_world_operation_capability` 拒绝活跃战斗的非战斗命令；`_spatial_combat_guard` 拒绝部分动态障碍/关闭通路门；物品/锁具还有公开性、凭据、装备、效果/活动等限制。复用须先设计受控战斗执行上下文及 Delta 适配，并逐项证明原有限制仍正确或已有明确替代；不得删除 guard 或直接调用内部 `_operate*` 作为“支持战斗互动”。main 已支持非战斗撬锁、显式方法强行开启／解除卡住和容器取放；仍须遵守公开对象、角色状态、工具、祖先访问与空间保护。战斗费用、魔法生命周期和真实物体攻击继续是缺口，不能通过直接内部调用绕过。
 
 ## 5. 事务、尝试结果与阶段证据 `[DECIDED]`
 
@@ -109,9 +148,13 @@ World 的对象位置查询可以解析携带者的实际角色位置，不能�
 
 ### 5.1 空间、容量、时间与效果协作
 
-未知重量／容量只阻止依赖该信息的操作，移出未知容器不被无关容量检查锁死；检查源／目标／祖先及受影响关系闭包。SpatialProjection 分开表达移动阻挡、视觉遮挡、Cover 和光照，不互相推断，附版本、单位与未知部分，不禁止 RE 已支持的合法特殊移动。
+未知重量／容量只阻止依赖该信息的操作；main 对相关容器容量 unknown 仍拒绝移出，但不检查无关容器局部容量。检查移动子树、原／目标祖先及受影响关系闭包。当前 main 的 ObjectSpatial 分别输出移动阻挡、困难地形、视觉遮挡和 Cover 的对象侧贡献；Light 独立输出受限光照，综合 Terrain／Perception／Light／RE 接入仍未完成。目标查询保留版本、单位与未知部分，不相互推导，不禁止 RE 已支持的合法特殊移动。
 
-沿用唯一 game_tick，TimeBinding 单位／精度／转换待冻结，旧 tick 不自动改称秒。整个 Round 约六游戏秒，各 Actor Turn 不重复增加整轮时长；认知交付粒度不创建不同流速的时钟。时间推进按有序到期边界处理，遇规则／选择／等待先提交合法边界和恢复进度，不先跳终点再补中间后果。
+main 已有 WorldTimeService：显式 world-time/1 固定 1 tick = 1 游戏秒；legacy game-clock/1 仍为抽象 tick。Package 提供完整绑定，创建 Session 可强类型整体覆盖并持久固定；已有时间换算、昼夜及有界边界查询、获准 world.advance_time 推进委托。唯一 tick 仍由 WorldFacts 写入，旧存档不转秒。
+
+秒制 Session 创建拒绝带配置型 NPC State 的 Package；未配置 Runtime 的物理 Actor 可存在，但 NPC observation access／宿主聚合感知投影受 unsupported_time_consumer 限制。旧日程／OB TTL／Gate 周期不能按秒解释；完整限制见 MC §1.3。
+
+[DECIDED; NOT IMPLEMENTED] 实时倍率与 TimeDriver、Combat Round 时间接线、Activity／Effects 期限消费及秒制 NPC／OB／Gate 仍待完成。整个 Round 约六游戏秒，各 Actor Turn 不重复增加整轮时长；认知交付粒度不创建不同流速的时钟。有消费者后，推进按有序到期边界处理，遇规则／选择／等待先提交合法边界和恢复进度，不先跳终点再补中间后果；现有数学边界查询不等于这个调度器已经实现。
 
 Effects 管完整身份（现有 RE 为 target_id／id／origin）、Condition 多来源、专注及期限；World 管空间锚点，Character 读有效投影。取消单一来源不清其他来源，结束战斗／切场景不默认删除效果。Activity 每步重验事实，领域变化与游标共同提交，取消不撤销已发生步骤。完整接口仍待实现，未支持生命周期保持 unsupported，见 MC §6.6。
 
@@ -119,6 +162,6 @@ Effects 管完整身份（现有 RE 为 target_id／id／origin）、Condition �
 
 唯一架构待办登记沿用 [MC §13](./MODULE_CONTRACTS.md#13-尚需显式批准或验证的开放问题) 的 **A1 / A2、C-18 / C-19、C-25–C-27**，实现验收复用演进计划 §8.1 的 DS-01–DS-07。本文不建平行 Backlog，不把完整组件目录变成强制 MVP 工程批次。
 
-仍待确认：最小场景所需能力与规则来源、坐标/战斗投影映射、装备实例与容器可访问性、物体耐久/破坏及连带后果、锁具检定/密码授权、时间单位/推进策略、环境/陷阱/区域逐规则 Delta、支持组件依赖与故障验证。新增字段/规则不能由本草案直接视作运行能力。
+仍待确认／实现：最小场景所需能力与规则来源、坐标／战斗投影映射、实例装备与生命周期、物体攻击／破坏及内容物后果、隐秘锁发现／密码授权、TimeDriver 与各时间消费者、Scene 四组件、环境／陷阱／区域逐规则 Delta、支持组件依赖与故障验证。已有非战斗锁具检定、两层容器访问与固定时间单位不再列为全部缺失。角色暴露进度归属继续 [OPEN]。新增字段/规则不能由本草案直接视作运行能力。
 
-本草案细化 MC v0.14 的领域所有权决定，不撤销其单一事实权威、共享提交或 Host / RE 边界；与旧“Character / World Object 合并责任”表述冲突时，采用 MC v0.16 §0.3。历史 ADR / 决策登记及历史实现快照保留，不另建 ADR 体系；本次没有运行实现、Schema 迁移、规则依赖升级或全规则书覆盖验收。
+本草案细化 MC v0.14 的领域所有权决定，不撤销其单一事实权威、共享提交或 Host / RE 边界；与旧“Character / World Object 合并责任”表述冲突时，采用 MC v0.17 §0.3／§0.3a。历史 ADR / 决策登记及历史实现快照保留，不另建 ADR 体系；本次没有运行实现、Schema 迁移、规则依赖升级或全规则书覆盖验收。
