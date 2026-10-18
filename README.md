@@ -18,17 +18,23 @@ The project separates the AI Game Master, the authoritative game runtime, the ru
 
 Open-ended player actions, persistent world consequences, and NPC private cognition/autonomy remain the product goals. LLMs interpret context and propose adjudication, compositions, and character plans; the game core executes supported capabilities and makes their consequences affect later behavior. Agentic validation starts alongside the smallest usable mechanisms, without waiting for a complete conventional engine or full Host.
 
-**[DECIDED] Domain state ownership, supplemented 2026-10-15:** Each fact has one responsible domain. StateMachine remains the unified API and composition entry; explicit dependencies and shared SQLite transactions connect the subsystems. Facts / Records are domain data access components, with actual data persisted in SQLite. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) governs ownership; [§1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试) distinguishes existing implementation slices from target design and uncommitted SM work.
+**[DECIDED] Domain state ownership, supplemented 2026-10-15:** Each fact has one responsible domain. StateMachine remains the unified API and composition entry; explicit dependencies and shared SQLite transactions connect the subsystems. Facts / Records are domain data access components, with actual data persisted in SQLite. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) governs ownership; [§1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查) records the current remote main, the ObjectSpatial merge history, and target design; §1.2 retains the historical GC5 working-tree snapshot.
 
 ## System architecture
 
-The diagram shows target responsibilities. Existing implementation slices and remaining gaps are recorded in [Module Contracts §1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试).
+The diagram shows target responsibilities. Existing implementation slices and remaining gaps are recorded in [Module Contracts §1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查).
 
 ```mermaid
 flowchart TD
     Player[Human Player] --> Planner[DM Planner]
     Planner --> Entry[StateMachine unified API / composition entry]
     Entry --> Explore[Navigation / Activity + WorldHandler<br/>Exploration orchestration]
+    Explore --> Objects[WorldObjectService<br/>Object queries and capability dispatch]
+    Explore --> Scene[SceneService<br/>Target Scene subsystem]
+    Explore --> Clock[WorldTimeService<br/>Game time]
+    Objects --> Domains
+    Scene --> Domains
+    Clock --> Domains
     Entry --> Handler[CombatHandler + Rule Engine<br/>Combat orchestration]
     Handler -->|Immediate tactics| Policy[Controlled Combat Policy<br/>No cognitive LLM dependency]
     Policy -->|Typed Intent| Handler
@@ -46,6 +52,12 @@ flowchart TD
     Commit -->|Committed, authorized facts| Narrator[DM Narrator]
     Narrator --> Player
 ```
+
+**Current source check (2026-10-18):** Documentation main `73d3bd0`, SM main initially `a897ae5` (Schema32), now `97c5af1` (Schema33; Engine/SRD pin `d596161060555630019163ab301e1d25fd816549`), and ObjectSpatial branch `0c2c4c7` were verified against the remotes. During this investigation, an external merge brought ObjectSpatial into SM main; this documentation task performed no implementation merge. Main includes real noncombat Openable checks, Container transfers with two container levels and related capacity/access checks, and WorldTimeService with fixed `world-time/1` (one tick per game second); legacy `game-clock/1` retains abstract ticks. Rotation, full footprints, candidate/contact queries, and separate movement/difficult-terrain/vision/Cover contributions are now present in SM main. The initial unmerged state is retained only as investigation history. See [Module Contracts §1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查) for exact SHAs and source links. This was a targeted static investigation; no SM/RE tests or full code review were performed.
+
+The target World structure places WorldObjectService, the Scene subsystem coordinated by SceneService, and WorldTimeService side by side. SceneService, GridService, TerrainService, and EnvironmentService are confirmed design responsibilities with no independent implementation in either checked SM baseline. The top-level diagram shows only SceneService; the [World detail table](docs/WORLD_SUBSYSTEM_DESIGN.md#20-world-与-scene-的结构-decided) describes its internal components. Queries may use the appropriate component directly. They share the Scene grid and coordinates; actor positions, object contributions, and base terrain keep their respective owners.
+
+Environment starts from Package data and preserves Session changes, including changes before the first visit. Whole-scene or regional queries combine base conditions, local protection, and effective Effects on demand; selected scenes can receive weather changes without a weather inheritance hierarchy. ObjectSpatial currently provides no rain or wind protection. Combat costs, magic/object-effect lifecycles, real object attacks, integrated terrain/perception/light/combat, TimeDriver and time consumers remain incomplete; seconds-based Sessions reject unsupported NPC/OB/Gate and aggregate perception consumers. Exposure-progress ownership remains OPEN. Existing Episode, Recent OB, Gate/EVA, CombatPolicy, version/idempotency/RNG and transaction contracts remain in force.
 
 ### Main responsibilities
 
@@ -71,7 +83,7 @@ Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, com
 
 Immediate Mechanical Response is organized by Combat Handler / responsible domain handlers through trusted mechanisms, Combat Policy, and RE. Tactics, reactions, automatic effects, and combat triggers do not depend on cognitive LLM calls. Required mechanical perception must have trusted evidence; unknown does not mean perceived. Handler advances from committed state with bounded retries and a no-progress exit; one attack does not automatically end a turn. NPC Cognition manages versioned private Meta while Host runs models. EVA completion, later actions, and perception processing retain separate transaction lifecycles.
 
-Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Full log removal still requires reader/dependency auditing and validation across supported paths; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.1–§1.2](docs/MODULE_CONTRACTS.md#12-2026-10-15-sm-当前实现核对静态代码未运行测试) separates historical evidence from the current SM checkout; this docs-only batch ran no runtime tests.
+Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Full log removal still requires reader/dependency auditing and validation across supported paths; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查) records the current remote source baseline separately from historical evidence; this docs-only batch ran no runtime tests.
 
 **A1 — Separate exploration and combat orchestration:** The target assigns exploration movement to Navigation / Activity + WorldHandler and combat movement to CombatHandler + RE, using one actual actor position. Combat space projects world space with explicit mapping boundaries. Opening, unlocking, moving items, and breaking obstacles are to reuse object facts and capability operations; combat additionally coordinates eligibility, costs, timing, triggers, and reactions through RE. Current foundations are partial; existing noncombat entry restrictions remain effective until a supported combat integration replaces them.
 

@@ -1,20 +1,22 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
-> **版本：** v0.16 / Draft for Review
+> **版本：** v0.17 / Draft for Review
 >
-> **日期：** 2026-10-17
+> **日期：** 2026-10-18
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.18、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.12、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.18、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.16、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.5、[World Subsystem Design](./WORLD_SUBSYSTEM_DESIGN.md) v0.2（专项草案，遵循本文）
+> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.19、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.13、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.19、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.17、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.6、[World Subsystem Design](./WORLD_SUBSYSTEM_DESIGN.md) v0.3（专项草案，遵循本文）
 >
 > **历史代码核对基线（§1 历史表沿用 v0.1，2026-10-12 前批有限核对见 §1.1）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
 > **标记：** `[DECIDED]` 已有架构决定；`[PROPOSED]` 本文推荐、待评审；`[OPEN]` 需要进一步决策；`[NOT IMPLEMENTED]` 不可宣称现有代码已有
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
+
+**2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
 ## 0. 用途与冻结策略
 
@@ -91,19 +93,36 @@ RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG �
 | Perception / Observation | 非战斗阶段证据、战斗固定过滤依据、授权观察与窗口保留；Cognition 管 Gate／认知处理状态 | 可信确定性路径、受限 JEV 判断；正式机械检定由 RE | 证据随来源操作共同提交；后续投影/处理按既有可靠事务推进 | NPC Cognition、Host、授权查询；不能读出他人秘密 |
 | 共享提交设施 | 事务、版本/原值、请求关联、幂等回执、权威 RNG 流/版本及可靠通知记录 | 不复制 RE 的法术/能力判定 | 提供统一事务上下文，检查共同提交条件，协调全部参与写入与 COMMIT/ROLLBACK | 各领域、恢复/审计及可靠投递读取相应结果 |
 
-这些是逻辑职责；**Facts / Records 是领域数据读写组件，实际数据持久化在 SQLite**，不是另一个内存数据库。现有同名组件的受限实现见 §1.2；新增组件/字段与完整职责迁移仍 `[PROPOSED / OPEN]`，不能按名称判定完成。共享身份沿用 `session_id`、`scene_id`、`actor_id`、`object_id` / `instance_id`，不新建平行目录。CombatHandler 不另存可独立修改的当前 HP、位置或物品归属；参战关系、Snapshot、冻结的终结记录和缓存不是另一份当前权威。
+这些是逻辑职责；**Facts / Records 是领域数据读写组件，实际数据持久化在 SQLite**，不是另一个内存数据库。现有同名组件的受限实现见 §1.3；新增组件/字段与完整职责迁移仍 `[PROPOSED / OPEN]`，不能按名称判定完成。共享身份沿用 `session_id`、`scene_id`、`actor_id`、`object_id` / `instance_id`，不新建平行目录。CombatHandler 不另存可独立修改的当前 HP、位置或物品归属；参战关系、Snapshot、冻结的终结记录和缓存不是另一份当前权威。
 
-**库存边界：** 当前便携物品以 `objects.object_id` 复用 `instance_id`，`carrier_id` 或 `scene_id + cell` 表达实际位置。`WorldFacts.transfer_item` 改位置，`CharacterFacts.project_item_transfer` 同事务维护机械 `InventoryState.entries` 与 `characters.inventory_json` 的 carried-slug 投影；`validate_portable_inventory` 校验完整便携子集后才按角色筛选。持久化投影仍不得独立改写物品归属；既有非便携机械条目、数量/充能与装备绑定不能因投影而丢失。统一装备实例绑定、容器嵌套和消耗联动仍 OPEN，不能把全部库存说成已完全统一。
+**库存边界：** 当前便携物品以 `objects.object_id` 复用 `instance_id`，`carrier_id` 或 `scene_id + cell` 表达实际位置。`WorldFacts.transfer_item` 改位置，`CharacterFacts.project_item_transfer` 同事务维护机械 `InventoryState.entries` 与 `characters.inventory_json` 的 carried-slug 投影；`validate_portable_inventory` 校验完整便携子集后才按角色筛选。持久化投影仍不得独立改写物品归属；既有非便携机械条目、数量/充能与装备绑定不能因投影而丢失。容器最多两层及相关容量／祖先访问已在 main 实现（§1.3）；统一装备实例绑定、部分数量转移和消耗生命周期联动仍 OPEN，不能把全部库存说成已完全统一。
 
 默认沿现有**进程内、共享持久化**路线演进。经审阅测试的内部 Handler 可通过受控领域接口、进程内类型调用和共享事务上下文共同完成操作，不必把每个字段变化包装成外部 TypedCommand、JSON 或 RPC。共享数据库不赋予任意模块写所有表的权限：写入经数据负责人接口，遵守共同边界。跨领域操作不拆成各领域先提交再补偿；不新增微服务、多数据库、分布式锁、两阶段提交或完整事件溯源平台。
 
 内部信任仅适用于已审阅测试、职责与目标范围受控的实现；Host/LLM 输出、Coding Agent 生成物和未验证脚本不能继承该权限。固定执行协议优先：DM/NPC 提结构化意图或机制组合，只有新底层能力才考虑 §3.6 受控代码扩展。未知字段不产生语义，不能任意写数据库/属性。手动交互与可信自动世界效果使用不同来源校验，但均遵守目标范围、领域不变量与共同提交条件。
 
+### 0.3a World 与 Scene 的目标结构 `[DECIDED; NOT IMPLEMENTED]`
+
+World 下并列 WorldObjectService（物体查询与能力分派）、Scene 子系统（SceneService 协调）与 WorldTimeService（统一游戏时间能力）；WorldHandler 保留操作入口与协调，WorldFacts 提供受控事实读写并共用 SQLite 事务。正式名称为 WorldTimeService，TimeService 仅是讨论简称。main 已有对象／时间服务；以下四个 Scene 独立组件在本轮两个 main 快照／ObjectSpatial 分支均未实现，现有场景／网格基础不能当作四个服务已交付。
+
+| Scene 内组件 | 已确认责任 | 现有基础与独立实现状态 |
+|---|---|---|
+| SceneService | 初始化、进入／离开、访问记录、Flags、生命周期与内部协调 | WorldHandler／WorldFacts 有受限路径；独立组件 [NOT IMPLEMENTED] |
+| GridService | 网格定义、坐标有效性、邻接、距离等基础空间能力 | 已复用 RE GridScene／GridTopology／canonical_cell_id；独立组件 [NOT IMPLEMENTED]，沿用既有几何算法，不随意重写 D&D 距离／范围规则 |
+| TerrainService | 地表、地面高度、困难地形与通行属性，拥有基础地形及受控变化 | 已有 grid／blocked_cells 基础；独立组件和综合合并 [NOT IMPLEMENTED]；读取 ObjectSpatial 动态贡献，不复制第二份可写地形事实 |
+| EnvironmentService | 基础环境管理，结合局部空间防护与有效 Effects，按位置／区域查询实际环境 | 独立组件与环境消费 [NOT IMPLEMENTED]；ObjectSpatial 尚无挡雨／挡风接口 |
+
+所有组件共用 Scene Grid 与坐标标识，不各建 Cell。Character 拥有唯一实际角色位置；WorldObject 拥有物体位置与动态空间贡献。查询可直接调用适当组件，不要求一律经过 SceneService；顶层图只展示 SceneService，内部责任由此表细化。实现和具体字段／公共 ABI 仍 [OPEN]，不得由本节新增无需求接口或扩大 MVP。
+
+**环境边界 `[DECIDED; NOT IMPLEMENTED]`：** Package 提供环境初值，运行变化保存到 Session 的 World 状态。支持选择一批 scene_ids 设置天气，不引入世界→地区→场景天气继承；环境可作用于整场景或明确区域。首次进入前的受控修改必须保留，后续初始化只能补齐未初始化基础，不能用模板覆盖已有变化。有效 Cell 环境按需组合基础状态、局部空间防护与有效 Effects，不要求逐格持久化最终结果。挡雨、挡风、视觉遮挡、移动阻挡彼此独立，不相互推导；当前不存在空间防护接口须明确报告缺口。
+
+Effects 保存法术效果的来源、范围与生命周期，Environment 只消费其环境贡献，不复制效果权威／期限。天气生成、气候继承、流体模拟不是本轮前置要求。角色暴露进度归属 [OPEN]，本轮不自行划给 Environment、Character、Activity 或 Effects。候选 environment／terrain 字段不代表 Loader 已接受，见 Adventure Package §4.4。
+
 ### 0.4 Combat Handler：有状态的流程组织者 `[DECIDED]`
 
 应建立/补齐 Combat Handler 职责，允许持久管理遭遇生命周期、当前等待的决定、已提交行动关联与继续推进所需信息。它根据已提交状态等待玩家或调用非 LLM Combat Policy，组织一次行动的 RE 求值和跨领域提交，再推进至下一决策边界、合法暂停或战斗结束，并协调本场 Turn／Round Episode 的关闭与可靠聚合。它不只是不断向中心 SM 申请操作的无状态空壳，也不包揽 Perception、JEV、EVA 或叙事。
 
-回合索引、资源恢复、效果到期等机械变化由 RE 计算，Handler 应用/管理其结果，不能再次递增回合或重复扣资源；一次攻击不默认等于回合结束。自动推进须有有界重试与无进展退出，失败/冲突按既有命令键和回执恢复，禁止无限循环。**当前已有受限 CombatHandler / CombatRecords（§1.2）**；完整推进、通用中途选择和 Episode 协调仍是目标设计。新增 Handler API、调度预算、Continuation Schema `[OPEN; NOT IMPLEMENTED]`，不能据类存在扩大公共支持范围。
+回合索引、资源恢复、效果到期等机械变化由 RE 计算，Handler 应用/管理其结果，不能再次递增回合或重复扣资源；一次攻击不默认等于回合结束。自动推进须有有界重试与无进展退出，失败/冲突按既有命令键和回执恢复，禁止无限循环。**当前已有受限 CombatHandler / CombatRecords（§1.3）**；完整推进、通用中途选择和 Episode 协调仍是目标设计。新增 Handler API、调度预算、Continuation Schema `[OPEN; NOT IMPLEMENTED]`，不能据类存在扩大公共支持范围。
 
 #### CombatPolicy 参数生效与认知等待边界（C07）
 
@@ -194,7 +213,7 @@ RE DTO 字段属于 CombatState 不决定 SM 事实归属。World／Character �
 
 ### 1.1 2026-10-12 跨仓库核对（静态代码 / Review，未重跑运行测试）
 
-以下为前一批静态核对的日期化记录，保留原 SHA / 分支 / 能力范围。**当前 SM 核对见 §1.2**；本批未刷新 RE main 或重跑运行测试，不能将本节旧锁定版本用于当前 SM，也不把历史 main 与开发分支状态混同。
+以下为前一批静态核对的日期化记录，保留原 SHA / 分支 / 能力范围。**当前 SM 核对见 §1.3**；本批未刷新 RE main 或重跑运行测试，不能将本节旧锁定版本用于当前 SM，也不把历史 main 与开发分支状态混同。
 
 | 基线 | 已核对事实与限制 |
 |---|---|
@@ -215,6 +234,8 @@ SM 的 `pyproject.toml` / `uv.lock` 将 Engine 与 SRD 同时锁定为 **`602dcb
 
 ### 1.2 2026-10-15 SM 当前实现核对（静态代码，未运行测试）
 
+**历史快照：** 下列 GC5 脏工作区、Schema 25 和 RE pin 6755524 只记录当时状态；当前远端实现见 §1.3。保留原记录，不将未提交文件当作 main 能力。
+
 只读仓库 `D:/Projects/agentic-trpg/trpg-state-machine`，remote 为 `https://github.com/agentic-trpg/trpg-state-machine.git`，分支 `feat/sm-gc5-activity-feedback`，HEAD **`1fa7cea5dab7bb95f3f6fa975f8e681c691937a6`**。工作区有已修改文件及未跟踪 GC5 文件；下表基础能力同时核对已提交 HEAD，GC5 另列，**不代表当前远端 main、已部署状态或本批运行验收**。总控仓库及其父目录、SM 根目录未发现 `AGENTS.md`；总控仓库只有 Markdown，未发现已配置文档检查脚本/CI。
 
 | 范围 | 实际代码证据（已提交 HEAD，路径在 `src/trpg_state_machine/`） | 实现状态及缺口 |
@@ -229,6 +250,47 @@ SM 的 `pyproject.toml` / `uv.lock` 将 Engine 与 SRD 同时锁定为 **`602dcb
 | GC5 工作区增量 | 修改中的 `service.py` / `storage.py` 等及未跟踪 `activity_feedback.py`、`npc_activity_feedback.py`、`_migration_26.sql` | **未提交、未验证**；只记录存在，不纳入 HEAD 能力完成声明，不以工作区 Schema 26 代替已提交 Schema 25 |
 
 本次读到 `pyproject.toml` / `uv.lock` 的 Engine / SRD 固定为 **`675552406e67470bf3456fe90e88c4f1595bf324`**；适配器候选消息为 `engine-evaluation/23`、Snapshot `/17`。这是 SM Consumer 的静态事实，不是最新 RE 全量审计，也不宣布冻结跨模块协议。`tests/test_domain_runtime.py`、`test_gc1_doors_and_effects.py`、`test_navigation_activities.py`、`test_item_transfers.py`、`test_lockable_passages.py` 等仅作为已有用例的证据，本批未执行它们。World 更广组件清单均为目标/候选，详见 [专项草案](./WORLD_SUBSYSTEM_DESIGN.md)。
+
+### 1.3 2026-10-18 远端实现核对（定向静态调查）
+
+本轮先检查适用祖先目录与仓库，未发现适用 AGENTS.md；顶层仅有 Markdown，未发现文档检查脚本或 CI。开始时通过 fetch 与 ls-remote 核对远端，三条 SHA 均与调查输入一致。复核期间 SM 远端发生外部合并，当前状态以下表后两行为准；本轮未执行该合并。只修改顶层文档，不修改 SM／RE 业务代码、不合并实现分支，也不合并顶层 main。
+
+| 仓库／引用 | 本轮实际核对 SHA | 状态与取证方式 |
+|---|---|---|
+| 顶层 `origin/main` | `73d3bd0bf6c064e432d472b9babeec2142b34831` | 文档分支 `docs/world-refactor-scene-alignment` 从此开始；用户原有未跟踪 `docs/FIRST_BLUSH_MVP_REQUIREMENTS.md` 保留 |
+| SM `origin/main`（开始） | `a897ae5fca959530a2963cabd350bb408416b4a6` | 开始时 main／Schema32 基线；现已成为历史起点 |
+| SM `origin/feat/object-spatial-service` | `0c2c4c78f251aee9ef9fad1448471f425be4cbe2` | 开始时未合并，基于上述 main 多一个提交；复核时已被当前 main 包含，分支引用仍保留 |
+| SM `origin/main`（复核／当前） | `97c5af102bd8ca2c397b84bd4d36664983db54a7` | `merge: integrate object spatial service`；父提交为上述两个 SHA，Schema33／Loader /8；与 ObjectSpatial 提交源码树 diff 为空（exit 0），祖先检查 exit 0 |
+
+**取证沿革：** SM checkout 开始为 ObjectSpatial 分支／0c2c4c7，复核为 main／97c5af1，两次工作区均干净。顶层 checkout 期间被外部切至 main，本轮保留全部文档改动并切回原文档分支后交付；顶层 main 仍为 73d3bd0。当前源码链接固定到 97c5af1；开始时 a897ae5 与 ObjectSpatial 增量的比较保留为调查沿革，不继续称它未合并。
+
+**证据边界：** 这是针对指定文件、调用路径、测试源码和 PROGRESS 的定向核对，不是完整代码审阅。以下“已实现”指对应提交中有实现及相关测试源码；本轮没有运行 SM／RE pytest、真实模型、示例或跨仓库集成测试。历史测试结果只引用原记录，不作为本轮重新执行的结果。
+
+| 范围 | 当前 main 已实现与源码依据 | 合并沿革／目标差异 |
+|---|---|---|
+| 装配、事实、事务与入口 | [service.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/service.py)、[domain_facts.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/domain_facts.py)、[session_access.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/session_access.py)：显式装配 WorldFacts／CharacterFacts／CombatRecords、WorldHandler／对象服务／活动／规则适配；共享 SQLite 短事务、授权、OCC、幂等、RNG、Receipt／Outbox | A2 部分实现；Mixin、过渡依赖和全部领域共同 finalize 仍需逐入口验证。类已存在不等于完整契约完成 |
+| WorldHandler 当前边界 | [spatial.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/spatial.py)：开合／锁／闩及对象能力分派已委托；时间推进委托 WorldTimeService | 仍保留场景初始化／进入／离开／Flags／访问、角色移动与取放部分路径、通路／共享门端点、拓扑及授权辅助、空间一致性与流程编排；没有独立 Scene 四组件 |
+| 物体能力与开合 | [world_objects.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_objects.py)、[world_openable.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_openable.py)：WorldObjectService 查询／分派；Openable 共享开合、锁、闩、卡住方向、操作侧／触及，PickLock／ForceOpen／ClearJam 非战斗检定；[rule_execution.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/rule_execution.py) 在事务外调用真实 RE `evaluate_openable`，提交前重验，成功只采用显式后果 | 活跃战斗费用／Utilize／Fast Hands、Arcane Lock／Knock 与魔法生命周期、真实物体攻击未实现；内部耐久结果应用不是攻击入口 |
+| 容器与库存投影 | [world_containers.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_containers.py)：PutItem／TakeItem；移动子树、原祖先及目标祖先相关容量／fit 检查，最多两个容器层级；Openable `allows_contents`／`contents_accessible` 复用于祖先访问；World 位置与 Character 库存投影同事务 | 不是全 Session 容器准入审计；相关容量 unknown 仍拒绝，包括移出。部分数量转移、实例装备／调谐／被动效果解绑生命周期未实现；摧毁 shell 保留内容关系并允许访问，不代表内容物摧毁规则或散落已完成 |
+| 空间、光源与机关 | 当前 main 的 [world_spatial.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_spatial.py) 已有固定占地／GM 布置和移动阻挡；[world_lights.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_lights.py) 有开关／模式和受限照明投影，不确定遮挡显式 unknown；[world_mechanisms.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_mechanisms.py) 有受控一次性开合／光源联动 | ObjectSpatial 原分支增量现已合入 main：朝向／旋转、完整占地候选验证、接触查询及 `scene_contributions`，投影独立提供移动阻挡、困难地形、视觉遮挡和 Cover。尚未接通综合 Terrain／Perception／Light／Combat／RE；无挡雨／挡风接口 |
+| 时间与兼容 | [world_time.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_time.py)、[time_binding.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/time_binding.py)、[game_time.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/game_time.py)：world-time/1 固定 1 tick = 1 游戏秒，legacy game-clock/1 保留抽象 tick；换算、elapsed／remaining／reached、昼夜与有界 `(start_tick, end_tick]` 边界查询、命令推进委托 | 实时倍率／TimeDriver、Combat Round 时间接线、Activity／Effects 时间消费、燃料／天气后果、秒制 NPC／OB／Gate 尚未完成；阶段换算不等于照明事实已改变 |
+| Package 与持久化 | [package.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/package.py)、[world_package.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_package.py)、[world_commands.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/world_commands.py)：开始时 main Loader 为 `state-machine-foundation/1`～`/7`，当前已兼容 `/1`～`/8`，可选顶层完整 time_binding，创建 Session 强类型整体覆盖并固定保存；[Schema32](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/_migration_32.sql) 增加不可变绑定，唯一 tick 仍在 world_states.game_tick | ObjectSpatial 合并带入 Loader `/8` 和 [Schema33](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/_migration_33.sql) 只增加 objects.orientation（旧行默认 north），当前存储为 Schema33，不保存第二份占地投影；environment／terrain 候选字段尚非 Loader 能力 |
+
+**秒制消费限制：** 创建秒制 Session 时拒绝带配置型 NPC State 的 Package；允许未配置 NPC Runtime 的物理 Actor。NPC observation access 和宿主聚合感知投影返回 `unsupported_time_consumer`；秒制无 Runtime 时日程同步为空，发现遗留 Runtime 则拒绝。不把 legacy 日程、OB TTL、Gate 周期按秒解释，也没有旧存档转秒 API。Package 默认与创建请求覆盖是整体选择，非字段级合并；保存后不随 Package 默认变化重解释历史 tick。
+
+**固定依赖：** [pyproject.toml](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/pyproject.toml) 与 [uv.lock](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/uv.lock) 中 Engine／SRD 均为 `d596161060555630019163ab301e1d25fd816549`；分支未改 pin。[rules_adapter.py](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/src/trpg_state_machine/rules_adapter.py) 的请求仍为 `engine-evaluation/23`、Snapshot 为 `engine-snapshot/17`，Openable 局部请求为 `engine-openable/1`。这是当前 SM Consumer 事实，未核对 RE 最新 main，不冻结共同 ABI 或宣布整个 Stateless 迁移完成。
+
+| 测试源码／历史记录 | 本轮读取到的覆盖与引用边界 |
+|---|---|
+| [Openable checks](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_openable_checks.py)、[一致性](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_openable_consistency.py)、[边界](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_openable_boundaries.py)、[审阅回归](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_openable_review.py)；[Openable PROGRESS](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/docs/OPENABLE_SERVICE_PROGRESS.md) | 真实命令成功／有效失败、单锁后果、非法请求无 RNG、副作用回滚、无写查询、重放／重启、战斗／魔法拒绝。原记录引用最终分区 1,328 passed；不是本轮测试或玩法完整交付 |
+| [Container admission](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_container_admission.py)、[Container tests](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_containers.py)；[Container PROGRESS](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/docs/CONTAINER_SERVICE_PROGRESS.md) | 无关容器、两层与第三层拒绝、相关容量、祖先访问、装备／材料／效果限制及事务故障。原记录为专项 50、组合 469（包含专项，非全量），本轮未重跑 |
+| [WorldTime tests](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_time_service.py)；[WorldTime PROGRESS](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/docs/WORLD_TIME_SERVICE_PROGRESS.md) | Package／创建覆盖、精确边界分页、legacy、秒制消费者拒绝、不可变绑定、Schema31 升级保存旧行与回执、重启及迁移故障；原记录为专项 42、全量 1,420，本轮未重跑 |
+| [ObjectSpatial tests](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_object_spatial_service.py)；[ObjectSpatial PROGRESS](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/docs/OBJECT_SPATIAL_SERVICE_PROGRESS.md) | 旋转／跨墙候选与 audit、完整占地接触、贡献独立性、Combat guard、Schema32 非空存档升级保留旧列与回执；原记录为新增 34、四分区 1,454，本轮未重跑；该记录随原分支进入当前 main，不另行声称合并后重测 |
+| [Spatial](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_spatial.py)、[Light](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_lights.py)、[Mechanism](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_mechanisms.py)、[Migration](https://github.com/agentic-trpg/trpg-state-machine/blob/97c5af102bd8ca2c397b84bd4d36664983db54a7/tests/test_world_migration.py) | 配套用例源码记录导航重验、光照不确定性／取证、联动回滚、旧存档保留；本轮不是全套测试源码审计 |
+
+PROGRESS 中较早的 TimeBinding 缺口按其原日期保留；当前固定绑定的实现以上述源码为准，其外围消费缺口仍然有效。§1.1／§1.2 继续保存各历史分支／脏工作区证据，不作为当前 main 的版本说明。
+
+**本轮文档检查：** 仓库无既有文档检查入口，使用本轮临时一致性检查：8 份文档的 95 个本地链接／锚点、110 张表格、48 个代码围栏（含 5 个 JSON 块）、3 个 Mermaid 块的静态结构、版本引用及 48 个固定 SHA 源码路径均通过；git diff --check 通过。Mermaid 未执行渲染或完整解析器验证。v0.4 审查快照、§1.2 历史正文、既有关键认知／版本／RNG／提交契约保持不变；用户未跟踪资料的 SHA256 与开始时一致。没有运行 SM／RE 业务测试。
 
 ## 2. 统一标识、版本和契约通则（P0）
 
@@ -653,9 +715,9 @@ return applied.receipt
 
 **写操作：** 已支持的开合、门闩、锁、取放、对象移动、灯光、机关及内部耐久结果应用。参数引用真实对象／物品／凭据身份，操作来源由 ApplyContext 提供。
 
-World 验证对象能力、可达范围／操作侧、当前状态、包含关系、访问与容量、占地，以及相应引用。位置必须唯一，父关系不得成环。未知重量／容量只阻止依赖该信息的相应操作；移出未知容器也不能被无关容量检查永久锁死。
+World 验证对象能力、可达范围／操作侧、当前状态、包含关系、访问与容量、占地，以及相应引用。位置必须唯一，父关系不得成环。未知重量／容量只阻止依赖该信息的相应操作；当前相关容器容量 unknown 仍拒绝移出，不能被无关容器容量检查锁死。
 
-SpatialProjection 分别提供移动阻挡、视觉遮挡、掩护依据和光照；不能由 blocks_movement 推断另外三者。查询应包含 schema／坐标单位、scene、版本和明确未知部分。与规则相关的移动／碰撞特例由 RE 求值；World 的通用检查不能反过来禁止已支持规则中的合法特殊移动。
+目标空间组合分别读取移动阻挡、困难地形、视觉遮挡、掩护依据和光照；已合入 main 的 ObjectSpatial 只输出对象侧前四类贡献，Light 独立提供受限照明投影，尚无综合结果。不能由 blocks_movement 推断其他性质，也不能由视觉遮挡推断挡雨／挡风。查询应包含 schema／坐标单位、scene、版本和明确未知部分。与规则相关的移动／碰撞特例由 RE 求值；World 的通用检查不能反过来禁止已支持规则中的合法特殊移动。
 
 #### C10 Character 与 World 物品／位置协作
 
@@ -687,15 +749,15 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 #### C13 世界时间与调度
 
-沿用唯一 game_tick；新增 TimeBinding 明确单位／精度和版本后再增加持续时间消费。当前 tick 编码不能未经迁移就改称秒。目标可选择整数秒作为基础尺度，但每种规则期限还需声明 world_time、turn_start、turn_end 等时间域。
+沿用唯一 game_tick。main 已有 WorldTimeService 与固定 TimeBinding：显式 world-time/1 为 1 tick = 1 游戏秒，legacy game-clock/1 仍为抽象 tick，不能未经迁移改称秒。Package 可提供绑定，创建 Session 可整体覆盖并固定保存；换算、昼夜／有界边界查询与获准命令推进已实现（§1.3）。每种规则期限仍须声明 world_time、turn_start、turn_end 等时间域；固定单位不等于生命周期消费已接通。
 
-输入：expected_tick、目标 tick／获准的时间推进量、来源命令、推进原因及适用流程上下文。输出：实际推进、到达的有界边界、已创建可靠工作和未完成边界。
+后续消费目标 [DECIDED; NOT IMPLEMENTED]：输入 expected_tick、目标 tick／获准的时间推进量、来源命令、推进原因及适用流程上下文；输出实际推进、到达的有界边界、已创建可靠工作和未完成边界。当前 AdvanceGameTime 仍是 expected_tick／next_tick，不据此新增公共命令字段。
 
 一次大跨度推进必须按需要处理的确定性边界排序。若需要 RE、选择或外部等待，就在合法边界结束本次提交并保存继续所需进度，不能先跳到终点再异步补完本应影响中间结果的伤害／中断。
 
 战斗内外共享世界时间：一整个 Round 约六个游戏秒，包含各 Actor 的 Turn；实际执行可能耗费几十秒或更久的墙钟时间。只有 TimeBinding 明确 `1 game_tick = 1 秒` 时，一轮才约为六个 tick。不能每个 Actor 的 Turn 都重复增加一整轮时长；同一生命周期边界只处理一次。Host 墙钟用于超时与性能，世界时间用于活动、燃料和观察生命周期。C15 的 Turn／Round 区分是认知交付粒度，不创建不同流速的世界时钟。
 
-NPC 的认知评估调度归 Cognition；角色在世界里执行日程归 Activity／World。二者可以消费同一游戏时钟，但不是同一种任务。
+实时倍率与 TimeDriver、Combat Round 时间接线、Activity／Effects 有序消费及秒制 NPC／OB／Gate 均未完成。秒制 Session 的 unsupported_time_consumer 边界见 §1.3，不得解除保护后把 legacy 期限当秒。NPC 的认知评估调度归 Cognition；角色在世界里执行日程归 Activity／World。二者可以消费同一游戏时钟，但不是同一种任务。
 
 #### C14 条件后果／Package 触发／机关
 
@@ -1344,11 +1406,13 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 | C-23 | Turn／Round Episode／EpisodeObservation 的共同协议？ | 本场参战者 Turn、外部 Round、Episode 合批、固定过滤依据与机械审计分流 [DECIDED]；scope／origin 聚合算法、参与切换边界、来源覆盖去重、旧消费迁移、关闭／发布恢复与 Schema [OPEN; NOT IMPLEMENTED]。不再采用整场单一 Episode 或战后才聚合的目标 |
 | C-24 | Mechanical Audit、StageFacts 与感知边界？ | 非战斗独立阶段证据、战斗 Episode 级过滤依据 [DECIDED]；完整机械依赖不裁剪，不逐机械 Event 发 Signal，不要求逐动作感知取证。真实来源映射、审计保留／重放、固定 RE／Adapter 与迁移仍 [OPEN; NOT IMPLEMENTED] |
-| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.2。World 候选组件/字段分类见专项草案 §3；其余关系/提交/缓存及替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
+| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.3。World 候选组件/字段分类见专项草案 §3；其余关系/提交/缓存及替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
 | C-26 | 动态能力与 Session 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；Coding Agent 可选；来源/版本/权限/预算/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
-| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.2。完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
-| A1 | 探索与战斗的操作编排分离 | [DECIDED] §0.5；当前探索活动/共享位置/受限战斗编排为部分基础（§1.2）。后续验证战斗移动与 World 投影、共享开合/解锁/取放/破坏的规则资格/成本/反应、入口 guard 和原子失败语义；完整集成 [OPEN; NOT IMPLEMENTED] |
-| A2 | StateMachine 模块化与职责边界 | [DECIDED] §0.6；显式组合已有受限实现（§1.2）。逐步减少 Mixin，明确 Facts / Records 与支持组件依赖、库存投影单一权威、共用事务及回滚；不机械分层、不按物体设 Handler、不强制 ECS；剩余切片 [OPEN] |
+| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.3。完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
+| A1 | 探索与战斗的操作编排分离 | [DECIDED] §0.5；当前探索活动/共享位置/受限战斗编排为部分基础（§1.3）。后续验证战斗移动与 World 投影、共享开合/解锁/取放/破坏的规则资格/成本/反应、入口 guard 和原子失败语义；完整集成 [OPEN; NOT IMPLEMENTED] |
+| A2 | StateMachine 模块化与职责边界 | [DECIDED] §0.6；显式组合已有受限实现（§1.3）。逐步减少 Mixin，明确 Facts / Records 与支持组件依赖、库存投影单一权威、共用事务及回滚；不机械分层、不按物体设 Handler、不强制 ECS；剩余切片 [OPEN] |
+
+**迁移名称对应（本轮检索）：** 更新前顶层跟踪文档未检出 W-01／SA-01，不能虚构为已有待办或标记完成。若后续沿用这些讨论简称，World 职责提取对应 A2／C-25／DS-01、DS-02；空间／战斗编排对应 A1／C-27／DS-01、DS-04。后者包含世界投影、唯一位置、资格、时序、触发／反应、推进／暂停、共同提交与恢复，不简化为“扣除战斗资源”。具体切片及验收仍 [OPEN]，WorldHandler 保留业务见 §1.3。
 
 ### 13.1 本次同步后的设计／细节／代码状态
 
@@ -1360,7 +1424,7 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | 战斗观察 | 本场参与者 Turn／外部 Round、同 NPC／Episode 合批、无逐 Event 信号／取证链 | C-18／C-23／C-24：过滤范围／origin、参与切换／覆盖去重、旧入口迁移、关闭／发布恢复 | Turn／Round 聚合及可靠路由尚无本轮运行证据；缺必需依据保留 unresolved，不补造 |
 | OB／EVA | 单一游戏时间有界 Recent List、pending／processed、必经 Gate 决策、完整冻结输入、只完成固定 pending | C-11／C-12／C-20～C-22：容量／截断／TTL、快照与覆盖编码、分类／周期／失效／恢复 | 两状态／Task 快照／窗口外证据保护及清理竞争需要专项实现测试；不增加第二输入列表 |
 | Meta／Handoff／Policy | 整批 Meta／唯一 Result／可靠交接、独立 command_id；当前 Turn Reaction 不等 EVA、已提交受限参数供后续决策 | C-05／C-13／C-14：Policy 参数／来源版本、关键下一 Turn 等待语义、模型预算与错误映射 | 最小真实 NPC 闭环与友善受击关系更新、参数消费、迟到／重复／故障恢复待验收 |
-| 时间／Effects／恢复 | 唯一游戏时钟、有序到期边界、完整效果身份／多来源、原回执对账 | C-03／C-04／C-08／C-15／C-25：RNG 编码兼容、TimeBinding、效果映射、选择窗口／Continuation 与支持范围 | 完整生命周期和中途可恢复选择未完成；活跃战斗精确续玩仍 Post-MVP，不升级为承诺 |
+| 时间／Effects／恢复 | 唯一游戏时钟、有序到期边界、完整效果身份／多来源、原回执对账 | C-03／C-04／C-08／C-15／C-25：RNG 编码兼容、时间消费者／TimeDriver、效果映射、选择窗口／Continuation 与支持范围；固定 TimeBinding 已有 main 局部版本 | 完整生命周期和中途可恢复选择未完成；活跃战斗精确续玩仍 Post-MVP，不升级为承诺 |
 
 ## 14. 能力驱动的交错验证（后续计划，不是本批实现授权）
 

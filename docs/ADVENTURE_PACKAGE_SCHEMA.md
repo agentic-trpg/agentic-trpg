@@ -1,18 +1,20 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.12（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
+> **状态**：Draft v0.13（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
 >
-> **日期**：2026-10-17
+> **日期**：2026-10-18
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.16（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.18；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.5；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.2；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.17（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.19；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.6；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.3；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
+
+**2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
 ## 1. 目的与非目标
 
@@ -43,7 +45,7 @@
 
 ## 2. 模块责任与数据所有权
 
-**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.15 §0.3 / §0.5–§0.6 分责。StateMachine 统一入口/装配，Facts / Records 读写所属 SQLite 数据，一次操作共享提交；已实现部分拆分与公开能力见 MC §1.2，剩余目标 OPEN。本文其余“SM”沿用当前加载/命令协议入口；同一实体身份共用，视图/缓存不可独立写当前事实，Evennia 整体迁移仍可选 OPEN。
+**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.17 §0.3／§0.3a／§0.5–§0.6 分责。StateMachine 统一入口/装配，Facts / Records 读写所属 SQLite 数据，一次操作共享提交；已实现部分拆分与公开能力见 MC §1.3，剩余目标 OPEN。本文其余“SM”沿用当前加载/命令协议入口；同一实体身份共用，视图/缓存不可独立写当前事实，Evennia 整体迁移仍可选 OPEN。
 
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
@@ -153,6 +155,24 @@ adventure-pack/
 - 游戏内轮数由 State Machine **最终已提交**的 `Turn/Round` 规则事件驱动；世界时间由 WorldFacts 在 StateMachine 统一入口内管理，Session 引用同一时钟。不得依赖 LLM 在文本中自行数回合。
 - “第 N 回合”“获得某项线索后才能进入”“累计若干成功”需独立字段或累计状态，而非运行时解析自然语言。
 - 如果一个场景始终无法满足入口条件，系统要返回拒绝/解释，不能偷偷修改事实以确保剧情继续。
+
+### 4.4 目标内容格式与当前 SM Loader 的区别
+
+本文多文件 YAML 组织、字段表和合成示例是项目目标内容格式，不等于当前 Loader 已逐字段接受。当前实现依据 MC §1.3 固定提交中的 package.py／world_package.py；安全解析与闭合字段验证保留，不因本文新增候选就忽略 unknown field。
+
+| 层次 | 本轮核对状态 | 适用边界 |
+|---|---|---|
+| 项目目标 Adventure Package | [DECIDED / PROPOSED]；具体新增字段 [OPEN] | 本文文件组织／字段表表达内容需求，不是当前可直接加载的完整机器 Schema |
+| SM main Loader | [已实现] 当前 `state-machine-foundation/1`～`/8`；开始时为 `/1`～`/7` | 统一 package mapping 的受限字段；Scene 包含 grid（适用版本）、initial_state.local_flags、objects／exits 等；不接受候选 environment／terrain 配置作为新服务能力 |
+| ObjectSpatial Loader 沿革 | [已合入 main] 原分支 `0c2c4c7` 带入 `/8`，并兼容 `/1`～`/7`；当前 main `97c5af1` | 新朝向、允许朝向及 open／closed／destroyed 整格空间性质；不代表 Terrain／Environment 或综合感知／战斗已接通 |
+| 固定时间绑定 | [main 已实现] 可选顶层 `time_binding` | 完整字段为 schema_version、day_length、start_day、start_day_tick、cycle、day_start、night_start；schema_version 为 world-time/1。CreateSessionRequest.time_binding 强类型整体覆盖，否则取 Package 默认，均无则 legacy game-clock/1 |
+| 环境／地形初值与区域 | [DECIDED; NOT IMPLEMENTED]；字段／覆盖编码 [PROPOSED / OPEN] | 不在示例中伪装成 Validator 当前可接受字段；本轮不升级 Loader Schema、SQL 或依赖 |
+
+固定 world-time/1 的 1 tick = 1 游戏秒，legacy 保留抽象 tick；绑定保存后不可变，不按 Package 当前默认重解释历史。已有时间换算、昼夜／有界边界和命令推进，不含 TimeDriver／倍率、Round、Activity／Effects 或秒制 NPC／OB／Gate 消费。带配置型 NPC State 的 Package 不能创建秒制 Session；未配置 Runtime 的物理 Actor 仍不获得 NPC 观察／聚合感知消费能力，实际 unsupported_time_consumer 限制见 MC §1.3。
+
+环境目标由 Package 提供初值，运行变化保存到 Session World；可对一批场景设天气，不引入世界→地区→场景继承。作用域为整场景或明确区域；首次进入前修改保留，初始化不得用模板覆盖，重访也不重置。EnvironmentService 按需组合位置／区域环境，不预存逐格最终结果；Terrain 的基础地形和 WorldObject 的动态贡献分责，共用 Scene Grid／坐标。四个 Scene 独立组件尚未实现，详见 MC §0.3a。
+
+挡雨／挡风与视觉／移动阻挡独立，当前 main 的 ObjectSpatial 尚无前两者接口。Effects 保有法术来源、范围与生命周期，Environment 只消费有效贡献。角色暴露进度归属 [OPEN]；天气生成、气候继承和流体模拟非前置。不把这些候选变成新的 MVP 必需能力。
 
 ---
 
