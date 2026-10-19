@@ -1,16 +1,18 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
-> **状态**：Draft v0.19（World 职责、A1 编排分离、A2 模块化；已核对受限实现，完整目标仍待落实）
+> **状态**：Draft v0.20（运行时复用与事务有效性；已核对受限实现，完整目标仍待落实）
 >
-> **日期**：2026-10-18
+> **日期**：2026-10-19
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
-> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.17（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.19；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.13；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.17；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.6；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.3（候选组件设计）
+> **依赖**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.18（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.20；[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.14；[`AGENT_ARCHITECTURE.md`](./AGENT_ARCHITECTURE.md) v0.18；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.7；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.4（候选组件设计）
 >
 > **目标场景**：一位玩家、一个 PC、文字优先、人工整理的单人冒险包；Agent DM 和按需 NPC Sub-agent；不要求可视化引擎、World Creation Agent、多玩家或开放世界模拟。
 >
 > **证据边界**：本文件是基于已讨论范围和冒险需求的**设计建议**，不是现有 State Machine 代码的完成状态。与 Rule Engine 的 API 适配以实际实现和独立测试为准。
+
+**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
@@ -104,7 +106,7 @@ Human Player / DM Planner -> submit_command / trusted authorization -> responsib
 
 DM Planner / Narrator 的角色、Context 和权限隔离，允许共享底层模型；Planner 提出主持方案，Narrator 只呈现玩家可见已提交结果。NPC 私有主观认知由对应 NPC LLM 完成。Python + SQLite WAL 是当前 SM 基线，不冻结未来实现；Jev 为可替换候选。普通世界操作不必进入 RE；D&D 规则沿用 RE，SM / 脚本不重复实现持续效果、Reaction 或连锁裁决。旧 Stateful Engine 仅为历史基线或隔离回归对照，最终执行路径及 SM 均不依赖 `_LiveCombat` 等 Legacy 对象。
 
-**当前远端核对（2026-10-18）：** 顶层 main 为 `73d3bd0`；SM main 开始为 `a897ae5`，复核已到 `97c5af1`（Schema33、Engine／SRD pin `d596161060555630019163ab301e1d25fd816549`）。Openable 真实非战斗检定、Container 两层及相关容量／祖先访问、WorldTimeService 固定绑定已有实现；ObjectSpatial `0c2c4c7` 的朝向、整格占地／接触／独立贡献已由外部合并进入当前 main；开始时未合并的状态保留为沿革。当前证据见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，10 月 15 日 GC5 脏工作区／Schema25／旧 pin 保存在 §1.2，不能作最新状态。本轮仅定向静态源码／测试源码核对，未执行运行测试或完整代码审阅。
+**历史远端核对（2026-10-18）：** 顶层 main 为 `73d3bd0`；SM main 开始为 `a897ae5`，复核已到 `97c5af1`（Schema33、Engine／SRD pin `d596161060555630019163ab301e1d25fd816549`）。Openable 真实非战斗检定、Container 两层及相关容量／祖先访问、WorldTimeService 固定绑定已有实现；ObjectSpatial `0c2c4c7` 的朝向、整格占地／接触／独立贡献已由外部合并进入当前 main；开始时未合并的状态保留为沿革。当前证据见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，10 月 15 日 GC5 脏工作区／Schema25／旧 pin 保存在 §1.2，不能作最新状态。本轮仅定向静态源码／测试源码核对，未执行运行测试或完整代码审阅。
 
 ### 2.0 World 结构与 Scene 内部分责 `[DECIDED]`
 
@@ -120,9 +122,9 @@ flowchart TD
     Facts --> Commit[共享 SQLite 事务]
 ```
 
-目标 World 下并列对象、Scene 子系统和游戏时间；顶层图不展开 Scene 内部。SceneService 协调初始化／进出／访问／Flags／生命周期，GridService 提供共享网格与基础几何，TerrainService 管基础地形及受控变化，EnvironmentService 管基础环境并查询位置／区域的有效环境。四个独立组件在 当前 main 和 ObjectSpatial 分支均 [NOT IMPLEMENTED]；现有场景／通路／移动仍由 WorldHandler 等承接。内部责任及实现对照见 MC §0.3a 和 [World 结构表](./WORLD_SUBSYSTEM_DESIGN.md#20-world-与-scene-的结构-decided)。查询可直接使用适当组件，不强制全部经过 SceneService。
+目标 World 下并列对象、Scene 子系统和游戏时间；顶层图不展开 Scene 内部。SceneService 协调初始化／进出／访问／Flags／生命周期，GridService 提供共享网格与基础几何，TerrainService 管基础地形及受控变化，EnvironmentService 管基础环境并查询位置／区域的有效环境。10 月 19 日当前分支已有 SceneLifecycleService 切片、GridService 和 EnvironmentService，完整 Scene 协调／TerrainService 仍待落实；准确分支／SHA 和接入限制见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)。内部责任见 MC §0.3a 和 [World 结构表](./WORLD_SUBSYSTEM_DESIGN.md#20-world-与-scene-的结构-decided)。查询可直接使用适当组件，不强制全部经过 SceneService。
 
-共用 Scene Grid／坐标，复用已有几何算法；Character 保有唯一角色位置，WorldObject 保有对象位置与动态贡献，Terrain 读取 ObjectSpatial 投影而不复制可写事实。Environment 消费 Package 初值、Session 运行变化、局部空间防护与有效 Effects；支持整场景／区域和一批场景天气修改，首次进入前变化不得被模板覆盖，不建天气继承树或逐格最终态权威。当前 ObjectSpatial 没有挡雨／挡风接口，不能由视觉／移动阻挡推导。Effects 保有来源／范围／生命周期，角色暴露进度归属 [OPEN]；天气生成、气候继承、流体模拟非前置。
+共用 Scene Grid／坐标，复用已有几何算法；Character 保有唯一角色位置，WorldObject 保有对象位置与动态贡献，Terrain 读取 ObjectSpatial 投影而不复制可写事实。Environment 的 Package 初值是目标内容边界，当前受控导入不等于候选字段已进入 Loader。Session 运行变化、局部防护与有效 Effects 按需组合；首次进入前变化不得被模板覆盖，不建天气继承树或逐格最终态权威。当前分支已有显式防护，仍不能由视觉／移动阻挡推导；正式 WO／Effects 生产适配接线边界见 MC §1.4。Effects 保有来源／范围／生命周期，角色暴露进度归属 [OPEN]。
 
 WorldTimeService 的 main 固定单位／换算／昼夜／边界查询及推进委托已实现；实时倍率／TimeDriver、Round 接线、Activity／Effects 时间消费和秒制 NPC／OB／Gate 尚未完成。world-time/1 为 1 tick = 1 游戏秒；legacy game-clock/1 不改称秒。秒制 Session 的 NPC Runtime／聚合感知／OB 消费保护见 MC §1.3，不把有时钟等同完整时间系统交付。
 
@@ -141,6 +143,8 @@ WorldTimeService 的 main 固定单位／换算／昼夜／边界查询及推进
 依据 MODULE_CONTRACTS.md §0.3，各领域可管理、持久化其负责状态；一次操作涉及 Character、Combat、Effect、World 与 RNG 的必要变化在同一事务共同生效。下述结构按数据责任组织，并不规定一个 SM 包保存所有内容。规则输入显式、输出未提交，实体身份共用。
 
 建议把 Session 存储划分为少量聚合（aggregate）；下面是**概念数据结构**，不是已经冻结的 JSON/Python Schema。
+
+完整实例化以 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented) 为准：Package 只作创建参照，世界／场景／角色／WorldObject／Item 创建后，有效配置、当前状态及必要关联由 Session 内所属领域记录持有。统一实例读取入口组合原负责组件数据，Service 不各自回查 Package 补字段；这项重构尚未完成，不新增第二套权威内存状态。
 
 ### 3.1 `SessionRecord`：一次冒险实例
 
@@ -161,6 +165,8 @@ WorldTimeService 的 main 固定单位／换算／昼夜／边界查询及推进
 
 **注意**：`phase` 不等于每个场景固定的剧情幕数。玩家可合法往返 Scene，不应被强制套入不可逆的线性故事进度。
 
+固定 Package／Ruleset 身份用于绑定核验和追踪，不能代替完整实例化。Session 创建时落实已创建实体所需的完整有效配置与状态；运行中新生成的实例采用同一约束，不能只保存模板引用和变更量而依赖初始化定义补齐有效字段。
+
 ### 3.2 `WorldState`：会话全局事实
 
 WorldFacts 管世界/场景/对象事实与唯一世界时钟（当前 game_tick）；Quest 保留任务状态责任。候选 `world_actor_locations` 只是 CharacterFacts 角色位置的派生查询，对象清单从 WorldFacts 读取；Session 引用时钟，不另存一份。候选存储映射 `[OPEN]`，不能独立改写位置/归属。
@@ -178,12 +184,20 @@ WorldFacts 管世界/场景/对象事实与唯一世界时钟（当前 game_tick
 
 进入场景流程：
 
-1. 根据 `scene_id` 查询静态 Scene Definition，验证入口/出口及任何状态条件。
-2. 若本 Session **从未实例化该场景**，应用 `initial_state` 一次，生成对象实例和局部标记；NPC 按 Session 级身份查找，必要时首次创建，不能复制或覆盖已有位置、Memory、Belief、资源。
+1. 根据 `scene_id` 区分尚未创建与已存在实例：前者可查询 Scene Definition 作为创建参照；后者从实例记录读取有效场景配置、出口及状态条件，不用静态定义填补缺失字段。
+2. 若本 Session **从未实例化该场景**，一次落实有效配置和 `initial_state`，生成具备完整声明能力数据的对象实例和局部标记；NPC 按 Session 级身份查找，必要时首次创建，不能复制或覆盖已有位置、Memory、Belief、资源。
 3. 若已实例化，则保留现有实例状态；**绝不因为重访重放初始掉落、NPC 位置或机关状态**。
 4. 按权威状态记录 `scene.entered`，其触发的事件走统一事件审核与提交路径。
 
 注意：静态 `actor_ids[]` 只提供初始在场信息；世界 Actor 的当前位置由运行态单点保存。不能因为玩家重访让已经离开的 NPC 重新出现。
+
+### 3.3a 运行时读取与派生结果的生命周期 `[DECIDED]`
+
+共同规则集中在 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)：SQLite／领域事实不变为内存缓存权威，活跃场景读取与派生结果可丢弃重建；共享只读输入、容量／释放、依赖版本与失败隔离必须明确。一次查询为多目标准备共同输入，同一事务后续修改阶段须重验；跨查询不得仅凭同 Session 或同 world_version 推定局部依赖有效。
+
+环境双版本及 Grid 依赖由 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) 细化。当前 SM 分支已实现 Environment 的事务版本命中／候选隔离／提交后发布；这不等于 Grid 已复用解析值和拓扑，或所有动态提供方已接通。旧读取事务的结果不能发布为当前状态；当前授权、公开披露、命令执行前重验及历史阶段证据仍沿既有路径。缓存不替代 OCC，也不改变 RNG、事件、Receipt／Outbox 共同提交。
+
+Session 固定 Package／Ruleset 及 evaluator 身份并核对 RE；加载身份复用由 RE／数据加载层负责，见 MC §4.3。SM 不另建素材管理系统，恢复或查询不得用模板默认值覆盖实例当前属性。
 
 ### 3.4 `ActorRuntime` / `NPCState`
 
@@ -202,7 +216,7 @@ CharacterFacts / 机械组件管角色唯一实际位置、HP、资源、装备�
 
 **[DECIDED; NOT IMPLEMENTED]** 完整 Combat Event Log 应退出普通 RE 输入；每回合使用标记、效果时钟、关键时间点等是必要当前机械状态，由规则计算并经负责接口共同提交，不另建重复的精简历史日志。本次有序 ProposedEvents / 结算结果在提交前仍为候选，审计与 Episode 证据按需保留，不自动回灌求值。当前 event_log 依赖先按 RE-HIST-01 审计真实读者并补状态；不置空日志、删历史表或删全部候选事件（MC §4）。
 
-喝药、开门、取物、移动等跨界操作由负责领域在**同一共享事务**提交；RE 计算机械结果。当前目标 CombatSnapshot / NonCombatSnapshot 共享类型化组件，Required 字段与依赖完整性不取消。无状态不要求搬运全世界或网络调用：可研究按需读取、进程内类型调用、共享不可变值和可重建缓存；新接口 `[OPEN]`，不能以默认值掩盖缺失依赖或任意整份 Snapshot 覆盖数据库（MC §4.2）。缓存失效、重启及回滚一致性须验证，不宣称已测得提速。Session 提供固定绑定，RE 可有调用内候选状态/缓冲区，但不得恢复 Legacy 跨请求权威对象。
+喝药、开门、取物、移动等跨界操作由负责领域在**同一共享事务**提交；RE 计算机械结果。当前目标 CombatSnapshot / NonCombatSnapshot 共享类型化组件，Required 字段与依赖完整性不取消。无状态不要求搬运全世界或网络调用：按 MC §2.3 复用只读输入与已算出的派生结果；具体读取接口 `[OPEN]`，不能以默认值掩盖缺失依赖或任意整份 Snapshot 覆盖数据库（MC §4.2）。缓存失效、重启及回滚一致性须验证，不宣称已测得提速。Session 提供固定绑定，RE 可有调用内候选状态/缓冲区，但不得恢复 Legacy 跨请求权威对象。
 
 ### 3.5 `ChallengeInstance`：非战斗技能挑战
 
@@ -565,6 +579,8 @@ OB 存档另需保存 Game Time 有效期/Retention、独立 Processing、定期
 
 ### 8.2 非活跃战斗恢复（MVP 必须）
 
+依据 MC §2.4，存档须包含各已存在实例的版本化有效配置、当前状态及必要关联，恢复／进程重启读取这些记录。Package 只用于绑定核验、来源审计或显式迁移，不重新套初始化模板修补字段或重置已有属性。逻辑完整性不改变各能力／领域原有权威归属，也不取消既有恢复边界。
+
 加载 Session 时：校验包版本与 Ruleset、重建或读取最新 World State、恢复 NPC 知识、私有 Observation Inbox / `observation_cursor` 与 Memory、恢复 Scene 位置、Evaluation Task / Status / Observation Work / 内部 ProcessingStatus、已选 Result / Meta 与可靠交接及 Command Receipt，先对账再续未完成项；重访不得从 `initial_state` 重新复制已改变的实例。**只有处于非战斗状态且不存在未解决的命令/待续裁决，或已有明确受控安全点，才可以宣称 MVP 的成功续玩。**
 
 ### 8.3 活跃 Combat 恢复（明确移至 Post-MVP）
@@ -821,6 +837,10 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 ---
 
 ## 13. 文档治理与下一步
+
+### v0.20 修订摘要（2026-10-19）
+
+接入 MC §2.3 的运行时数据／派生结果复用与事务有效性约定，以及 §2.4 的完整实例化、创建／恢复与统一读取要求；Grid、Environment 双版本及全来源风向失效只在 World 专项细化，RE 身份只在 MC §4.3 规定。当前实现依据更新至 MC §1.4 的分支及固定依赖核对，保留 10 月 18 日历史证据；不新增待办、不修改代码、不宣称本轮运行验收。
 
 ### v0.17 修订摘要（2026-10-15）
 

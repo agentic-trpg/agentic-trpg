@@ -1,18 +1,20 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
-> **版本：** v0.17 / Draft for Review
+> **版本：** v0.18 / Draft for Review
 >
-> **日期：** 2026-10-18
+> **日期：** 2026-10-19
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
 > **归属仓库（建议）：** `agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md`
 >
-> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.19、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.13、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.19、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.17、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.6、[World Subsystem Design](./WORLD_SUBSYSTEM_DESIGN.md) v0.3（专项草案，遵循本文）
+> **配套文档：** [MVP Scope](./MVP_SCOPE.md) v0.20、[Adventure Package Schema](./ADVENTURE_PACKAGE_SCHEMA.md) v0.14、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md) v0.20、[Agent Architecture](./AGENT_ARCHITECTURE.md) v0.18、[Game Core Evolution Plan](./GAME_CORE_EVOLUTION_PLAN.md) v0.7、[World Subsystem Design](./WORLD_SUBSYSTEM_DESIGN.md) v0.4（专项草案，遵循本文）
 >
 > **历史代码核对基线（§1 历史表沿用 v0.1，2026-10-12 前批有限核对见 §1.1）：** `agentic-trpg/agentic-trpg@4190833`；`agentic-trpg/trpg-rules-engine@64dd920`
 >
 > **标记：** `[DECIDED]` 已有架构决定；`[PROPOSED]` 本文推荐、待评审；`[OPEN]` 需要进一步决策；`[NOT IMPLEMENTED]` 不可宣称现有代码已有
+
+**v0.18 修订摘要（2026-10-19）：** 确认运行时只读输入复用、按需派生及事务依赖版本的共同规范（§2.3），规则加载身份契约（§4.3）与 World 的 Grid／Environment 专项相互引用；§2.4 追加 Package 创建参照、完整实例化与统一实例读取要求。§1.4 按当前分支及固定依赖区分已有实现、待落实设计和兼容降级；不新增待办、不修改代码、不合并 main。下述 10 月 17／18 日摘要保留为历史。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
@@ -101,20 +103,20 @@ RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG �
 
 内部信任仅适用于已审阅测试、职责与目标范围受控的实现；Host/LLM 输出、Coding Agent 生成物和未验证脚本不能继承该权限。固定执行协议优先：DM/NPC 提结构化意图或机制组合，只有新底层能力才考虑 §3.6 受控代码扩展。未知字段不产生语义，不能任意写数据库/属性。手动交互与可信自动世界效果使用不同来源校验，但均遵守目标范围、领域不变量与共同提交条件。
 
-### 0.3a World 与 Scene 的目标结构 `[DECIDED; NOT IMPLEMENTED]`
+### 0.3a World 与 Scene 的目标结构 `[DECIDED]`
 
-World 下并列 WorldObjectService（物体查询与能力分派）、Scene 子系统（SceneService 协调）与 WorldTimeService（统一游戏时间能力）；WorldHandler 保留操作入口与协调，WorldFacts 提供受控事实读写并共用 SQLite 事务。正式名称为 WorldTimeService，TimeService 仅是讨论简称。main 已有对象／时间服务；以下四个 Scene 独立组件在本轮两个 main 快照／ObjectSpatial 分支均未实现，现有场景／网格基础不能当作四个服务已交付。
+World 下并列 WorldObjectService（物体查询与能力分派）、Scene 子系统（SceneService 协调）与 WorldTimeService（统一游戏时间能力）；WorldHandler 保留操作入口与协调，WorldFacts 提供受控事实读写并共用 SQLite 事务。正式名称为 WorldTimeService，TimeService 仅是讨论简称。§1.3 的 10 月 18 日快照当时没有独立 Scene 组件；10 月 19 日当前分支已出现以下受限实现，详见 §1.4，不能把历史缺口当作当前状态，也不能把实现分支称为 main。
 
 | Scene 内组件 | 已确认责任 | 现有基础与独立实现状态 |
 |---|---|---|
-| SceneService | 初始化、进入／离开、访问记录、Flags、生命周期与内部协调 | WorldHandler／WorldFacts 有受限路径；独立组件 [NOT IMPLEMENTED] |
-| GridService | 网格定义、坐标有效性、邻接、距离等基础空间能力 | 已复用 RE GridScene／GridTopology／canonical_cell_id；独立组件 [NOT IMPLEMENTED]，沿用既有几何算法，不随意重写 D&D 距离／范围规则 |
+| SceneService | 初始化、进入／离开、访问记录、Flags、生命周期与内部协调 | 当前分支以 SceneLifecycleService 实现场景生命周期切片；不等于完整目标 SceneService 已交付 |
+| GridService | 网格定义、坐标有效性、邻接、距离等基础空间能力 | 当前分支已有 GridReader／GridService／不可变 GridView，复用 RE 几何；已解析输入与拓扑的长期复用仍待落实 |
 | TerrainService | 地表、地面高度、困难地形与通行属性，拥有基础地形及受控变化 | 已有 grid／blocked_cells 基础；独立组件和综合合并 [NOT IMPLEMENTED]；读取 ObjectSpatial 动态贡献，不复制第二份可写地形事实 |
-| EnvironmentService | 基础环境管理，结合局部空间防护与有效 Effects，按位置／区域查询实际环境 | 独立组件与环境消费 [NOT IMPLEMENTED]；ObjectSpatial 尚无挡雨／挡风接口 |
+| EnvironmentService | 基础环境管理，结合局部空间防护与有效 Effects，按位置／区域查询实际环境 | 当前分支已有服务、显式降水／风防护、按需缓存及事务双版本；生产 WO／Effects 适配接线仍有边界，见 §1.4 |
 
 所有组件共用 Scene Grid 与坐标标识，不各建 Cell。Character 拥有唯一实际角色位置；WorldObject 拥有物体位置与动态空间贡献。查询可直接调用适当组件，不要求一律经过 SceneService；顶层图只展示 SceneService，内部责任由此表细化。实现和具体字段／公共 ABI 仍 [OPEN]，不得由本节新增无需求接口或扩大 MVP。
 
-**环境边界 `[DECIDED; NOT IMPLEMENTED]`：** Package 提供环境初值，运行变化保存到 Session 的 World 状态。支持选择一批 scene_ids 设置天气，不引入世界→地区→场景天气继承；环境可作用于整场景或明确区域。首次进入前的受控修改必须保留，后续初始化只能补齐未初始化基础，不能用模板覆盖已有变化。有效 Cell 环境按需组合基础状态、局部空间防护与有效 Effects，不要求逐格持久化最终结果。挡雨、挡风、视觉遮挡、移动阻挡彼此独立，不相互推导；当前不存在空间防护接口须明确报告缺口。
+**环境边界 `[DECIDED]`：** Package 提供环境初值是目标内容约定，当前受控环境导入不等于 Loader 已支持候选字段。运行变化保存到 Session 的 World 状态。支持选择一批 scene_ids 设置天气，不引入世界→地区→场景天气继承；环境可作用于整场景或明确区域。首次进入前的受控修改必须保留，后续初始化只能补齐未初始化基础，不能用模板覆盖已有变化。有效 Cell 环境按需组合基础状态、局部空间防护与有效 Effects，不写回 Cell 形成独立维护的最终态。挡雨、挡风、视觉遮挡、移动阻挡彼此独立，不相互推导；未接通的提供方须明确报告缺口。共同复用规则见 §2.3，双版本与 Grid 的专项约定集中在 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided)。
 
 Effects 保存法术效果的来源、范围与生命周期，Environment 只消费其环境贡献，不复制效果权威／期限。天气生成、气候继承、流体模拟不是本轮前置要求。角色暴露进度归属 [OPEN]，本轮不自行划给 Environment、Character、Activity 或 Effects。候选 environment／terrain 字段不代表 Loader 已接受，见 Adventure Package §4.4。
 
@@ -292,6 +294,23 @@ PROGRESS 中较早的 TimeBinding 缺口按其原日期保留；当前固定绑�
 
 **本轮文档检查：** 仓库无既有文档检查入口，使用本轮临时一致性检查：8 份文档的 95 个本地链接／锚点、110 张表格、48 个代码围栏（含 5 个 JSON 块）、3 个 Mermaid 块的静态结构、版本引用及 48 个固定 SHA 源码路径均通过；git diff --check 通过。Mermaid 未执行渲染或完整解析器验证。v0.4 审查快照、§1.2 历史正文、既有关键认知／版本／RNG／提交契约保持不变；用户未跟踪资料的 SHA256 与开始时一致。没有运行 SM／RE 业务测试。
 
+### 1.4 2026-10-19 运行时复用专项核对（当前分支，静态证据）
+
+本轮顶层基线为 `98e8d36b03bdc6b9578082bcdae1ed99ccbc5997`，分支为 `docs/runtime-data-reuse-principles`；仅有用户原有未跟踪资料，保持不动。适用祖先与顶层仓库未发现 AGENTS.md，仓库仅有 Markdown，无现成文档检查脚本／CI。下面依据当前 checkout、固定依赖代码、服务文档和 progress 定向核对；未切换或修改相邻仓库，未运行其测试，progress 的通过记录不是本轮执行证据。
+
+| 核对对象 | 固定身份／实际状态 | 已实现及限制 |
+|---|---|---|
+| SM 当前分支 | `feat/environment-derived-snapshot@37885533f79c890337448b8645a344c6ae7f5208`，工作区干净；远端同名分支一致。远端 main 为 `d0fda62eba8f975232f47abe64be95660a791110`，不把本分支新增能力记为已合入 main | 当前 Schema36；Engine／SRD 发布包均为 0.6.0，仍 pin `d596161060555630019163ab301e1d25fd816549` |
+| Grid 与场景切片 | [grid.py](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/grid.py)、[Grid progress](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/docs/GRID_SERVICE_PROGRESS.md)、[SceneLifecycle progress](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/docs/SCENE_LIFECYCLE_SERVICE_PROGRESS.md) | 已有 GridReader／GridService／GridView、SceneLifecycleService 切片；GridView.width／height／cell_size_ft 仍 json.loads，_base 仍创建 GridTopology。按固定配置复用解析值／拓扑是本次设计要求，尚未完成；探索拓扑不能作战斗／动态视觉完整能力 |
+| 环境版本与缓存 | [environment.py](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/environment.py)、[environment_versions.py](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/environment_versions.py)、[Schema36](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/_migration_36.sql)、[progress](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/docs/ENVIRONMENT_SERVICE_PROGRESS.md) | scene_environment_versions 已有 source_version／protection_version；同步触发器、提供方绑定／依赖登记、时间依赖及提交后发布已实现。32 项防护、512 项按需完整结果的有界缓存；正式路径命中先查版本／绑定，不扫描全部输入。Wind 子输入含基础／局部来源及已登记 Effects 的值、范围、priority、observable；保守推进双版本。冷结果仍构建原始输入，不能称整个运行时复用方案完成 |
+| 外部提供方与兼容 | 同上及 [版本测试源码](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/tests/test_environment_versions.py) | 已有 VersionedEnvironmentEffectsProvider／VersionedProtectionProvider 的 SQLite owner 依赖登记；未版本化、未登记／不匹配或禁用路径不跨查询复用。生产 WO／Effects 法术适配仍待接线，不能把 PackageEffects 或角色 EffectState 当成已接通。早期全输入比较属于旧批历史行为，当前正式命中路径已由版本校验替代；既有高度／区间查询保留，须区分参数 |
+| 实例配置归属（追加核对） | 同一 SM `3788553` 的 [domain_facts.py](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/domain_facts.py)、[WorldObjectService](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_objects.py)、[Container](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_containers.py)、[Openable](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_openable.py)、[Spatial](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_spatial.py)、[Light](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_lights.py)、[Mechanism](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/world_mechanisms.py)、[Durability](https://github.com/agentic-trpg/trpg-state-machine/blob/37885533f79c890337448b8645a344c6ae7f5208/src/trpg_state_machine/object_durability.py) | object_definition 仍查 package.world_objects，WorldObjectService.view 和各能力 config／操作仍组合模板配置与实例状态，Durability 读取模板 max_hp；这些是 §2.4 要求下的待迁移行为。已有对象位置／朝向、开合／barred／jammed、Light enabled／mode、Mechanism 状态／次数、HP 等实例记录，不等于有效配置已完整实例化。GridReader 已对已初始化场景缺失 live grid 拒绝回填，但不能据此宣称所有实例读取完成重构。本轮未改代码或新增待办 |
+| RE 本地 checkout 与 SM 固定依赖 | 本地 `feat/world-openable-support@74d9e0800c22a740614af72930dd77dd3c064561`；原有未跟踪 `.evaluation-worktree/` 保留。核对本地及 pin 的 [evaluation_ruleset.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/d596161060555630019163ab301e1d25fd816549/packages/dnd5e-engine/src/dnd5e_engine/evaluation_ruleset.py)、[loader.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/d596161060555630019163ab301e1d25fd816549/packages/dnd5e-srd-data/src/dnd5e_srd_data/loader.py) | verify_ruleset 仍调用 ruleset_binding 全量枚举有效素材并计算摘要，明确未缓存摘要；BundledAssetLoader 按 slug 读取／解析 JSON。本地及 SM pin 的 evaluator_version 为 dnd5e-evaluation/36，旧 progress 开头的 /35 不是这两个代码基线的值。可信冻结内容／加载身份复用仍为待落实设计；本地分支不等于 RE main |
+
+RE 远端重试已成功：同名分支为上述 `74d9e08`，main 为 `e5254a2ac7166a830a24c46eb35b2b1e0c4f4b80`；通过本地已有 Git 对象只读核对该 main 的 [evaluation_ruleset.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/e5254a2ac7166a830a24c46eb35b2b1e0c4f4b80/packages/dnd5e-engine/src/dnd5e_engine/evaluation_ruleset.py) 与 [loader.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/e5254a2ac7166a830a24c46eb35b2b1e0c4f4b80/packages/dnd5e-srd-data/src/dnd5e_srd_data/loader.py)：evaluator 已为 `/37`，仍逐次全量计算绑定摘要及按需解析素材 JSON。未切换／更新相邻 checkout，也未升级 SM 固定依赖。
+
+这里确认的是有代码及相关测试源码的受限切片，不是完整一致性审计、跨仓库 ABI 冻结、生产适配完成或本轮性能测量。§1.1–§1.3 保留原日期证据；本文及入口文档与上述冲突的旧实现陈述只适用于当时快照。
+
 ## 2. 统一标识、版本和契约通则（P0）
 
 ### 2.1 规范标识 `[PROPOSED]`
@@ -322,6 +341,56 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 - **网络中断，是否提交未知：** 调用 `get_command_receipt(session_id, command_id)` 查询，**不可**简单改用新 ID 重试。
 
 可信端校验 principal_id 的权限与适用时的 Actor 控制绑定，或受信系统/世界事件的机械来源和目标；无 Actor 分支不能绕过授权。Replay 不能突破当前授权策略。原样重试复用 command_id，修改 payload / 裁决后果等命令内容须用新 command_id；状态/反馈未知先查原回执。确定性拒绝不强制重新调用 LLM，仅需新情境语义判断时才有界重规划。
+
+### 2.3 运行时数据复用、派生 Snapshot 与版本有效性 `[DECIDED]`
+
+本节是跨模块共同规范；Grid／Environment 的依赖细化见 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided)，RE 数据身份见 §4.3。原则已确定；具体接入与未实现项以 §1.4 为准，不要求先建设通用缓存平台或让所有计算创建 Snapshot。这里的派生 Snapshot 是可重建计算结果，不改变 §4.2 机械 Snapshot 的完整性要求，也不是 EVA 冻结输入或历史 Event Evidence 的替代。
+
+#### 权威事实与只读原始输入
+
+SQLite 与现有领域组件继续拥有权威事实；运行时读取副本与派生缓存均可丢弃、重建，不接受独立业务写入。业务修改走既有受控命令／领域接口及共同事务，保留授权、幂等、OCC、RNG、事件证据、Receipt／Outbox。派生环境不得写回 Cell 形成独立维护的状态；Cell、Grid、WorldObject、Environment 等原始输入仍由所属组件管理。
+
+JSON 用于持久化、传输和规范化编码；频繁读取的数据加载后保留适合访问的只读结构，避免每次读取属性都重新解析整段 JSON。共享结构不得由消费者原地修改；计算修改候选时使用独立副本，包括其嵌套可变内容。
+
+| 输入类型 | 复用依据 |
+|---|---|
+| 固定 Package／Ruleset | 按已验证、有效内容固定的完整身份复用，不能只凭包名或发布版本 |
+| 场景地图配置／基础空间结构 | 按场景、所属 Package／Store 及相关配置版本复用；动态贡献另验依赖 |
+| 动态游戏事实 | 使用可靠依赖版本，或限制在同一事务的同一一致状态内读取；不得无条件长期复用 |
+
+Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在实例的有效字段来源按 §2.4，不能以缓存模板代替完整实例记录。
+
+不要求所有数据常驻内存或加载整个世界。按活跃场景和常用数据保留，并明确容量上限、所属生命周期、淘汰及 Session／Store 关闭等释放策略；丢弃缓存不能丢失事实。
+
+#### 按需派生与有效性
+
+针对已确认重复开销复用已产生结果；共享中间结果和最终结果可分别保存。屋顶覆盖 16 格可以共享防护投影，但不意味着这 16 格的风、温度、雾等完整环境相同。只缓存实际算出的结果；一次计算确实得到多格完整结果时可一起保存，不为填满 Snapshot 主动重算整张地图。
+
+版本描述计算所依赖的状态，不描述缓存创建／清空次数。相关事实与依赖版本须在同一事务提交；失败、拒绝、回滚或 COMMIT 故障不得留下错误版本或可供后续命中的候选缓存。合法失败如确有已提交成本／事实变化，仍按实际变化维护依赖版本。
+
+查询在一致读取状态中取得当前依赖版本，与缓存记录比较：全部匹配且已有所需结果才复用；不匹配或缺结果即按当前状态计算。版本 7 跳到 9 直接算 9，不补算 8。通知清空与 TTL 可辅助资源管理，不能独自证明有效；目标是可信版本校验，命中时不再扫描全部原始输入来比较。
+
+外部提供方必须声明完整依赖身份、可变输入、版本推进／读取一致性及生命周期，包括影响结果的时间与适用范围。没有可信版本时，临时路径只能在一次一致读取中计算并复用，跨查询绕过缓存；提供方若无法保证该读取一致性，返回明确能力缺口。兼容期如保留全量输入扫描／比较，必须标为降级及其成本，不能称版本方案完成；不能仅缓存旧摘要而放任底层内容变化。
+
+缓存不要求长期保存每个历史版本。旧读取事务可保留自身一致结果；其发布必须验证仍适用的身份／版本，不得覆盖当前缓存、冒充当前状态或把旧结果贴上新版本。写事务中不同修改阶段须重建或重验共同输入，回滚到相同数值版本也不能让不同候选输入误命中。
+
+#### 共享范围与安全边界
+
+身份和生命周期按实际依赖隔离 Package／Ruleset、数据库／Store、Session、Scene、历史事件及查询参数；无需无差别把所有维度塞入每个键，但不得遗漏会改变结果的维度。同一查询内准备一次共同输入供多目标判断；跨查询复用须明确依赖身份及有效性保证，同一事务不同修改阶段不能共用已经过期的输入。
+
+缓存命中仍执行当前授权、披露过滤及命令实际执行资格检查。内部真实投影与公开输出保持原边界，不能将一个观察者的过滤结果未经校验交给另一观察者。历史事件计算绑定该事件当时的阶段证据／固定过滤依据，不能用当前 Scene 缓存替换；事件身份及其证据版本必须进入相应复用范围。
+
+### 2.4 Package 创建参照与完整实例化 `[DECIDED; NOT IMPLEMENTED]`
+
+本次确认的是目标设计，不宣称已有实例化重构完成。Package 是静态定义和创建参照，不拥有 Session 中正在运行的游戏状态。创建世界、场景、角色、WorldObject、Item 或 Session 时可从 Package 取得初始属性、能力配置和初始状态；创建完成后，实例的完整有效属性与当前状态由 Session 内所属领域的数据记录持有。固定 Package 版本不能代替完整实例化。
+
+操作已经存在的实例，必须通过实例及所属组件的接口读取有效数据，不得反向查询 Package 初始化定义来补齐缺失的实例字段。完整性覆盖实例声明能力所需的配置、状态及必要关联，具体 World 能力示例见 [World §2.1a](./WORLD_SUBSYSTEM_DESIGN.md#21a-完整实例能力与统一读取-decided-not-implemented)。实例可修改属性在实例层表达并保存；模板默认值不得覆盖创建后、修改后或恢复后的有效属性。已有实例缺少必要数据时应明确报告不完整／不支持，或走显式迁移，不能静默套模板掩盖缺口。
+
+这是逻辑完整性，不要求把所有字段放进 objects 表，不要求建立大型内存对象或第二套权威状态。各能力／领域记录继续拥有自己的数据，通过统一实例读取入口按实例 ID 组合完整有效能力数据；该入口是受控读取职责，不是另一个独立可写副本。Service 负责行为和协调，不各自回查 Package 填字段。配置与状态的版本、必要关联及读取一致性由所属领域与共享事务保障，缓存仍遵循 §2.3；统一读取入口的具体类名、持久字段和 API 均未在本轮冻结。
+
+本要求覆盖 Session 创建、首次进入场景的延迟初始化、运行中新生成的物体／物品／角色、存档恢复／进程重启及显式实例升级／迁移。尚未创建的实例首次创建时可用 Package；已经存在的实例恢复已保存的有效配置、状态和关联，不能重新应用初始化模板。版本化实例记录须足以支持一致恢复和运行时读取，迁移通过既有受控写入／共同提交，不重置既有事实或绕过幂等、OCC、RNG、事件证据和 Outbox。
+
+Package 仍可用于初始创建、来源追踪、Session 绑定检查、审计及显式迁移；不禁止全部 Package 访问，也不要求将 RE 程序或整套通用规则素材复制到每个实例。通用规则和明确绑定的行为实现可通过固定版本引用调用，但引用不能代替本应由实例持有的有效属性与状态（§4.3）。静态导航模板等 Package 数据的只读复用继续有效；Package 查找索引只能加速静态定义查找，不能修复实例能力字段不完整。运行时物体操作须先确定实例数据所有权和统一读取入口，再考虑索引／缓存优化。
 
 ## 3. Player / DM Planner / NPC Agent → State Machine：TypedCommand（P0）
 
@@ -480,7 +549,7 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 当前目标 Snapshot 由负责领域组装，可按相关实体与 Scene 限定集合范围，但每个纳入实体的机械状态必须完整，并保留规则依赖闭包，包括会影响它的其他实体、来源、区域与生命周期状态。不能因本次只攻击而省去 Required 的反应、装备或效果字段；不能把非战斗检定伪造成 Combat。缺 Required 字段报 Schema 错误，尚未支持的规则路径显式 unsupported，不用默认值或隐藏 Engine 状态补齐。
 
-无状态 RE 不要求每次搬运整个世界、深拷贝全部对象或通过网络调用。按需读取依赖、进程内类型接口、共享不可变值和可重建缓存可作为优化研究；输入须包含操作真正依赖的完整事实。新读取接口/依赖表达 `[OPEN]`，不直接删除 Snapshot / StateDelta 结构与不变量校验，不将任意整份 Snapshot 覆盖数据库作为本次决定。当前受支持公开接口仍按 §1 的实际实现说明；优化须验证缓存失效、重启恢复及回滚后缓存一致性，未测得性能收益。
+无状态 RE 不要求每次搬运整个世界、深拷贝全部对象或通过网络调用。运行时复用的共同原则已在 §2.3 确定，按需读取的具体接口仍待落实；输入须包含操作真正依赖的完整事实。新读取接口/依赖表达 `[OPEN]`，不直接删除 Snapshot / StateDelta 结构与不变量校验，不将任意整份 Snapshot 覆盖数据库作为本次决定。当前受支持公开接口仍按 §1 的实际实现说明；优化须验证缓存失效、重启恢复及回滚后缓存一致性，未测得性能收益。
 
 §7 的 Event Evidence 只保存感知所需历史字段；其 Signal-scoped 裁剪原则不能用于裁剪本节机械 Snapshot 的 Required 字段或规则依赖闭包。二者用途和完整性标准不同，Event Evidence 不能直接替代 CombatSnapshot / NonCombatSnapshot。
 
@@ -494,11 +563,15 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 该表不是现成代码类型。每条受支持规则须证明 Snapshot 覆盖其完整状态依赖闭包，包括跨实体、效果来源、Reaction、持续区域和生命周期账本；不能仅迁移 HP / Turn。历史 sidecar 审阅只是遗漏检查的证据，不要求目标 Snapshot 或临时计算上下文复制旧 `_LiveCombat` 的结构。
 
-### 4.3 RulesetBinding `[DECIDED; NOT IMPLEMENTED]`
+### 4.3 RulesetBinding 与规则数据复用 `[DECIDED]`
 
 RulesetBinding 的 Required 字段为 `ruleset_id`、`data_revision`、`evaluator_version`。SM 从 Session 固定配置提供；Engine 在求值前验证三者与实际加载规则/数据/求值器匹配，不匹配报独立绑定错误并禁止继续求值，不能静默换规则版本。
 
-`data_revision` 必须区分**实际生效的规则内容**，包括适用的 Homebrew / 数据覆盖及组合；不能只用基础 SRD 名称代替生效内容修订。具体摘要/组合编码为 [OPEN]，本轮不决定发布/热更新机制。固定 RNG seed 也不能替代此绑定。
+`data_revision` 必须区分**实际生效的规则内容**，包括适用的 Homebrew / 数据覆盖及组合；不能只用基础 SRD 名称代替生效内容修订。数据包发布版本、素材内容摘要、ruleset_id 和 evaluator_version 分别标识发布、有效内容、规则集合及求值实现，不能混为一谈。具体跨模块摘要／组合编码仍 [OPEN]，不虚构冻结 API；固定 RNG seed 不能替代绑定。
+
+**加载层设计要求（尚待落实）：** 规则执行逻辑由 RE 程序实现，素材提供模板和参数。加载指定数据版本时，验证全部有效内容及覆盖组合并保证其在该身份下固定、只读；复用已加载素材及已验证身份。后续 verify_ruleset 比较可信身份，不每次遍历整套素材重新算摘要。身份复用成立的前提是实际数据已冻结或有可靠受控版本，不能只保存旧摘要却允许内容静默改变。自定义／可变加载器必须明确冻结、更新版本并重新验证，或采用全量验证／不复用的临时降级契约；不能通过降级后仍宣称已完成身份复用。当前实际全量校验行为见 §1.4，不在本轮代码中改变。
+
+SM 保存 Session 固定绑定并核对 RE 身份，不另建一套规则素材管理系统。运行中 Session 不静默切换规则、基础素材或引擎版本，升级走显式迁移流程，具体流程仍 [OPEN]。物品实例属性、角色状态等游戏事实由所属领域更新，不等于修改基础模板版本；读取／重载模板默认值不得覆盖实例当前有效属性。只读素材和候选副本遵循 §2.3。
 
 C03 的 CapabilityManifest 是可由现有允许列表派生的轻量逻辑查询，不新增数据库：固定规则／Package、消息版本、命令／Delta 家族、受测组合 profile、非战斗阶段证据／战斗聚合及恢复能力。系统能力取领域输入、RE 受测规则、Adapter 采用、该路径感知必需依据与恢复能力的交集；可解析 Schema 不等于支持。战斗不以逐动作视线证据为准入条件，机械依赖仍须完整。
 
@@ -1189,6 +1262,8 @@ Background 调用失败、LLM 超时、Mode Switch、Game Time 跳跃、Context 
 ## 10. Adventure Package → Session / 负责领域（P1）
 
 **[DECIDED]** Package 是静态、版本固定的数据定义；Session / 世界领域负责加载与一次初始化，Combat Handler 组织 Encounter，相关领域经共享设施提交。保留当前 SM 公开入口，不要求单个模块独占这些数据与业务。统一逻辑入口及候选类型均 **[PROPOSED; NOT IMPLEMENTED]**，详细字段仅在 [Adventure Package §9.1 / §9.1a](./ADVENTURE_PACKAGE_SCHEMA.md#91-统一-package-loading--validationap-0104) 定义：
+
+创建与恢复必须遵循 §2.4 的完整实例化要求：Package 仅作创建参照，已存在实例的配置／状态从所属领域记录恢复和读取。当前运行时回查 Package 的能力配置路径属于待迁移实现，见 §1.4；不能将其固化为目标契约。仅固定包版本或增加定义索引均不能满足此要求。
 
 ```text
 load_adventure_package(package_source)
