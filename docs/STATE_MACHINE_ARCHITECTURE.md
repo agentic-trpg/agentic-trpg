@@ -2,7 +2,7 @@
 
 > **状态**：Draft v0.20（运行时复用与事务有效性；已核对受限实现，完整目标仍待落实）
 >
-> **日期**：2026-10-19
+> **日期**：2026-10-20
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md`
 >
@@ -13,6 +13,8 @@
 > **证据边界**：本文件是基于已讨论范围和冒险需求的**设计建议**，不是现有 State Machine 代码的完成状态。与 Rule Engine 的 API 适配以实际实现和独立测试为准。
 
 **2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
+
+**2026-10-20 文档补充：** 快照与定向查询的通用原则及性能验收要求统一见 MC §2.3，Grid／Environment 的有限现状核对见 [MC §1.5](./MODULE_CONTRACTS.md#15-2026-10-20-快照与查询专项核对静态证据)。本次只更新文档，未修复 SM 查询性能、增加 API 或完成后续索引／局部校验工作；较早摘要保留原时点。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
@@ -193,9 +195,9 @@ WorldFacts 管世界/场景/对象事实与唯一世界时钟（当前 game_tick
 
 ### 3.3a 运行时读取与派生结果的生命周期 `[DECIDED]`
 
-共同规则集中在 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)：SQLite／领域事实不变为内存缓存权威，活跃场景读取与派生结果可丢弃重建；共享只读输入、容量／释放、依赖版本与失败隔离必须明确。一次查询为多目标准备共同输入，同一事务后续修改阶段须重验；跨查询不得仅凭同 Session 或同 world_version 推定局部依赖有效。
+共同规则集中在 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)，包括定向查询的内部工作量、快照消费者与构建成本、缓存／索引区别及完整调用链验收。按业务需要选择读取范围；“为多目标准备共同输入”只适用于该次计算确实需要的范围，不要求局部查询先物化场景。SQLite／领域事实不变为内存缓存权威，容量／释放、依赖版本与失败隔离必须明确；同一事务后续修改阶段须重验，跨查询不得仅凭同 Session 或同 world_version 推定局部依赖有效。
 
-环境双版本及 Grid 依赖由 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) 细化。当前 SM 分支已实现 Environment 的事务版本命中／候选隔离／提交后发布；这不等于 Grid 已复用解析值和拓扑，或所有动态提供方已接通。旧读取事务的结果不能发布为当前状态；当前授权、公开披露、命令执行前重验及历史阶段证据仍沿既有路径。缓存不替代 OCC，也不改变 RNG、事件、Receipt／Outbox 共同提交。
+环境双版本及 Grid 依赖由 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) 细化。MC §1.5 核对的 SM 版本已有 Environment 的事务版本命中／候选隔离／提交后发布，以及 Grid 只读地图／基础拓扑复用；场景快照仍组装动态贡献，局部占用查询及校验优化尚待落实，不能称所有动态提供方已接通。旧读取事务的结果不能发布为当前状态；当前授权、公开披露、命令执行前重验及历史阶段证据仍沿既有路径。缓存不替代 OCC，也不改变 RNG、事件、Receipt／Outbox 共同提交。
 
 Session 固定 Package／Ruleset 及 evaluator 身份并核对 RE；加载身份复用由 RE／数据加载层负责，见 MC §4.3。SM 不另建素材管理系统，恢复或查询不得用模板默认值覆盖实例当前属性。
 
