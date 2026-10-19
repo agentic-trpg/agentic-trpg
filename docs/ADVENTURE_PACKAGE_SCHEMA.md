@@ -1,16 +1,18 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
-> **状态**：Draft v0.13（World 能力与领域归属；固定冒险基线不变，新增字段保持候选）
+> **状态**：Draft v0.14（固定内容身份与运行时复用；新增字段保持候选）
 >
-> **日期**：2026-10-18
+> **日期**：2026-10-19
 >
 > **级别**：项目级跨模块文档
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/ADVENTURE_PACKAGE_SCHEMA.md`
 >
-> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.17（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.19；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.6；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.3；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
+> **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.18（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.20；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.7；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.4；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
+
+**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
@@ -41,11 +43,13 @@
 
 **小而明确的 Schema，优先真实运行闭环，不为未来的 World Builder 提前构建抽象宇宙模型。** `Adventure Package` 是静态、版本固定、只读的内容定义；Session Runtime State 是单独的可变数据。内容中的自然语言只是描述与 Agent 上下文，**不是可执行规则或绕过验证的状态写入指令**。
 
+**完整实例化 `[DECIDED; NOT IMPLEMENTED]`：** Package 只提供初始化参照，不持有 Session 正在运行的状态。世界／场景／角色／WorldObject／Item／Session 创建完成后，声明能力所需的完整有效属性、配置和当前状态由所属领域实例记录持有。规范集中于 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented)；运行时不得回查初始化定义补齐已存在实例字段，固定包版本也不能替代实例完整性。静态导航模板等定义仍可按 MC §2.3 复用。
+
 ---
 
 ## 2. 模块责任与数据所有权
 
-**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.17 §0.3／§0.3a／§0.5–§0.6 分责。StateMachine 统一入口/装配，Facts / Records 读写所属 SQLite 数据，一次操作共享提交；已实现部分拆分与公开能力见 MC §1.3，剩余目标 OPEN。本文其余“SM”沿用当前加载/命令协议入口；同一实体身份共用，视图/缓存不可独立写当前事实，Evennia 整体迁移仍可选 OPEN。
+**当前基础与目标 `[DECIDED]`：** SM＋RE 主线不变；按 MC v0.18 §0.3／§0.3a／§0.5–§0.6 分责。StateMachine 统一入口/装配，Facts / Records 读写所属 SQLite 数据，一次操作共享提交；已实现部分拆分与公开能力见 MC §1.4，剩余目标 OPEN。本文其余“SM”沿用当前加载/命令协议入口；同一实体身份共用，视图/缓存不可独立写当前事实，Evennia 整体迁移仍可选 OPEN。
 
 | 数据或行为 | 定义者 | 运行时权威 | 约束 |
 | --- | --- | --- | --- |
@@ -147,7 +151,7 @@ adventure-pack/
 | `encounter_ids[]`（可选） | 预定义 Encounter 的引用 | 有引用须有效；可不预定义，不意味着进入即开战 |
 | `access_policy` | DM / NPC / 玩家在此场景允许观察的字段边界 | 默认不公开隐秘事实 |
 
-**关键不变量**：`Scene Definition` 是只读内容；`Scene Runtime State` 才记录开门、线索、机关、掉落、NPC 位置等变化。重访时读取 Runtime State；若未实例化，则从静态模板创建一次。允许玩家以合理选择改变预期路线，禁止通过强制每幕顺序跳转覆盖既有状态。
+**关键不变量**：`Scene Definition` 是只读创建参照；`Scene Runtime State` 及各所属能力记录持有完整有效配置与状态，包括开门、线索、机关、掉落、NPC 位置等后果，不只保存相对模板的变化。重访读取实例；尚未创建时可从模板创建一次，不能重套模板修补已存在实例。允许玩家改变预期路线，禁止强制剧情覆盖既有事实。
 
 ### 4.3 Scene、Event 与时间
 
@@ -158,21 +162,21 @@ adventure-pack/
 
 ### 4.4 目标内容格式与当前 SM Loader 的区别
 
-本文多文件 YAML 组织、字段表和合成示例是项目目标内容格式，不等于当前 Loader 已逐字段接受。当前实现依据 MC §1.3 固定提交中的 package.py／world_package.py；安全解析与闭合字段验证保留，不因本文新增候选就忽略 unknown field。
+本文多文件 YAML 组织、字段表和合成示例是项目目标内容格式，不等于当前 Loader 已逐字段接受。下表保留 MC §1.3 的 10 月 18 日 Loader 沿革；当前分支实现依据 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)（已另有 Mechanism `/10`，不在本轮重定义 Schema）。安全解析与闭合字段验证保留，不因候选字段出现就忽略 unknown field。
 
 | 层次 | 本轮核对状态 | 适用边界 |
 |---|---|---|
 | 项目目标 Adventure Package | [DECIDED / PROPOSED]；具体新增字段 [OPEN] | 本文文件组织／字段表表达内容需求，不是当前可直接加载的完整机器 Schema |
-| SM main Loader | [已实现] 当前 `state-machine-foundation/1`～`/8`；开始时为 `/1`～`/7` | 统一 package mapping 的受限字段；Scene 包含 grid（适用版本）、initial_state.local_flags、objects／exits 等；不接受候选 environment／terrain 配置作为新服务能力 |
+| SM main Loader（10 月 18 日快照） | [当时已实现] `state-machine-foundation/1`～`/8`；开始时为 `/1`～`/7` | 统一 package mapping 的受限字段；Scene 包含 grid（适用版本）、initial_state.local_flags、objects／exits 等；当前服务存在不使候选 environment／terrain 字段自动合法 |
 | ObjectSpatial Loader 沿革 | [已合入 main] 原分支 `0c2c4c7` 带入 `/8`，并兼容 `/1`～`/7`；当前 main `97c5af1` | 新朝向、允许朝向及 open／closed／destroyed 整格空间性质；不代表 Terrain／Environment 或综合感知／战斗已接通 |
 | 固定时间绑定 | [main 已实现] 可选顶层 `time_binding` | 完整字段为 schema_version、day_length、start_day、start_day_tick、cycle、day_start、night_start；schema_version 为 world-time/1。CreateSessionRequest.time_binding 强类型整体覆盖，否则取 Package 默认，均无则 legacy game-clock/1 |
-| 环境／地形初值与区域 | [DECIDED; NOT IMPLEMENTED]；字段／覆盖编码 [PROPOSED / OPEN] | 不在示例中伪装成 Validator 当前可接受字段；本轮不升级 Loader Schema、SQL 或依赖 |
+| 环境／地形 Package 初值与区域 | [DECIDED] 目标内容；候选字段／覆盖编码 [PROPOSED / OPEN] | 当前环境服务已有受控导入及查询，不能据此把候选 Package 字段伪装成 Validator 可接受内容；本轮不升级 Loader Schema、SQL 或依赖 |
 
 固定 world-time/1 的 1 tick = 1 游戏秒，legacy 保留抽象 tick；绑定保存后不可变，不按 Package 当前默认重解释历史。已有时间换算、昼夜／有界边界和命令推进，不含 TimeDriver／倍率、Round、Activity／Effects 或秒制 NPC／OB／Gate 消费。带配置型 NPC State 的 Package 不能创建秒制 Session；未配置 Runtime 的物理 Actor 仍不获得 NPC 观察／聚合感知消费能力，实际 unsupported_time_consumer 限制见 MC §1.3。
 
-环境目标由 Package 提供初值，运行变化保存到 Session World；可对一批场景设天气，不引入世界→地区→场景继承。作用域为整场景或明确区域；首次进入前修改保留，初始化不得用模板覆盖，重访也不重置。EnvironmentService 按需组合位置／区域环境，不预存逐格最终结果；Terrain 的基础地形和 WorldObject 的动态贡献分责，共用 Scene Grid／坐标。四个 Scene 独立组件尚未实现，详见 MC §0.3a。
+环境目标由 Package 提供初值，运行变化保存到 Session World；可对一批场景设天气，不引入世界→地区→场景继承。首次进入前修改保留，初始化不得用模板覆盖，重访也不重置。EnvironmentService 按需组合位置／区域环境，不写回 Cell 形成逐格最终态权威；基础地形和对象动态贡献分责，共用 Grid。当前已有场景生命周期切片、GridService／EnvironmentService；完整职责与实际接入状态见 MC §0.3a／§1.4。
 
-挡雨／挡风与视觉／移动阻挡独立，当前 main 的 ObjectSpatial 尚无前两者接口。Effects 保有法术来源、范围与生命周期，Environment 只消费有效贡献。角色暴露进度归属 [OPEN]；天气生成、气候继承和流体模拟非前置。不把这些候选变成新的 MVP 必需能力。
+挡雨／挡风与视觉／移动阻挡独立；当前环境分支已有显式防护及提供方版本契约，生产 WO／Effects 适配仍有边界。Effects 保有法术来源、范围与生命周期，Environment 只消费有效贡献。双版本及风向失效见 [World §2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20c-environment-双版本与按需派生-decided)。角色暴露进度归属 [OPEN]，不新增 MVP 必需能力。
 
 ---
 
@@ -455,6 +459,8 @@ errors / warnings 是带 code、位置/引用及原因的结构化问题，字�
 
 通过后固定 adventure_id、package_version、package_digest 和**生效 RulesetBinding**（ruleset_id / data_revision / evaluator_version，含适用 Homebrew）；SM 创建与恢复 Session 均核验这些固定值，不能按同名目录静默换内容。具体摘要/绑定编码沿用 MODULE_CONTRACTS.md 的 [OPEN] 项。
 
+固定内容加载后的只读复用遵循 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)，Ruleset 身份验证、素材加载复用与可变加载器的临时降级契约统一见 MC §4.3。Package 发布版本／内容摘要与规则集／引擎身份各有用途；运行中 Session 不静默换基础内容或引擎，升级走显式迁移。模板默认值用于初始化，不能覆盖物品实例属性、角色状态等当前有效事实。
+
 静态验证只证明已执行的结构/能力检查，不证明剧情可玩、战斗平衡或行为必然正确。来源/许可元数据检查支持人工审阅与发布限制，不是自动版权合法性证明；First Blush 内容仍仅本地私有保存。
 
 ### 9.1a Create Session（AP-06～10）
@@ -488,6 +494,8 @@ errors / warnings 是带 code、位置/引用及原因的结构化问题，字�
 
 ### 9.2 一次交互
 
+上述创建协议和延迟 Scene 初始化均须落实 MC §2.4 的完整实例数据，运行中新生成的物体／物品／角色遵循同一原则。已有实例操作经统一实例读取入口获取所属组件有效配置与状态；Package 来源／绑定检查、审计和固定规则／行为引用仍可访问，不以此反向补齐实例字段。
+
 ```text
 Player intent / NPC decision proposal
     -> validate controller identity, visible facts, scene version
@@ -504,6 +512,8 @@ Player intent / NPC decision proposal
 最终数据库提交/响应边界按 (session_id, command_id) 查询稳定 CommandReceipt，无独立回执 ID 或二次 ACK；未提交求值不推进权威 RNG。事件后续触发机械效果时按 §7.3 的可靠独立命令处理，不将两个已提交事务叙述成同一次原子提交。
 
 ### 9.3 保存与恢复
+
+保存各领域持有的版本化实例有效配置、当前状态及必要关联；恢复和进程重启重建这些已保存记录，不能重新应用 Package 默认值掩盖缺失或重置事实。已有实例升级／补齐走显式迁移及受控提交，具体迁移接口仍 [OPEN]。不要求复制 RE 程序或整套通用规则素材到实例，允许的固定定义引用以 MC §2.4 为准。
 
 - Adventure Package 不随玩家操作改变；Session 保存固定 Package / RulesetBinding、世界/场景/NPC 状态、已选角色 CharacterState、RNG、触发历史、待处理命令/Outbox 与按命令键查询的 CommandReceipt。
 - SceneInstance 按需初始化一次，入口在创建事务中初始化；重访/恢复读取已有状态，不重生奖励、机关或 NPC。NPC 为 Session 级唯一实体，位置、Memory、Belief 与资源不因另一场景初始化被复制/重置。
@@ -585,6 +595,10 @@ Player intent / NPC decision proposal
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：按演进计划 §8 的能力轨道，以最小审阅 Fixture / 初始化支持对象动作、真实 RE、NPC 私有视图与早期 Agentic 验证，随实际依赖交错推进；不等完整 Host 或整体框架迁移。包须验证后按需一次初始化，不因复用模板而重访重置。整体 Evennia 与 EB 验证仅为计划 §9 可选评估；本批不改整个 Package Schema 或实施系统。
+
+### v0.14 修订摘要（2026-10-19）
+
+链接固定内容与运行时复用、完整实例化及一致恢复的共同契约，区分 Package／Ruleset／引擎身份、只读模板与实例当前事实。修正“已有环境服务即 Loader 接受候选字段”及旧组件缺口的歧义；当前分支状态见 MC §1.4，保留历史 Loader 沿革。本轮不新增 Schema／加载器实现或待办。
 
 ### v0.11 修订摘要（2026-10-15）
 

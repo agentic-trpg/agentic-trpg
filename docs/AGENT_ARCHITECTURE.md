@@ -1,12 +1,12 @@
-# Agentic TRPG — Agent Architecture（MVP，Draft v0.17）
+# Agentic TRPG — Agent Architecture（MVP，Draft v0.18）
 
-> **文档状态**：Draft v0.17；World / 角色 / 编排分责，已有受限实现见 MC §1.3；本轮无运行验证
+> **文档状态**：Draft v0.18；World / 角色 / 编排分责，运行时复用专项实现见 MC §1.4；本轮无运行验证
 >
-> **日期**：2026-10-18
+> **日期**：2026-10-19
 >
 > **建议位置**：`agentic-trpg/agentic-trpg/docs/AGENT_ARCHITECTURE.md`
 >
-> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.17（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.19、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.19、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.13、[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.6、[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.3
+> **依据**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.18（跨模块最高规范）、[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.20、[`STATE_MACHINE_ARCHITECTURE.md`](./STATE_MACHINE_ARCHITECTURE.md) v0.20、[`ADVENTURE_PACKAGE_SCHEMA.md`](./ADVENTURE_PACKAGE_SCHEMA.md) v0.14、[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.7、[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.4
 >
 > **目标产品**：一名真人玩家直接控制一名 PC；本地、文字优先、无常驻 AI 队友；以人工整理的单人 Adventure Package 运行首个完整冒险。World Creation Agent、Visual Presentation Engine 与活跃战斗的跨进程精确恢复均属于 Post-MVP。
 >
@@ -34,13 +34,15 @@
 
 > **继承 v0.2 的原则**：Event Observation 与 Current Perceptual View 统一通过 Perception 进入 NPC Context；Evidence Persistence、Memory Consolidation、Context Compaction 和 Suspend/Release 独立管理；保留 v0.1 的权限、战斗、异常回执和 MVP 边界。
 
+**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
+
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
 **2026-10-18 引用同步：** 上段为历史记录；当前远端与实现边界见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。SM main 已由外部合并更新到 97c5af1／Schema33，ObjectSpatial 原分支现已合入；本轮仅同步现状引用与版本，不改产品范围、Host／认知契约或实施业务代码。
 
 ## 0. 决策层级与需要澄清的冲突
 
-**已确认的产品原则**（遵循 Module Contracts v0.17、MVP Scope v0.19 与 State Machine v0.19）：
+**已确认的产品原则**（遵循 Module Contracts v0.18、MVP Scope v0.20 与 State Machine v0.20）：
 
 当前仍以 `trpg-state-machine`＋RE 为基础；目标内部责任以 MC §0.3 状态表为准，不再要求单一 SM 模块拥有全部状态。本文其余“SM”沿用现有任务/观察/命令协议入口，目标内部由 NPC Cognition、Perception、实体/效果领域及 Handler 负责，通过共享设施提交。部分显式组合已实现，剩余目标见 MC §1.3 / A2；Host 不持有影子事实。Evennia / CDDA / Ranvier 研究与可选整体迁移边界不变。
 
@@ -954,10 +956,10 @@ OB 直接承担短期感知记忆，完成后到期前仍可用；Processing / R
 
 ### 与其它文档的正式分工
 
-- **`STATE_MACHINE_ARCHITECTURE.md` v0.19**：当前 SM 基础与目标领域模块、有状态 Handler、共享提交/恢复；本文件不重定义事务实现。
-- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.13**：NPC 初态、固定包、一次初始化与 Session 扩展，不保存后续推理 Context/动态 Meta。
-- **`AGENT_ARCHITECTURE.md` v0.17**：模式独占、Cognition / Perception 分责、Host Runtime、Context 与失败边界。
-- **`MODULE_CONTRACTS.md` v0.17 / Draft**：最高规范，领域状态表及校验/提交分责，具体 ABI 仍 Proposed / OPEN；本文 YAML 仅为示意，演进计划不另立规范。
+- **`STATE_MACHINE_ARCHITECTURE.md` v0.20**：当前 SM 基础与目标领域模块、有状态 Handler、共享提交/恢复；本文件不重定义事务实现。
+- **`ADVENTURE_PACKAGE_SCHEMA.md` v0.14**：NPC 初态、固定包、一次初始化与 Session 扩展，不保存后续推理 Context/动态 Meta。
+- **`AGENT_ARCHITECTURE.md` v0.18**：模式独占、Cognition / Perception 分责、Host Runtime、Context 与失败边界。
+- **`MODULE_CONTRACTS.md` v0.18 / Draft**：最高规范，领域状态表及校验/提交分责，具体 ABI 仍 Proposed / OPEN；本文 YAML 仅为示意，演进计划不另立规范。
 
 ### 仍应保持开放的技术问题
 

@@ -2,17 +2,19 @@
 
 > **文档状态：Draft / 部分产品决策已确认，其余待评审**
 >
-> **版本：v0.19**
+> **版本：v0.20**
 >
 > **初稿日期：2026-10-09**
 >
-> **修订日期：2026-10-18；当前基线引用更新，产品范围不变；仅文档，无运行验收**
+> **修订日期：2026-10-19；运行时复用契约引用更新，产品范围不变；仅文档，无运行验收**
 >
 > **文档级别：项目级（跨 Repository）**
 >
 > **建议仓库位置：** `agentic-trpg/agentic-trpg/docs/MVP_SCOPE.md`
 >
 > **适用范围：** Agent DM（包括 NPC Sub-agent）、State Machine、Rule Engine 与轻量文字入口；World Creation Agent、Visual Presentation Engine 均属于 MVP 后续阶段
+
+**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
@@ -44,7 +46,7 @@
 - **[已确认] World Creation Agent 后置：** MVP **不开发** PDF/HTML/Markdown 自动剧本解析、跨剧本通用编译器、World Creation Agent，亦不要求兼容 Gamebook-style Adventure。首个冒险采用**人工整理、人工审核**的本地 Adventure Package（也可以先用最小化结构化配置）驱动，作为未来 World Builder 的参考样本。
 - **[已确认] 视觉引擎后置：** 可交互的 Visual Representation / Presentation Engine、自动地图资产管线、实时视觉状态同步均在 MVP 后开发。少量不影响游戏状态的 AI 插画仍可选；本地 Golden Adventure 无插画也须可通关。
 
-**已批准的目标架构**：以 [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.17 为跨模块最高规范。**[DECIDED] 当前 SM＋RE 为开发/运行基础，允许证据驱动的子系统重构/替换**；同一事实只有一个权威来源，可信运行层提交，不冻结现有类/表/接口。撤回未合并的 Evennia 优先采用与必经 EB 顺序；整体迁移 OPEN，`agentic-trpg/Evennia_base` 为 Deferred / Optional evaluation，本批不创建。机制研究与主线验证见 [演进计划](./GAME_CORE_EVOLUTION_PLAN.md)。RE Stateless 目标/完成标准不变，不因文档修订扩大实现声明。
+**已批准的目标架构**：以 [MODULE_CONTRACTS.md](./MODULE_CONTRACTS.md) v0.18 为跨模块最高规范。**[DECIDED] 当前 SM＋RE 为开发/运行基础，允许证据驱动的子系统重构/替换**；同一事实只有一个权威来源，可信运行层提交，不冻结现有类/表/接口。撤回未合并的 Evennia 优先采用与必经 EB 顺序；整体迁移 OPEN，`agentic-trpg/Evennia_base` 为 Deferred / Optional evaluation，本批不创建。机制研究与主线验证见 [演进计划](./GAME_CORE_EVOLUTION_PLAN.md)。RE Stateless 目标/完成标准不变，不因文档修订扩大实现声明。
 
 开放合理行动、持久世界后果与 NPC 私有认知/自主性是原有产品目标。程序化核心提供可复用且后果可被后续机制消费的能力，LLM 负责语义/情境裁决及人物认知；不是完整传统 RPG 加聊天 NPC。真实 Agentic 验证应尽早与机制建设交错，不等完整 Host。
 
