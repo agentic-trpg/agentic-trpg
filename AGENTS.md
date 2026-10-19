@@ -1,0 +1,11 @@
+# Documentation maintenance
+
+- `docs/MODULE_CONTRACTS.md` is the highest cross-module architecture, ownership and target-contract authority. `docs/MVP_SCOPE.md` owns product scope; domain documents refine those boundaries.
+- Read the relevant current architecture before editing. Treat `[DECIDED]` rules as binding; keep `[PROPOSED]` / `[OPEN]` unsettled. Record Implementation Status separately as `[IMPLEMENTED]`, `[PARTIALLY IMPLEMENTED]` or `[NOT IMPLEMENTED]`.
+- Verify current capability claims against the corresponding repository's exact source SHA, tests and appropriate acceptance evidence. Historical reviews, old branches and implementation accidents cannot override current decisions. Preserve dated evidence, especially the v0.4 review; add a new dated finding instead of rewriting history.
+- Current interfaces versus target examples are indexed in Module Contracts §1.6. Do not freeze OPEN APIs/schema, infer runtime versions from proposed examples, or downgrade target architecture to current limitations.
+- Generic Full Audit, local admission, query, snapshot/cache and shared-finalize rules live in Module Contracts §2.3 and §6.5–§6.6. Domain docs should reference these rules and add only domain-specific applications.
+- Before edits, record cwd, branch, HEAD, remote/main baseline and dirty files. Use an independent branch; preserve unrelated work with an isolated worktree when needed. Never reset, stash, rebase, force push or merge main without explicit task authorization.
+- Documentation edits do not authorize code, schema, dependencies or CI changes in this or sibling repositories. Read sibling repositories only to establish evidence unless writes are explicitly requested.
+- Check changed Markdown headings, relative links/anchors, fences, tables and `git diff --check`; use existing applicable docs tooling. Do not run unrelated integration suites for docs-only work or claim static review as runtime validation.
+- Stage only authorized task files, inspect the staged diff, and commit/push within the authorized scope. Never automatically merge main. Report each repository's starting baseline, branch, final SHA, checks actually executed, remote result and remaining differences; distinguish local evidence from remote CI.

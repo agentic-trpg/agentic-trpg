@@ -61,7 +61,7 @@ Environment's target Package initial data stays separate from Session changes, i
 
 **[DECIDED] Runtime reuse (2026-10-19):** [Module Contracts §2.3](docs/MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) governs disposable read-only inputs, on-demand derived results, transactional dependency versions, bounded lifetimes, and authorization. [World §2.0b–§2.0c](docs/WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) details shared Grid inputs and Environment's two versions, including wind changes from all applicable sources. [Ruleset loading and identity](docs/MODULE_CONTRACTS.md#43-rulesetbinding-与规则数据复用-decided) remains RE's responsibility. These decisions do not create a second state authority or claim all reuse paths are implemented.
 
-**[DECIDED] Complete instantiation:** [Module Contracts §2.4](docs/MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented) makes Package a creation reference. Existing instances obtain complete effective configuration and state from their owning Session domain records through a unified read boundary. Current runtime lookups that fill capability configuration from Package are migration behavior; this documentation does not implement that refactor. Static definition reuse and fixed rules/behavior references remain valid within that boundary.
+**[DECIDED] Complete instantiation:** [Module Contracts §2.4](docs/MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented) makes Package a creation reference. Existing instances obtain complete effective configuration and state from their owning Session domain records through a unified read boundary. Schema39 now persists the existing capability configuration closure and requires explicit upgrades for older saves. Dynamic spawn, general creation dependencies and equipment/effect lifecycles remain incomplete; see the [current main baseline](docs/MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐). Static definition reuse and fixed rules/behavior references remain valid within that boundary.
 
 ### Main responsibilities
 
@@ -161,7 +161,7 @@ The design documents are currently written primarily in Chinese. Start with MVP 
 
 ### Design status and terminology
 
-The architecture documents distinguish the status of individual decisions:
+The architecture documents record two independent axes. Architecture Decision Status is `[DECIDED]`, `[PROPOSED]` or `[OPEN]`. Implementation Status is `[IMPLEMENTED]`, `[PARTIALLY IMPLEMENTED]` or `[NOT IMPLEMENTED]`, supported by versioned code, tests and acceptance evidence. Existing decision labels mean:
 
 - **`[DECIDED]`** — Agreed design direction or invariant.
 - **`[PROPOSED]`** — Candidate interface or policy, subject to review.
@@ -191,3 +191,6 @@ Architecture and implementation discussions are welcome. When proposing a change
 This meta-repository currently has no repository-level `LICENSE` file; do not assume a license for its contents. Separate repositories may have their own licenses. Adventure and ruleset source material may also have independent copyright and licensing restrictions; do not commit protected third-party adventure content without the necessary rights.
 
 [Module Contracts](docs/MODULE_CONTRACTS.md) remains authoritative; the [v0.4 review](docs/reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) is a preserved snapshot. Each NPC has one bounded Recent OB List sliding by game time, with only `pending` and `processed` cognition states. Every new OB gets a Gate decision; no-EVA decisions mark it processed. Each EVA freezes the complete authorized recent list, including processed context, and completes only its fixed pending coverage. This 2026-10-17 synchronization changes documents only.
+
+
+Documentation maintenance starts at [AGENTS.md](AGENTS.md). Current interfaces and remaining migration gaps are recorded in [Module Contracts §1.6](docs/MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐); generic audit/query/finalize rules live only in §2.3 and §6.5–§6.6. Dated reviews remain historical evidence.

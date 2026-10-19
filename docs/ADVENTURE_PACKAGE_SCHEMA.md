@@ -18,6 +18,9 @@
 
 **2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 ## 1. 目的与非目标
 
 ### 1.1 目标
@@ -43,7 +46,7 @@
 
 **小而明确的 Schema，优先真实运行闭环，不为未来的 World Builder 提前构建抽象宇宙模型。** `Adventure Package` 是静态、版本固定、只读的内容定义；Session Runtime State 是单独的可变数据。内容中的自然语言只是描述与 Agent 上下文，**不是可执行规则或绕过验证的状态写入指令**。
 
-**完整实例化 `[DECIDED; NOT IMPLEMENTED]`：** Package 只提供初始化参照，不持有 Session 正在运行的状态。世界／场景／角色／WorldObject／Item／Session 创建完成后，声明能力所需的完整有效属性、配置和当前状态由所属领域实例记录持有。规范集中于 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented)；运行时不得回查初始化定义补齐已存在实例字段，固定包版本也不能替代实例完整性。静态导航模板等定义仍可按 MC §2.3 复用。
+**完整实例化 `[DECIDED; PARTIALLY IMPLEMENTED]`：** Package 只提供初始化参照，不持有 Session 正在运行的状态。世界／场景／角色／WorldObject／Item／Session 创建完成后，声明能力所需的完整有效属性、配置和当前状态由所属领域实例记录持有。规范集中于 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented)；运行时不得回查初始化定义补齐已存在实例字段，固定包版本也不能替代实例完整性。静态导航模板等定义仍可按 MC §2.3 复用。
 
 ---
 
@@ -172,7 +175,7 @@ adventure-pack/
 | 固定时间绑定 | [main 已实现] 可选顶层 `time_binding` | 完整字段为 schema_version、day_length、start_day、start_day_tick、cycle、day_start、night_start；schema_version 为 world-time/1。CreateSessionRequest.time_binding 强类型整体覆盖，否则取 Package 默认，均无则 legacy game-clock/1 |
 | 环境／地形 Package 初值与区域 | [DECIDED] 目标内容；候选字段／覆盖编码 [PROPOSED / OPEN] | 当前环境服务已有受控导入及查询，不能据此把候选 Package 字段伪装成 Validator 可接受内容；本轮不升级 Loader Schema、SQL 或依赖 |
 
-固定 world-time/1 的 1 tick = 1 游戏秒，legacy 保留抽象 tick；绑定保存后不可变，不按 Package 当前默认重解释历史。已有时间换算、昼夜／有界边界和命令推进，不含 TimeDriver／倍率、Round、Activity／Effects 或秒制 NPC／OB／Gate 消费。带配置型 NPC State 的 Package 不能创建秒制 Session；未配置 Runtime 的物理 Actor 仍不获得 NPC 观察／聚合感知消费能力，实际 unsupported_time_consumer 限制见 MC §1.3。
+固定 world-time/1 的 1 tick = 1 游戏秒，legacy 保留抽象 tick；绑定保存后不可变。当前已有数学换算、TimeDriver 显式倍率／暂停恢复、有界 Pending Time Work 与真实 Round 接线；没有默认实时倍率。Activity／Effects／秒制 NPC／OB／Gate 等生产消费者未全面接通，秒制 Session 的 unsupported_time_consumer 保护保留。Package 仍只能提供受支持的强类型时间配置，不能从本草案推断新的消费者配置字段，见 MC §1.6／§6.6。
 
 环境目标由 Package 提供初值，运行变化保存到 Session World；可对一批场景设天气，不引入世界→地区→场景继承。首次进入前修改保留，初始化不得用模板覆盖，重访也不重置。EnvironmentService 按需组合位置／区域环境，不写回 Cell 形成逐格最终态权威；基础地形和对象动态贡献分责，共用 Grid。当前已有场景生命周期切片、GridService／EnvironmentService；完整职责与实际接入状态见 MC §0.3a／§1.4。
 
@@ -467,7 +470,7 @@ errors / warnings 是带 code、位置/引用及原因的结构化问题，字�
 
 **[DECIDED]** SM 接收已批准 Package 的固定身份/摘要与玩家选择，生成并返回 session_id。PC 来自 §5.1a 的内置完整只读模板；HP、成长与资源在初始化后属于 SM 运行状态，不写回模板。不要求独立角色构建服务或外部角色引用。
 
-候选 CreateSessionRequest（**[PROPOSED; NOT IMPLEMENTED]**，原创关系示例；模板完整机械数据在此不展开）：
+CreateSessionRequest 的受限 dataclass、创建幂等／授权已有实现（MC §1.6，整体 `[PARTIALLY IMPLEMENTED]`）。下列是 **Target Architecture Contract `[PROPOSED]`** 的原创 JSON 关系示例，不是已冻结的网络信封；模板完整机械数据在此不展开：
 
 ```json
 {

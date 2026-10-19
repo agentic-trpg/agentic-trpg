@@ -40,6 +40,9 @@
 
 **2026-10-18 引用同步：** 上段为历史记录；当前远端与实现边界见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。SM main 已由外部合并更新到 97c5af1／Schema33，ObjectSpatial 原分支现已合入；本轮仅同步现状引用与版本，不改产品范围、Host／认知契约或实施业务代码。
 
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 ## 0. 决策层级与需要澄清的冲突
 
 **已确认的产品原则**（遵循 Module Contracts v0.18、MVP Scope v0.20 与 State Machine v0.20）：
