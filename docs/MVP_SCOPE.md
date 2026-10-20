@@ -20,6 +20,9 @@
 
 **2026-10-18 引用同步：** 上段为历史记录；当前远端与实现边界见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。SM main 已由外部合并更新到 97c5af1／Schema33，ObjectSpatial 原分支现已合入；本轮仅同步现状引用与版本，不改产品范围、Host／认知契约或实施业务代码。
 
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 ## 0. 文档定位与决策状态
 
 本文件定义 Agentic TRPG **首个可实际游玩的端到端 MVP** 的产品边界、游戏场景、跨模块职责与验收目标。它**不是** D&D SRD 的完整实现计划，也不替代各模块的技术设计、规则覆盖矩阵和 Backlog。
@@ -473,7 +476,7 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | **M3：First Blush Text-first Vertical Slice** | 人工整理剧本数据，加载场景初始状态，打通 NPC 独立互动、敌方 Agent 战斗、结局持久化 | A01/A02/A03/A09/A13 全部通过；图片完全可关闭 |
 | **M4：MVP Acceptance / Release** | 依据实际玩家体验收敛问题与规则范围 | 获准的 A01–A40 均有验收证据，明确记录未支持规则与 Agent 成本限制 |
 
-只读 Action Availability Query 可随 M1 的 Stateless Evaluation 早期开发，先覆盖基础战斗操作并共享合法性逻辑，无 RNG/写状态/Delta/事件/回执；不依赖视觉阶段，也不作为当前文字入口发布条件。
+基础战斗攻击只读 Action Availability Query 已有 SM＋RE `/13` 实现及测试覆盖（MC §1.6）；其他操作扩展继续共享正式求值合法性逻辑，无 RNG/写状态/Delta/事件/回执；不依赖视觉阶段，也不作为当前文字入口发布条件。
 
 **后续阶段（不阻塞 MVP）：** `World Creation Agent` 自动从合法输入剧本生成多类型 Adventure Package；`Visual Presentation Engine` 消费已有的权威状态和事件进行视觉呈现。二者是未来方向，不要提前作为当前 Milestone 的依赖。
 

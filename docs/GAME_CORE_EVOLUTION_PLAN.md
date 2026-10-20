@@ -14,6 +14,9 @@
 
 **2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 ## 1. 中心问题与原有产品目标
 
 中心问题是：**如何借助成熟游戏机制，补齐承接开放式行动与自主 NPC 的运行能力？** 开放式行动裁决、具有持续后果的动态世界、基于私有信息与认知自主行动的 NPC，都是项目原有目标，不由 Evennia 或 Coding Agent 引入。
@@ -50,13 +53,13 @@
 
 **Combat Handler `[DECIDED]`** 管遭遇/参战/回合流程、等待决定、已提交行动与推进进度；根据已提交状态等玩家或调用非 LLM Policy，组织一次求值/共同提交，推进到下一决策边界、合法暂停或结束。RE 计算回合索引、资源恢复、效果到期，Handler 不重复加回合/扣费，一次攻击不默认结束回合；自动推进有界重试/无进展退出。已有受限 CombatHandler / CombatRecords，完整推进、预算、Continuation Schema 仍 OPEN / NOT IMPLEMENTED，见 MC §1.3。
 
-RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状态/缓冲区允许存在。运行时只读输入复用与按需派生遵循 MC §2.3，具体读取接口仍待落实；不能用默认值漏依赖或直接删 Snapshot/Delta 校验，当前公开支持范围不变。完整日志退出普通求值是目标：RE-HIST-01 先审计真实读者、补齐使用标记/效果时钟/关键时间点等必要当前状态，不另建精简历史日志，不置空 event_log、删历史表或全部 proposed_events。本次有序候选结果和必要审计/Episode 证据仍保留，不宣称性能收益。
+RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状态/缓冲区允许存在。运行时只读输入复用与按需派生遵循 MC §2.3，具体读取接口仍待落实；不能用默认值漏依赖或直接删 Snapshot/Delta 校验，当前公开支持范围不变。RE `/17` history-free Snapshot／求值已移除审计日志依赖；SM 保留审计，不能删历史表或全部 proposed_events。新增规则仍须核对使用标记／效果时钟／关键时间点等完整当前状态，不另建精简历史日志（MC §1.6）。本次有序候选结果和必要审计/Episode 证据仍保留，不宣称性能收益。
 
-当前运行时复用的实现依据以 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据) 为准：SM 当前环境分支已具场景生命周期切片、GridService、EnvironmentService 及事务双版本缓存，仍有 Grid 原始输入复用、RE 可信加载身份和生产提供方接线边界。10 月 18 日远端核对及更早 GC5 快照保留在 MC §1.2–§1.3，不再作为最新状态；本轮没有运行 SM／RE 测试或全量审阅。
+当前运行时复用依据以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 为准：main 已有 GridMaps 静态只读复用、Environment 双版本缓存、Schema39 实例配置及 SM／RE 固定素材复用。局部 SQL、全局审查替换、完整生产提供方／Effects 接线仍待完成；不得从头重复已完成切片。§1.2–§1.5 是历史快照，本轮不重跑业务／性能测试。
 
 **A1 / A2 `[DECIDED]`：** 探索移动由 Navigation / Activity + WorldHandler 编排，战斗移动由 CombatHandler + RE 编排，共享唯一实际角色位置和对象事实。StateMachine 为统一 API / 装配入口，子系统按需组合 Handler / Service、Facts / Records、Supporting Components，通过显式依赖与共享 SQLite 协作并逐步减少 Mixin；不机械分层、不按每种对象设 Handler、不强制 ECS。战斗投影映射、互动资格/资源/时序/反应和合法失败成本以 MC §0.5–§0.6 为准；World 候选字段按专项草案核对，后续工作仍在 MC §13 现有表登记。
 
-完整实例化与实例统一读取先按 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented) 确定所有权。Package 查找索引只优化静态定义查询，不能补救缺失的实例能力配置；静态导航模板等复用仍保留。本次确认为设计要求，当前回查配置路径是待迁移行为，不据此新增待办或宣称已实现。
+完整实例化与统一读取遵循 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented)。Schema39 已完成现有能力配置依赖的持久化和显式升级；动态 spawn、一般依赖创建和实例装备／Effects 生命周期仍是缺口。静态 Package 复用继续有效，不能以索引代替实例有效字段；见 MC §1.6。
 
 ## 4. 成熟机制：来源、用途与复用方式
 
@@ -142,11 +145,11 @@ RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状�
 
 | 现有轨道 | 本轮代码依据与目标差异 | 后续验收，均未在本轮执行 |
 |---|---|---|
-| A2 World 结构 | main 已有 WorldObjectService／WorldTimeService；WorldHandler 仍有场景、移动、通路、Flags 和辅助逻辑 | 在既有共享事务内逐步提取 SceneService／GridService／TerrainService／EnvironmentService；独立实现尚无。保留现有入口及回滚／重访证据 |
+| A2 World 结构 | main 已有 WorldObjectService／WorldTimeService、SceneLifecycleService、GridService、EnvironmentService 及 Session Creation／Access／Runtime 分责（MC §1.6） | TerrainService、完整 Scene 协作和剩余模块化继续待落实，不从头重做已提取服务；保留现有入口及回滚／重访证据 |
 | A1 空间／战斗 | 当前 main 已合入 ObjectSpatial 的旋转、候选／占地／接触和独立贡献；综合 Terrain／Perception／Light／Combat／RE 未接通 | 不复制对象贡献为可写地形；验证完整依赖与 guard 替代后才扩大战斗能力，不能以分支拒绝测试标完成 |
-| C13 时间／C12 Effects | main world-time/1 与固定 Package／Session 绑定、数学边界和推进委托已实现；legacy 保留抽象 tick | TimeDriver／倍率、Round 接线、Activity／Effects 有序消费、秒制 NPC／OB／Gate、选择／恢复仍未完成；保留秒制 unsupported_time_consumer 隔离 |
+| C13 时间／C12 Effects | main world-time/1 与固定 Package／Session 绑定、数学边界和推进委托已实现；legacy 保留抽象 tick | 显式 TimeDriver／倍率和真实 Round 接线已有实现；Activity／Effects 有序消费、秒制 NPC／OB／Gate、生产等待消费者及宿主政策仍未完成；保留秒制 unsupported_time_consumer 隔离 |
 | C09 对象互动 | main 非战斗开合／撬锁／强行开启／解除卡住和容器两层相关容量／访问已实现 | 战斗费用、魔法生命周期、真实攻击、部分数量／实例装备／调谐及内容物摧毁规则仍未完成；内部耐久应用不算真实攻击 |
-| A2 Scene 环境 | 目标由 SceneService 协调；四组件共用网格和坐标，环境初值与 Session 变化分离 | 整场景／区域和批量场景天气、首次进入前修改保留、按需有效环境查询；无天气继承／逐格最终态权威。挡雨／挡风待实现，暴露进度归属 OPEN |
+| A2 Scene 环境 | EnvironmentService 已有场景／区域／批量修改、首次进入前保留、按需查询、双版本缓存和显式 OSS 挡雨／挡风几何 | 生产 WO 动态防护、Effects 法术／角色高度提供方、Package 默认／Session 自动环境接线和规则后果尚未全面完成；暴露进度归属 OPEN（MC §1.6） |
 
 以上是现有 A1／A2／C／DS 轨道的证据更新，不要求先完成全部服务再验证最小 Agentic 场景；不新增公共 ABI 或 MVP 门槛。
 

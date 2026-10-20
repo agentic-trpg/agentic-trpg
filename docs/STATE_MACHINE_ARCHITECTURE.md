@@ -20,6 +20,9 @@
 
 **2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
 
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 ## 1. 目标、边界和核心术语
 
 本文保留 State Machine 文件名与当前 SM 公开入口，区分现有实现和**按领域管理状态、按事实确定权威、按操作组织事务的目标设计**。MODULE_CONTRACTS.md v0.17 §0.3 / §0.5–§0.6 规定领域归属、探索/战斗编排与模块化；`trpg-state-machine`＋RE 仍是开发基础。**StateMachine 是统一 API 与组件装配入口**，各子系统显式依赖协作，不要求中心类理解和批准所有业务细节。已实现的部分组合与仍存 Mixin 见 MC §1.3，不将目标拆分一概写成尚不存在。以下 Task / Perception 协议中的“SM”沿用该逻辑入口。
@@ -128,7 +131,7 @@ flowchart TD
 
 共用 Scene Grid／坐标，复用已有几何算法；Character 保有唯一角色位置，WorldObject 保有对象位置与动态贡献，Terrain 读取 ObjectSpatial 投影而不复制可写事实。Environment 的 Package 初值是目标内容边界，当前受控导入不等于候选字段已进入 Loader。Session 运行变化、局部防护与有效 Effects 按需组合；首次进入前变化不得被模板覆盖，不建天气继承树或逐格最终态权威。当前分支已有显式防护，仍不能由视觉／移动阻挡推导；正式 WO／Effects 生产适配接线边界见 MC §1.4。Effects 保有来源／范围／生命周期，角色暴露进度归属 [OPEN]。
 
-WorldTimeService 的 main 固定单位／换算／昼夜／边界查询及推进委托已实现；实时倍率／TimeDriver、Round 接线、Activity／Effects 时间消费和秒制 NPC／OB／Gate 尚未完成。world-time/1 为 1 tick = 1 游戏秒；legacy game-clock/1 不改称秒。秒制 Session 的 NPC Runtime／聚合感知／OB 消费保护见 MC §1.3，不把有时钟等同完整时间系统交付。
+WorldTimeService 的固定单位／换算／昼夜／边界及推进委托已实现；当前 main 的 SessionTime／TimeDriver 还支持显式倍率、暂停恢复、有界工作和真实 Round 接线（MC §1.6）。默认倍率／宿主策略 OPEN，完整 Activity／Effects 时间消费和秒制 NPC／OB／Gate 尚未完成。world-time/1 为 1 tick = 1 游戏秒；legacy game-clock/1 不改称秒。秒制 Session 的 NPC Runtime／聚合感知／OB 消费保护见 MC §1.3，不把有时钟等同完整时间系统交付。
 
 ### 2.1 A1：探索与战斗的操作编排分离 `[DECIDED]`
 
@@ -146,7 +149,7 @@ WorldTimeService 的 main 固定单位／换算／昼夜／边界查询及推进
 
 建议把 Session 存储划分为少量聚合（aggregate）；下面是**概念数据结构**，不是已经冻结的 JSON/Python Schema。
 
-完整实例化以 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-not-implemented) 为准：Package 只作创建参照，世界／场景／角色／WorldObject／Item 创建后，有效配置、当前状态及必要关联由 Session 内所属领域记录持有。统一实例读取入口组合原负责组件数据，Service 不各自回查 Package 补字段；这项重构尚未完成，不新增第二套权威内存状态。
+完整实例化以 [MC §2.4](./MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented) 为准：Package 只作创建参照，世界／场景／角色／WorldObject／Item 创建后，有效配置、当前状态及必要关联由 Session 内所属领域记录持有。统一实例读取入口组合原负责组件数据，Service 不各自回查 Package 补字段；Schema39 已迁移现有读取闭包，动态 spawn／一般依赖创建和装备／Effects 生命周期仍未完成（MC §1.6），不新增第二套权威内存状态。
 
 ### 3.1 `SessionRecord`：一次冒险实例
 
@@ -216,7 +219,7 @@ Interactive / Background 是 **LLM Evaluation Mode**，不是两个人格或两�
 
 CharacterFacts / 机械组件管角色唯一实际位置、HP、资源、装备；WorldFacts 管对象、物体耐久、门锁、容器和物品实际关系，机械库存按 World 实例投影并校验；Effects 管持续效果及自身进度；Activity 管正在进行的活动；CombatRecords 管参战/回合/待选与推进记录，CombatHandler 组织流程。Facts / Records 读写 SQLite，不是独立内存权威。组合机械视图引用同一实体/效果事实，RNG 经共享设施提交，不为各 Handler 任意另开流。已有实现与目标差异见 MC §1.3；World 候选字段按模板/实例/关联/派生分类见 [专项草案 §3](./WORLD_SUBSYSTEM_DESIGN.md#3-可选能力组合-decided-proposed)，不冻结 SQL 或协议。
 
-**[DECIDED; NOT IMPLEMENTED]** 完整 Combat Event Log 应退出普通 RE 输入；每回合使用标记、效果时钟、关键时间点等是必要当前机械状态，由规则计算并经负责接口共同提交，不另建重复的精简历史日志。本次有序 ProposedEvents / 结算结果在提交前仍为候选，审计与 Episode 证据按需保留，不自动回灌求值。当前 event_log 依赖先按 RE-HIST-01 审计真实读者并补状态；不置空日志、删历史表或删全部候选事件（MC §4）。
+**[DECIDED; PARTIALLY IMPLEMENTED]** 当前 RE `/17` 与 SM Snapshot 已不把历史 event_log 作为普通求值输入（MC §1.6）；每回合使用标记、效果时钟、关键时间点等是必要当前机械状态，由规则计算并经负责接口共同提交，不另建重复的精简历史日志。本次有序 ProposedEvents / 结算结果在提交前仍为候选，审计与 Episode 证据按需保留，不自动回灌求值。新增消费者仍须审计真实读者并补齐当前状态，不能重复实施已完成的 history-free 切片；不置空日志、删历史表或删全部候选事件（MC §4）。
 
 喝药、开门、取物、移动等跨界操作由负责领域在**同一共享事务**提交；RE 计算机械结果。当前目标 CombatSnapshot / NonCombatSnapshot 共享类型化组件，Required 字段与依赖完整性不取消。无状态不要求搬运全世界或网络调用：按 MC §2.3 复用只读输入与已算出的派生结果；具体读取接口 `[OPEN]`，不能以默认值掩盖缺失依赖或任意整份 Snapshot 覆盖数据库（MC §4.2）。缓存失效、重启及回滚一致性须验证，不宣称已测得提速。Session 提供固定绑定，RE 可有调用内候选状态/缓冲区，但不得恢复 Legacy 跨请求权威对象。
 
@@ -687,7 +690,7 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 
 - 受控战斗开启、战前安全 Checkpoint、完整版本化 CombatSnapshot / NonCombatSnapshot、独立 RNGContext、RuleEvaluationResult、完整 Delta 原子提交、资源归属、不可续战退出与错误回执；集成不构造旧 Engine 内部对象。
 - 必要外部 Hazard 和 NPC 显式 Combat Intent 通过统一命令/规则求值路径与 Rule Engine 团队联合验收。
-- Action Availability Query 可与早期 Stateless Rule Evaluation 实现同步开发，先查询基础战斗操作，与正式求值共享规则逻辑；无 RNG/状态写入/Delta/事件/回执，不等待 Visual Presentation。文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮仅更新计划。
+- 基础攻击 Action Availability Query 已有 SM＋RE `/13` 实现和只读回归（MC §1.6）；通用扩展继续与正式求值共享规则逻辑；无 RNG/状态写入/Delta/事件/回执，不等待 Visual Presentation。文字 MVP 不强制调用，视觉 UI 仍 Post-MVP，本轮仅更新计划。
 - **完成证据**：已选择支持的战斗/非战斗机械操作从 Stateless 路径求值并提供无 Legacy 执行依赖的证据；每条动作至多一次 SM 权威提交；失败、版本冲突或响应异常不产生重复消耗或推进 RNG；不支持的能力明确报告。MVP 纵切通过不等于完整 Engine 迁移完成。
 
 **节奏约束**：围绕最小原创纵向场景交错取证。真实模型验证开放行动映射、NPC 私有信息/目标差异及计划真正执行；确定性回归验证授权、幂等、RNG、延迟/重复/失败结果和故障一致性，两者分开报告。至少一名敌方 Agent 的宏观自主性保持 MVP 要求。完整 Host / Coding Agent / 沙箱 / 通用中断不是最初验证前提；本轮没有运行结果。
@@ -815,7 +818,7 @@ NPC Evaluation 提交入口只需 evaluation_id 与 Result；调用身份来自�
 | **SM-05** | 非交互 NPC 状态 | 简单游戏时钟日程；Inactive Lightweight Gate / Background Evaluation 可产生行动；不要求 Interactive Agent 激活或常驻 LLM | **已确认逻辑设计，具体阈值待实验** |
 | **SM-06** | NPC Evaluation Mode Exclusivity / 切换 | SM 管任务/模式、EvaluationStatus / NPCStateVersion、原子 Meta 与可靠交接；切换直接取消旧有效 EVA 并新建、不等旧反馈；Host 管 Context / 模型 | **已确认原则；具体协议 Proposed / Not Implemented** |
 | **SM-07** | OB Processing / Retention / 调度 | OB 直接承担短期记忆；完成不等删除/长期 Memory；Game Time TTL、引用归档、到期保护 Pending Work；定期最大等待严格小于生命周期且留余量，Interactive 必经 Gate 决策（模型可选）、无新 Background EVA | **[DECIDED] 2026-10-11；未实现** |
-| **SM-08** | Event-local / Signal-scoped Evidence | 逐 Event 对齐 Signals 实际阶段，逐 Signal 发现后取最小完整证据并集，Discovery 不判察觉；Event / Signals / Evidence / Outbox 同一 SQLite 事务，后续判断才形成 OB，见 MODULE_CONTRACTS.md §7 | **[DECIDED] 2026-10-12；开发分支世界路径已受限实现，RE 阶段协议 [OPEN; NOT IMPLEMENTED]，见 MODULE_CONTRACTS.md §1.1** |
+| **SM-08** | Event-local / Signal-scoped Evidence | 逐 Event 对齐 Signals 实际阶段，逐 Signal 发现后取最小完整证据并集，Discovery 不判察觉；Event / Signals / Evidence / Outbox 同一 SQLite 事务，后续判断才形成 OB，见 MODULE_CONTRACTS.md §7 | **[DECIDED] 2026-10-12；开发分支世界路径已受限实现，RE `/24` StageFacts `/2` 与 SM 严格采用已实现；感知／Episode 全链路仍有缺口，见 MODULE_CONTRACTS.md §1.6** |
 | **SM-09** | Evennia 优先采用（历史） | v0.14 曾提出优先整体采用及强制 EB 顺序，没有迁移或运行验收；有用机制研究与正确性原则保留 | **采用决定/强制顺序由 v0.15 / SM-10 撤回；整体迁移 [OPEN]** |
 | **SM-10** | SM＋RE 游戏核心演进 | 当前 SM＋RE 为开发/运行基础，基于证据重构/替换子系统；机制与早期 Agentic 验证交错，Evennia 仅可选评估 | **[DECIDED] 2026-10-12；具体机制/Schema [OPEN; NOT IMPLEMENTED]，无运行验收声明** |
 | **SM-11** | 有状态 Combat Handler | 持久遭遇/参战/等待/推进进度，组织规则求值和共同提交；不复制人物事实、不重算机械变化，见 §7 / MC §0.4 | **[DECIDED]；已有受限 Handler / Records，通用推进 / 预算 / Continuation OPEN / NOT IMPLEMENTED，见 MC §1.3 / A1** |
