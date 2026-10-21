@@ -22,6 +22,8 @@ Open-ended player actions, persistent world consequences, and NPC private cognit
 
 ## System architecture
 
+**2026-10-21 documentation update:** [Unified references](docs/REFERENCES.md) indexes the adopted rule versions, Package setting/adventure source requirements, and engineering references. [MC §2.3](docs/MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) governs reuse across all runtime computations; [World §2.1b](docs/WORLD_SUBSYSTEM_DESIGN.md#21b-容器重量派生与跨操作复用) applies it to container weight. The [latest source check](docs/MODULE_CONTRACTS.md#17-2026-10-21-运行时复用与资料核对) distinguishes SM's unmerged `refactor/scoped-runtime-validation@4341f69` from main. Its operation-local weight memo does not implement the cross-operation cache target. Older dated implementation paragraphs below retain their original evidence scope.
+
 The diagram shows target responsibilities. Existing implementation slices and remaining gaps are recorded in [Module Contracts §1.4](docs/MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据).
 
 ```mermaid

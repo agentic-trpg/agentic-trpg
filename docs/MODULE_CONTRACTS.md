@@ -2,7 +2,7 @@
 
 > **版本：** v0.18 / Draft for Review
 >
-> **日期：** 2026-10-20
+> **日期：** 2026-10-21（文档补充，不冻结新接口版本）
 >
 > **性质：** 跨模块目标接口的最高权威规范；具体 ABI 仍为草案，**不是已实现 API**
 >
@@ -367,6 +367,18 @@ RE 远端重试已成功：同名分支为上述 `74d9e08`，main 为 `e5254a2ac
 
 全局扫描的分类、调用位置、当前不变量和等价局部替代建议见 SM 的 [普通提交源码](https://github.com/agentic-trpg/trpg-state-machine/blob/d5d8c494e2fa102ca924199b31a6d00c2b4910e2/src/trpg_state_machine/commands.py)、[RE 提交源码](https://github.com/agentic-trpg/trpg-state-machine/blob/d5d8c494e2fa102ca924199b31a6d00c2b4910e2/src/trpg_state_machine/rule_execution.py)及该仓库本批 `docs/reviews/RUNTIME_VALIDATION_SCOPE_REVIEW.md`。这些现有 Session 级审查与 §2.3／§6.5 的目标冲突，登记为后续重构，不能通过文档宣称已经修复。无关容器容量审查已经局部化，操作内邻接／重量重复扫描已有改进；全 Session 读取、库存闭包和空间全投影仍须分别验收。
 
+### 1.7 2026-10-21 运行时复用与资料核对
+
+本次总文档起点为 `bdbbdf31cc60f3e83a951541ddf7a70504526190`。SM 当前实现依据为 **尚未合并**的 `refactor/scoped-runtime-validation@4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0`，核实的 `origin/main` 仍为 `7927a382738fc97e2420967c3e1c6280c717d1fb`。不能把该分支能力写成 main 已有能力。§1.1–§1.6、旧 Review 和较早领域现状段保留原日期／SHA 的适用范围。
+
+| 来源与核对范围 | 当前实现与设计差距 |
+|---|---|
+| SM [world_containers.py](https://github.com/agentic-trpg/trpg-state-machine/blob/4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0/src/trpg_state_machine/world_containers.py)，[Container Progress](https://github.com/agentic-trpg/trpg-state-machine/blob/4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0/docs/CONTAINER_SERVICE_PROGRESS.md) | `[IMPLEMENTED]` 单次操作的 ContainmentState 邻接索引、定义及 weights memo；total_weight 包含实例自身重量 × quantity 和后代，未知传播为 None；relocate 清空重量 memo。validate 读取移动子树、旧／新祖先及必要聚合闭包，再对候选关系准入。没有将 weights 发布为 Service／Store 跨操作缓存；World §2.1b 的跨操作重量缓存为 `[DECIDED; NOT IMPLEMENTED]` |
+| SM [分支验收记录](https://github.com/agentic-trpg/trpg-state-machine/blob/4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0/docs/reviews/SCOPED_RUNTIME_VALIDATION_REFACTOR.md)、[容器测试源码](https://github.com/agentic-trpg/trpg-state-machine/blob/4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0/tests/test_container_admission.py)、[局部查询测试源码](https://github.com/agentic-trpg/trpg-state-machine/blob/4341f69cbb560edd9c9c1b1bd907ed6c599c0ed0/tests/test_scoped_runtime_validation.py) | 原记录包含局部读取／准入、Schema40 派生索引和操作阶段复用的历史验收。本次仅查阅源码、测试和已有记录，未重新运行业务或性能测试；不能把历史数字当成本次结果，也不能据通用操作 memo 推断 weights 已跨操作复用。该分支继续固定 Engine／SRD pin `a011eba3ea2226e22d8081294ee38d3ec193b325` |
+| RE `main`／`origin/main@f18e0ad0d0bb6641efb050b51bf919dd41a8631f` 的 [evaluation_ruleset.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/f18e0ad0d0bb6641efb050b51bf919dd41a8631f/packages/dnd5e-engine/src/dnd5e_engine/evaluation_ruleset.py)、[frozen.py](https://github.com/agentic-trpg/trpg-rules-engine/blob/f18e0ad0d0bb6641efb050b51bf919dd41a8631f/packages/dnd5e-srd-data/src/dnd5e_srd_data/frozen.py) | 已有固定有效规则素材、冻结身份及 UUID 索引复用；精确 FrozenRuleset 类型校验身份，mutable/custom loader 仍重算摘要。不能推广成全部规则计算都已缓存；RE checkout 与 SM pin 分别归属各自证据 |
+
+规则版本、已核实章节及未核实书籍／冒险正文见 [References](./REFERENCES.md)。本批不改规则集绑定、不新增世界观、不实现缓存、不修改代码／Schema／依赖／CI；检查范围与三仓库工作区基线见 [本次文档记录](./reviews/runtime-reuse-and-references-2026-10-21.md)。
+
 ## 2. 统一标识、版本和契约通则（P0）
 
 ### 2.1 规范标识 `[PROPOSED]`
@@ -400,6 +412,8 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 
 ### 2.3 运行时数据复用、派生 Snapshot 与版本有效性 `[DECIDED]`
 
+**全系统原则（2026-10-21）：按需计算，保留值得复用的结果，在有效性得到保证时复用；相关输入变化时更新或使结果失效。** 本原则适用于空间、光照、环境、容器重量、角色观察视图、规则素材处理，以及其他重复准备或派生计算；以下条款共同构成同一规范，不另建缓存协议。资料查阅和来源分类见 [统一参考入口](./REFERENCES.md)。本次仅补充文档，不实现缓存或宣称性能改进；SM 未合并分支的证据另见 §1.7。
+
 本节是跨模块共同规范；Grid／Environment 的依赖细化见 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided)，RE 数据身份见 §4.3。原则已确定；具体接入与未实现项以 §1 的日期化证据为准，Grid／Environment 本次核对见 §1.5。不要求先建设通用缓存平台或让所有查询创建 Snapshot。本节的快照原则不改变 §4.2 机械 Snapshot 的完整性要求，也不是 EVA 冻结输入或历史 Event Evidence 的替代。
 
 #### 快照与查询的使用原则（2026-10-20）
@@ -410,7 +424,7 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 | 缓存（Cache） | 复用依赖仍有效的输入或计算结果；必须说明有效性、隔离、容量及生命周期，创建快照本身不等于消除重复计算 |
 | 查询索引（Query Index） | 快速定位相关实体或关系，减少无关读取和扫描；不能替代一致性、权限或派生结果有效性检查 |
 
-三者可以配合，不能相互替代。不因接口名含 View 或 Snapshot 就推定低成本或已缓存。
+缓存负责复用，Snapshot 提供某个一致状态下的只读视图，索引帮助定位相关数据。三者可以组合，但不要求每个缓存值都包装成完整 Snapshot；不能相互替代。不因接口名含 View 或 Snapshot 就推定低成本或已缓存。
 
 1. **查询范围与工作量匹配。** 单实体、单格、少量格子或局部范围，应优先使用相应的定向读取／查询；不能为调用便利方法而默认先物化完整场景。接口接受少量格子还不够，内部也须避免读取全场景、遍历所有实体或构建完整快照。若当前缺少这种路径，应明确为待实现能力，不能把全场景扫描包装成已完成的局部优化。SQL 索引、占用投影等实现由所属模块决定，本节不承诺尚未实现的数据结构。已经取得且范围、字段、时点及授权满足本次要求的快照可以复用，不必反向强制查库。
 2. **快照必须有明确消费者。** 一次操作在同一状态版本上做大量相关查询，或复用昂贵投影、环境合成和批量计算时，可以准备所需范围的快照。应说明消费方、必要字段、空间范围、读取时点和复用生命周期，同时衡量首次构建成本、查询次数、状态变化频率、缓存命中率及内存成本。“未来可能使用”不足以扩大范围；暂时没有生产调用也不足以未经契约核对删除已有场景快照接口。
@@ -454,11 +468,15 @@ Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在�
 
 #### 按需派生与有效性
 
+可复用对象包括解析后的只读配置、查询索引、中间结果、派生数值及只读 Snapshot。按计算成本、访问频率、变化频率及内存成本选择策略；不强制长期缓存每个简单计算结果。局部请求不得为了建立缓存／Snapshot 而额外计算整个场景或整个世界。
+
+**更新范围与增量前提：** 有可靠依赖追踪时，只更新或失效相关结果；允许正确且明确的较粗粒度失效，首次实现不要求精确局部更新。只有缓存对应修改前的有效状态、且掌握完整相关变化时，才可按差量更新。旧值不可靠、变化不完整或规则难以增量处理时，应使相关结果失效并按需重算；不得对已经过期的总数直接加减。容器应用见 [World §2.1b](./WORLD_SUBSYSTEM_DESIGN.md#21b-容器重量派生与跨操作复用)。
+
 针对已确认重复开销复用已产生结果；共享中间结果和最终结果可分别保存。屋顶覆盖 16 格可以共享防护投影，但不意味着这 16 格的风、温度、雾等完整环境相同。只缓存实际算出的结果；一次计算确实得到多格完整结果时可一起保存，不为填满 Snapshot 主动重算整张地图。
 
 版本描述计算所依赖的状态，不描述缓存创建／清空次数。相关事实与依赖版本须在同一事务提交；失败、拒绝、回滚或 COMMIT 故障不得留下错误版本或可供后续命中的候选缓存。合法失败如确有已提交成本／事实变化，仍按实际变化维护依赖版本。
 
-查询在一致读取状态中取得当前依赖版本，与缓存记录比较：全部匹配且已有所需结果才复用；不匹配或缺结果即按当前状态计算。版本 7 跳到 9 直接算 9，不补算 8。通知清空与 TTL 可辅助资源管理，不能独自证明有效；目标是可信版本校验，命中时不再扫描全部原始输入来比较。
+查询在一致读取状态中取得当前依赖版本，与缓存记录比较：全部匹配且已有所需结果才复用；不匹配或缺结果即按当前状态计算。版本 7 跳到 9 直接算 9，不补算 8。通知清空与 TTL 可辅助资源管理，不能独自证明有效；目标是可信版本校验，命中时不再扫描全部原始输入来比较，也不能为了确认有效性又完成原来的计算。
 
 外部提供方必须声明完整依赖身份、可变输入、版本推进／读取一致性及生命周期，包括影响结果的时间与适用范围。没有可信版本时，临时路径只能在一次一致读取中计算并复用，跨查询绕过缓存；提供方若无法保证该读取一致性，返回明确能力缺口。兼容期如保留全量输入扫描／比较，必须标为降级及其成本，不能称版本方案完成；不能仅缓存旧摘要而放任底层内容变化。
 
@@ -466,9 +484,11 @@ Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在�
 
 #### 共享范围与安全边界
 
-身份和生命周期按实际依赖隔离 Package／Ruleset、数据库／Store、Session、Scene、历史事件及查询参数；无需无差别把所有维度塞入每个键，但不得遗漏会改变结果的维度。同一查询内准备一次共同输入供多目标判断；跨查询复用须明确依赖身份及有效性保证，同一事务不同修改阶段不能共用已经过期的输入。
+身份和生命周期按实际依赖隔离 Package／Ruleset、数据库／Store、Session、对象／Scene、历史事件及查询参数，并覆盖实际依赖版本、时间条件和必要观察者上下文；无需无差别把所有维度塞入每个键，但不得遗漏会改变结果的维度。同一查询内准备一次共同输入供多目标判断；跨查询复用须明确依赖身份及有效性保证，同一事务不同修改阶段不能共用已经过期的输入。
 
-缓存命中仍执行当前授权、披露过滤及命令实际执行资格检查。内部真实投影与公开输出保持原边界，不能将一个观察者的过滤结果未经校验交给另一观察者。历史事件计算绑定该事件当时的阶段证据／固定过滤依据，不能用当前 Scene 缓存替换；事件身份及其证据版本必须进入相应复用范围。
+缓存命中仍执行实际操作需要的当前授权、合法性、并发版本、事务及披露过滤检查。内部真实投影与公开输出保持原边界，不能将一个观察者的过滤结果未经校验交给另一观察者。历史事件计算绑定该事件当时的阶段证据／固定过滤依据，不能用当前 Scene 缓存替换；事件身份及其证据版本必须进入相应复用范围。
+
+清理／淘汰内存缓存本身不得制造业务状态变化。确需持久化派生数据时，须另行明确与事实写入的一致性、依赖维护和重建机制；本原则不授权新增持久化字段。候选缓存不得提前作为已提交结果发布，失败、回滚、重试及旧读取事务不得污染当前缓存；已发布不可变 Snapshot 继续保留原状态，后续变化通过新版本结果体现。
 
 ### 2.4 Package 创建参照与完整实例化 `[DECIDED; PARTIALLY IMPLEMENTED]`
 
