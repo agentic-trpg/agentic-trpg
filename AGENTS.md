@@ -11,3 +11,10 @@
 - Documentation edits do not authorize code, schema, dependencies or CI changes in this or sibling repositories. Read sibling repositories only to establish evidence unless writes are explicitly requested.
 - Check changed Markdown headings, relative links/anchors, fences, tables and `git diff --check`; use existing applicable docs tooling. Do not run unrelated integration suites for docs-only work or claim static review as runtime validation.
 - Stage only authorized task files, inspect the staged diff, and commit/push within the authorized scope. Never automatically merge main. Report each repository's starting baseline, branch, final SHA, checks actually executed, remote result and remaining differences; distinguish local evidence from remote CI.
+
+## Session memory runtime target (2026-10-21)
+
+- Follow MC §0.3, §2.3–§2.4 and §6: loaded valid active facts, queries/checks, RE inputs, actor views, Snapshot construction and derived inputs use one consistent Session RAM scope. Do not reread/reassemble the same SQL facts to validate every memory read. Candidates and previously supplied fixed inputs remain isolated.
+- Every mutation incrementally persists facts/versions/RNG/required evidence/Receipt/Outbox/reliable work in a short SQLite transaction, then publishes RAM before normal success/current projections. A live process with committed SQL but failed RAM publication must pause that Session and reconcile/rebuild, never continue on stale memory or report an uncommitted failure. SQLite and RAM are not one ACID transaction.
+- Keep domain ownership, Stateless RE, Package/Ruleset bindings, OCC/idempotency and single-player MVP. Complete memory runtime and cross-command weight/mechanism reuse remain NOT IMPLEMENTED until proven. Concrete structures/API/version granularity remain OPEN.
+- Future implementation evidence must inspect SQL, current RAM, old references/fixed inputs, indexes, caches and recovery together; cover every write entry including NPC Meta/Task, time and maintenance. Maintenance/import/migration requires a stop/reload boundary. Use the existing C-25/C-27/A2/DS tracks, not a duplicate backlog.

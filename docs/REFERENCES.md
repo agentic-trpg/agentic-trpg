@@ -60,3 +60,14 @@
 | Epic Games — [Saving and Loading Your Game](https://dev.epicgames.com/documentation/unreal-engine/saving-and-loading-your-game-in-unreal-engine) | 2026-10-21；页面显示 UE 5.8，已读取 SaveGame／保存加载及异步保存相关说明 | 运行状态与存档设计参考；Session／领域保存和恢复。不采用 Unreal API／存储布局，不改变 MVP 的战斗恢复边界 |
 
 共同原则和领域应用：[MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)、[World Container](./WORLD_SUBSYSTEM_DESIGN.md#21b-容器重量派生与跨操作复用)、[State Machine Architecture](./STATE_MACHINE_ARCHITECTURE.md)。资料不能访问或发生版本变化时，保留未核实说明并按任务重新核对，不静默升级项目决定。
+
+## 2026-10-21 Session RAM 设计的工程补核
+
+本次只为持久提交／版本一致读取／备份边界查阅 SQLite 官方工程资料，不改 D&D 规则或世界观采用。架构决定来自用户授权及 MC，不从资料推定本项目已实现。
+
+| 官方来源 | 本次查阅范围与用途 | 核实边界 |
+|---|---|---|
+| SQLite — [Isolation In SQLite](https://www.sqlite.org/isolation.html) | 2026-10-21 重新读取 Isolation Between Database Connections／Isolation And Concurrency；不同连接提交可见性、WAL 读取快照与写入串行 | 数据库隔离不自动保证 Python RAM 发布一致；统一版本与故障暂停是项目协议 |
+| SQLite — [Online Backup API](https://www.sqlite.org/backup.html) | 2026-10-21 读取 §1 Using the SQLite Online Backup API／§1.1 Other Backup Techniques；一致备份与活跃写入的边界 | 没有在本项目运行备份／恢复实验，也未据 C API 示例新增 Python 备份接口 |
+
+普通运行时仍使用本地固定绑定，不引入在线规则查询；新 RAM 目标、首次／冷加载与命令持久提交分工见 MC §2.3／§6。

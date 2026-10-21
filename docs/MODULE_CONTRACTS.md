@@ -1,5 +1,7 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
+**2026-10-21 Session 内存运行架构决定：** Architecture Decision Status **[DECIDED]**；完整内存运行层与持久提交后发布协议 Implementation Status **[NOT IMPLEMENTED]**；Acceptance Status **未执行运行验收**。本轮只修改三仓库文档。§0.3、§2.3–§2.4、§4、§6 已协调现行正文，替代“普通业务每次直接读 SQL 装配事实”的目标解释；历史 v0.4 Review、§1.1–§1.7 和原验收数字保留原日期。当前源码及主要差距见 [§1.8](#18-2026-10-21-session-内存运行层基线核对)，迁移沿用 §13 的 C-25／C-27、A2 和演进计划 DS 轨道。
+
 > **版本：** v0.18 / Draft for Review
 >
 > **日期：** 2026-10-21（文档补充，不冻结新接口版本）
@@ -101,13 +103,23 @@ RE 保留 D&D 机械求值职责、无权威跨请求状态目标、显式 RNG �
 | Perception / Observation | 非战斗阶段证据、战斗固定过滤依据、授权观察与窗口保留；Cognition 管 Gate／认知处理状态 | 可信确定性路径、受限 JEV 判断；正式机械检定由 RE | 证据随来源操作共同提交；后续投影/处理按既有可靠事务推进 | NPC Cognition、Host、授权查询；不能读出他人秘密 |
 | 共享提交设施 | 事务、版本/原值、请求关联、幂等回执、权威 RNG 流/版本及可靠通知记录 | 不复制 RE 的法术/能力判定 | 提供统一事务上下文，检查共同提交条件，协调全部参与写入与 COMMIT/ROLLBACK | 各领域、恢复/审计及可靠投递读取相应结果 |
 
-这些是逻辑职责；**Facts / Records 是领域数据读写组件，实际数据持久化在 SQLite**，不是另一个内存数据库。现有同名组件的受限实现见 §1.3；新增组件/字段与完整职责迁移仍 `[PROPOSED / OPEN]`，不能按名称判定完成。共享身份沿用 `session_id`、`scene_id`、`actor_id`、`object_id` / `instance_id`，不新建平行目录。CombatHandler 不另存可独立修改的当前 HP、位置或物品归属；参战关系、Snapshot、冻结的终结记录和缓存不是另一份当前权威。
+这些是逻辑职责；**Facts / Records 是统一事实访问与受控修改边界：活跃事实由 Session 管理 RAM 运行表示，SQLite 保存同一事实的持久提交表示**。业务调用方不自行选择读 RAM 还是 SQL；二者不独立接受业务写入。现有同名组件的受限实现见 §1.3；新增组件/字段与完整职责迁移仍 `[PROPOSED / OPEN]`，不能按名称判定完成。共享身份沿用 `session_id`、`scene_id`、`actor_id`、`object_id` / `instance_id`，不新建平行目录。CombatHandler 不另存可独立修改的当前 HP、位置或物品归属；参战关系、Snapshot、冻结的终结记录和缓存不是另一份当前权威。
 
 **库存边界：** 当前便携物品以 `objects.object_id` 复用 `instance_id`，`carrier_id` 或 `scene_id + cell` 表达实际位置。`WorldFacts.transfer_item` 改位置，`CharacterFacts.project_item_transfer` 同事务维护机械 `InventoryState.entries` 与 `characters.inventory_json` 的 carried-slug 投影；`validate_portable_inventory` 校验完整便携子集后才按角色筛选。持久化投影仍不得独立改写物品归属；既有非便携机械条目、数量/充能与装备绑定不能因投影而丢失。容器最多两层及相关容量／祖先访问已在 main 实现（§1.3）；统一装备实例绑定、部分数量转移和消耗生命周期联动仍 OPEN，不能把全部库存说成已完全统一。
 
 默认沿现有**进程内、共享持久化**路线演进。经审阅测试的内部 Handler 可通过受控领域接口、进程内类型调用和共享事务上下文共同完成操作，不必把每个字段变化包装成外部 TypedCommand、JSON 或 RPC。共享数据库不赋予任意模块写所有表的权限：写入经数据负责人接口，遵守共同边界。跨领域操作不拆成各领域先提交再补偿；不新增微服务、多数据库、分布式锁、两阶段提交或完整事件溯源平台。
 
 内部信任仅适用于已审阅测试、职责与目标范围受控的实现；Host/LLM 输出、Coding Agent 生成物和未验证脚本不能继承该权限。固定执行协议优先：DM/NPC 提结构化意图或机制组合，只有新底层能力才考虑 §3.6 受控代码扩展。未知字段不产生语义，不能任意写数据库/属性。手动交互与可信自动世界效果使用不同来源校验，但均遵守目标范围、领域不变量与共同提交条件。
+
+#### Session 当前事实的运行表示与修改协调（2026-10-21）
+
+SM 及其所属领域仍是唯一可信状态管理边界。WorldFacts、CharacterFacts、CombatRecords、Effects、Activity、NPC Cognition 等各负其责；Session 统一管理活跃事实的加载、释放、版本一致读取与修改协调，内存可按领域组织，不要求包含全部字段的巨型 SessionState。
+
+RAM 保存**已提交当前事实的运行表示**；SQLite 保存**持久提交事实**，作为崩溃恢复和提交结果对账依据。这是同一套事实的两种表示，不是可分别修改的 HP、位置、物品归属或世界版本。普通服务不得绕过领域接口修改共享对象，也不得绕过统一提交边界直接改库。候选修改与已发布状态隔离，持久 COMMIT 后受控发布，协议见 §6。
+
+每个 Session／世界有唯一权威修改协调者。玩家、NPC、系统时间、机关、Activity、Effects、Meta／Task、感知可靠工作和后台维护的真实写入口都参与对应边界；协调职责不将领域业务集中进提交器。网络请求、只读工作和 NPC／LLM 推理可并行，最终修改有明确顺序；写事务及世界提交临界区不等待玩家、LLM、外部 I/O 或长时间规则求值。返回的异步结果仍重验权限、版本、任务资格及前提，保留 OCC、幂等和防旧结果机制。
+
+当前路线继续为进程内协调与 SQLite，不引入微服务、分布式锁或多服务器共同写同一世界。未来同世界 **5–6 名玩家**是后续并发和合成负载目标，不扩大当前一名玩家／一个 PC 的 MVP。提交顺序仅为工程顺序，不代替先攻或同步争抢的游戏规则。具体协调类、版本粒度、锁策略与 ABI **[OPEN]**；完整统一运行层 **[NOT IMPLEMENTED]**。
 
 ### 0.3a World 与 Scene 的目标结构 `[DECIDED]`
 
@@ -379,6 +391,20 @@ RE 远端重试已成功：同名分支为上述 `74d9e08`，main 为 `e5254a2ac
 
 规则版本、已核实章节及未核实书籍／冒险正文见 [References](./REFERENCES.md)。本批不改规则集绑定、不新增世界观、不实现缓存、不修改代码／Schema／依赖／CI；检查范围与三仓库工作区基线见 [本次文档记录](./reviews/runtime-reuse-and-references-2026-10-21.md)。
 
+### 1.8 2026-10-21 Session 内存运行层基线核对
+
+本次 fetch 后固定源码：架构 `8cdfc18390d105ff1d4c19ba70712276afb3eee8`；SM `d6be5a99b12fefcf8cfc57fdebb81493c1ac4d34`；RE `34ce8e764c1a8b1d5be2c4465a013e322fdbbc5a`。SM origin/main 已包含用户指定提交，旧 §1.7“未合并”仅为当时事实。详细入口、测试源码与历史验收边界见 [本次静态核对报告](./reviews/SESSION_MEMORY_RUNTIME_SOURCE_REVIEW.md)。
+
+| 主题 | 当前实现静态判断 | 新目标的差距 |
+|---|---|---|
+| 事实读取／Snapshot | SM Facts、service._snapshot、RulesAdapter 仍通过 SQLite 读取、JSON／DTO 装配 | 已加载事实的查询／检查／RE 输入／角色视图／Snapshot 统一读 RAM，整体 [NOT IMPLEMENTED] |
+| 提交与发布 | Store／UnitOfWork 共用事务；SessionRuntime.publish 在事务内写版本／事件，finish 写回执；Store COMMIT 后发布的是派生缓存 | 该 publish 名称不代表完整当前事实的提交后内存发布；故障暂停／对账／重建协议 [NOT IMPLEMENTED] |
+| 复用与索引 | GridMaps、Environment 缓存、操作阶段 memo、ContainmentState、Schema40 派生占格索引和验收记录已有实现 | 保留这些资产；跨命令容器重量／机关索引复用、免重复 SQL 装配的统一读取仍待实施 |
+| 恢复 | save_session 已说明修改即时持久化；resume 复用非战斗保存检查，活跃战斗有 process_id／combat_unrestorable 限制 | 重建完整活跃 RAM 与持久提交后发布故障验收未实现；事实恢复不等于任意玩法阶段续玩 |
+| RE 边界 | evaluate 深拷贝并验证请求，FrozenRuleset 复用；当前公开版本不变 | 接入 RAM 是 SM 消费者内部目标，不改变 Stateless RE、DTO 或 ABI；完整 Stateful 退出仍有既有缺口 |
+
+本次读取源码与测试源码、历史 Progress／验收报告，**没有运行 SM／RE 业务测试、故障注入、规模或多人验收**；历史 2,015 个通过用例不构成本次 RAM 目标证据。Architecture Decision、Implementation 与 Acceptance 分开登记，具体 API／字段／细粒度版本保持 OPEN。
+
 ## 2. 统一标识、版本和契约通则（P0）
 
 ### 2.1 规范标识 `[PROPOSED]`
@@ -416,6 +442,26 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 
 本节是跨模块共同规范；Grid／Environment 的依赖细化见 [World §2.0b–§2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided)，RE 数据身份见 §4.3。原则已确定；具体接入与未实现项以 §1 的日期化证据为准，Grid／Environment 本次核对见 §1.5。不要求先建设通用缓存平台或让所有查询创建 Snapshot。本节的快照原则不改变 §4.2 机械 Snapshot 的完整性要求，也不是 EVA 冻结输入或历史 Event Evidence 的替代。
 
+#### 统一运行时读取与 Snapshot 构建（2026-10-21）
+
+**Architecture Decision Status [DECIDED]；完整接入 Implementation Status [NOT IMPLEMENTED]；运行验收未执行。**
+
+1. 已加载且版本有效的活跃事实，普通查询、操作检查、RE 请求组装、角色视图和 Snapshot 构建**统一从 Session 内存运行状态读取**，不另行查询数据库重新装配同一批事实。光照、环境、容器重量等派生计算也从该状态获取必要输入，已有有效结果直接复用。
+2. 一次读取／Snapshot 构建绑定同一个一致提交版本；并发修改不得混入其他版本数据。提供给 RE、NPC 或历史记录的固定输入不能被后续发布原地改变。实现可用不可变结构、分离副本或其他经证明的隔离方式，不要求所有读取制作完整 Session Snapshot，也不要求每次复制整个 Session。
+3. 命令期间检查未提交中间结果，统一读取**隔离候选状态**及其同阶段索引／派生输入。不能提前改已发布对象，不能读旧数据库事实而漏掉本次候选变化；候选阶段／savepoint 回退与提交版本须区分。
+4. 有效性由统一运行时的提交版本、完整依赖维护和生命周期保证。不得为了确认每次内存读取有效，又扫描或装配数据库中的同一批状态。提交时必要数据库约束、版本／原值及并发校验继续保留；缓存命中不豁免授权和披露。
+5. SQLite 继续承担持久提交、首次加载、冷数据加载、恢复、持久回执和可靠工作查询。冷数据只从持久实例事实补入，并与本次读取版本一致；若数据库已前进而无法取得该版本所需数据，应重新获取一致读取范围或明确重试，不能拼接时点。无需让全部世界、场景、日志或归档记忆常驻 RAM。
+6. 按 Session、活跃场景与真实依赖加载，声明加载／卸载、冷访问、容量预算、引用保留和 Session／Store 关闭释放边界。已提交基础事实可从 SQLite 重建；卸载不能丢失可靠工作或把旧引用改变为新状态。具体预算／淘汰策略 OPEN。
+
+| 数据类别 | 责任与表示 | 生命周期与修改要求 |
+|---|---|---|
+| 当前基础事实 | 领域拥有；RAM 供运行读取，SQLite 持久保存 | 仅统一提交后发布；HP／位置／关系／版本不双写为独立权威 |
+| 查询索引 | Cell→实体、容器父子、机关触发／组件关联 | 由事实维护，可重建；不得独立修改关系；候选与已提交版本隔离 |
+| 派生缓存 | 光照、环境合成、容器重量等 | 按完整依赖复用，变化后局部更新或失效；不必写回事实字段 |
+| 固定版本输入 | RE／异步 NPC／历史证据所需一致视图 | 必要机械闭包完整；后续提交不原地修改旧输入 |
+
+迁移按领域声明当前事实读取路径。同一操作不得无版本混合旧 SQL 输入与新 RAM 输入，新旧路径不得独立写同一事实。聚合 JSON 拆分、RE 按需依赖组装与 RAM 层相互配合，不能因加入内存表示就宣布存储粒度和请求依赖问题全部解决。
+
 #### 快照与查询的使用原则（2026-10-20）
 
 | 概念 | 用途与边界 |
@@ -428,7 +474,7 @@ Create Session 尚无 session_id，使用可信 `(principal_id, command_id)`，�
 
 1. **查询范围与工作量匹配。** 单实体、单格、少量格子或局部范围，应优先使用相应的定向读取／查询；不能为调用便利方法而默认先物化完整场景。接口接受少量格子还不够，内部也须避免读取全场景、遍历所有实体或构建完整快照。若当前缺少这种路径，应明确为待实现能力，不能把全场景扫描包装成已完成的局部优化。SQL 索引、占用投影等实现由所属模块决定，本节不承诺尚未实现的数据结构。已经取得且范围、字段、时点及授权满足本次要求的快照可以复用，不必反向强制查库。
 2. **快照必须有明确消费者。** 一次操作在同一状态版本上做大量相关查询，或复用昂贵投影、环境合成和批量计算时，可以准备所需范围的快照。应说明消费方、必要字段、空间范围、读取时点和复用生命周期，同时衡量首次构建成本、查询次数、状态变化频率、缓存命中率及内存成本。“未来可能使用”不足以扩大范围；暂时没有生产调用也不足以未经契约核对删除已有场景快照接口。
-3. **一致性不等于全量加载。** 多次定向读取可在现有只读事务的同一一致状态中完成，或按现有版本机制取得并核验一致结果，无需因此加载整个场景。同一次决策不得拼接不同读取时点／修改阶段的数据；定向查询同样遵守权限与可见性。计划执行仍要重验版本和相关前置条件，读取视图不等于执行许可。
+3. **一致性不等于全量加载。** 目标中多次定向读取使用同一版本的 Session 内存读取范围；首次／冷加载及迁移期间尚未接入的领域可使用明确的一致数据库读取范围，无需因此加载整个场景。同一次决策不得拼接不同读取时点／修改阶段的数据；定向查询同样遵守权限与可见性。计划执行仍要重验版本和相关前置条件，读取视图不等于执行许可。
 4. **按事实和依赖分责。** 地图拓扑等相对稳定输入按实际来源及相关配置版本复用；实体位置、朝向、开关等动态事实仍由现有权威组件管理。占用关联、阻挡、光照和环境合成属于可重建派生数据，必须声明其来源，不能独立改写同一事实，也不能把派生环境复制成 Cell 的权威字段。持久化派生记录须与权威变化事务一致；内存派生数据须处理回滚、隔离、失效和生命周期。
 5. **按实际依赖决定失效与更新。** 完整依赖、相关版本和必要的时间边界共同决定有效性。新版本查询不得返回旧结果作为当前状态；旧快照可以继续表示原版本，后续移动、提交、回滚或缓存更新不得原地改变它。静态地图与动态占用应能分别复用／更新，不默认每次移动重建全部场景，也不假定已有局部或增量能力。局部更新、延迟重建、增量维护仅在具备明确依赖追踪和一致性保证时采用；不要求所有模块同用一种缓存策略或所有快照都支持区域增量。允许有明确依赖依据的全场景失效；保守失效及其成本须如实记录，不能称为局部更新已完成。
 
@@ -452,7 +498,7 @@ Local Admission Check 检查实际操作、候选 StateDelta 的全部受影响�
 
 #### 权威事实与只读原始输入
 
-SQLite 与现有领域组件继续拥有权威事实；运行时读取副本与派生缓存均可丢弃、重建，不接受独立业务写入。业务修改走既有受控命令／领域接口及共同事务，保留授权、幂等、OCC、RNG、事件证据、Receipt／Outbox。派生环境不得写回 Cell 形成独立维护的状态；Cell、Grid、WorldObject、Environment 等原始输入仍由所属组件管理。
+事实权威归所属领域；RAM 是统一管理的已提交运行表示，SQLite 是同一事实的持久提交表示与恢复依据。二者均不得独立接受业务写入；索引和派生缓存可丢弃重建，运行事实卸载须遵守上述生命周期。业务修改走既有受控命令／领域接口及共同事务，保留授权、幂等、OCC、RNG、事件证据、Receipt／Outbox。派生环境不得写回 Cell 形成独立维护的状态；Cell、Grid、WorldObject、Environment 等原始输入仍由所属组件管理。
 
 JSON 用于持久化、传输和规范化编码；频繁读取的数据加载后保留适合访问的只读结构，避免每次读取属性都重新解析整段 JSON。共享结构不得由消费者原地修改；计算修改候选时使用独立副本，包括其嵌套可变内容。
 
@@ -460,7 +506,7 @@ JSON 用于持久化、传输和规范化编码；频繁读取的数据加载后
 |---|---|
 | 固定 Package／Ruleset | 按已验证、有效内容固定的完整身份复用，不能只凭包名或发布版本 |
 | 场景地图配置／基础空间结构 | 按场景、所属 Package／Store 及相关配置版本复用；动态贡献另验依赖 |
-| 动态游戏事实 | 使用可靠依赖版本，或限制在同一事务的同一一致状态内读取；不得无条件长期复用 |
+| 动态游戏事实 | 从统一 RAM 当前版本／隔离候选读取，按完整依赖维护有效性；首次／冷加载单独保证同版本；不得无条件长期复用 |
 
 Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在实例的有效字段来源按 §2.4，不能以缓存模板代替完整实例记录。
 
@@ -476,7 +522,7 @@ Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在�
 
 版本描述计算所依赖的状态，不描述缓存创建／清空次数。相关事实与依赖版本须在同一事务提交；失败、拒绝、回滚或 COMMIT 故障不得留下错误版本或可供后续命中的候选缓存。合法失败如确有已提交成本／事实变化，仍按实际变化维护依赖版本。
 
-查询在一致读取状态中取得当前依赖版本，与缓存记录比较：全部匹配且已有所需结果才复用；不匹配或缺结果即按当前状态计算。版本 7 跳到 9 直接算 9，不补算 8。通知清空与 TTL 可辅助资源管理，不能独自证明有效；目标是可信版本校验，命中时不再扫描全部原始输入来比较，也不能为了确认有效性又完成原来的计算。
+查询从统一内存读取范围取得当前提交／依赖版本，与缓存记录比较；不得重读数据库同批事实来证明有效性。首次／冷加载依上述版本协议处理。只有完整依赖匹配且已有所需结果才复用；不匹配或缺结果即按当前状态计算。版本 7 跳到 9 直接算 9，不补算 8。通知清空与 TTL 可辅助资源管理，不能独自证明有效；目标是可信版本校验，命中时不再扫描全部原始输入来比较，也不能为了确认有效性又完成原来的计算。
 
 外部提供方必须声明完整依赖身份、可变输入、版本推进／读取一致性及生命周期，包括影响结果的时间与适用范围。没有可信版本时，临时路径只能在一次一致读取中计算并复用，跨查询绕过缓存；提供方若无法保证该读取一致性，返回明确能力缺口。兼容期如保留全量输入扫描／比较，必须标为降级及其成本，不能称版本方案完成；不能仅缓存旧摘要而放任底层内容变化。
 
@@ -496,11 +542,13 @@ Package／Ruleset 固定数据的复用仅适用于其定义职责；已存在�
 
 操作已经存在的实例，必须通过实例及所属组件的接口读取有效数据，不得反向查询 Package 初始化定义来补齐缺失的实例字段。完整性覆盖实例声明能力所需的配置、状态及必要关联，具体 World 能力示例见 [World §2.1a](./WORLD_SUBSYSTEM_DESIGN.md#21a-完整实例能力与统一读取-decided-partially-implemented)。实例可修改属性在实例层表达并保存；模板默认值不得覆盖创建后、修改后或恢复后的有效属性。已有实例缺少必要数据时应明确报告不完整／不支持，或走显式迁移，不能静默套模板掩盖缺口。
 
-这是逻辑完整性，不要求把所有字段放进 objects 表，不要求建立大型内存对象或第二套权威状态。各能力／领域记录继续拥有自己的数据，通过统一实例读取入口按实例 ID 组合完整有效能力数据；该入口是受控读取职责，不是另一个独立可写副本。Service 负责行为和协调，不各自回查 Package 填字段。配置与状态的版本、必要关联及读取一致性由所属领域与共享事务保障，缓存仍遵循 §2.3；统一读取入口的具体类名、持久字段和 API 均未在本轮冻结。
+这是逻辑完整性，不要求把所有字段放进 objects 表，允许按领域组织 RAM 运行表示，不要求大型全字段对象或第二套可独立写状态。各能力／领域记录继续拥有自己的数据，通过统一实例读取入口按实例 ID 组合完整有效能力数据；该入口是受控读取职责，不是另一个独立可写副本。Service 负责行为和协调，不各自回查 Package 填字段。配置与状态的版本、必要关联及读取一致性由所属领域与共享事务保障，缓存仍遵循 §2.3；统一读取入口的具体类名、持久字段和 API 均未在本轮冻结。
 
 本要求覆盖 Session 创建、首次进入场景的延迟初始化、运行中新生成的物体／物品／角色、存档恢复／进程重启及显式实例升级／迁移。尚未创建的实例首次创建时可用 Package；已经存在的实例恢复已保存的有效配置、状态和关联，不能重新应用初始化模板。版本化实例记录须足以支持一致恢复和运行时读取，迁移通过既有受控写入／共同提交，不重置既有事实或绕过幂等、OCC、RNG、事件证据和 Outbox。
 
 Package 仍可用于初始创建、来源追踪、Session 绑定检查、审计及显式迁移；不禁止全部 Package 访问，也不要求将 RE 程序或整套通用规则素材复制到每个实例。通用规则和明确绑定的行为实现可通过固定版本引用调用，但引用不能代替本应由实例持有的有效属性与状态（§4.3）。静态导航模板等 Package 数据的只读复用继续有效；Package 查找索引只能加速静态定义查找，不能修复实例能力字段不完整。运行时物体操作须先确定实例数据所有权和统一读取入口，再考虑索引／缓存优化。
+
+**运行加载补充（2026-10-21）：** 首次创建仍从固定 Package 完整实例化并持久提交；已有实例从持久事实加载／恢复，加载成功后按 §2.3 统一由 RAM 服务查询、检查和 Snapshot 构建，不每次回查数据库装配。缺字段仍拒绝／显式迁移，不从 Package 默认值补齐。冷数据补入遵守一致版本与受控发布，实例化、加载内存与玩家实际入场是不同事件。
 
 ## 3. Player / DM Planner / NPC Agent → State Machine：TypedCommand（P0）
 
@@ -612,6 +660,8 @@ Rule Engine 负责动作机械合法性、Attack、Damage、Check、Save、Actio
 **当前状态与审计分离 `[DECIDED; PARTIALLY IMPLEMENTED]`：** 相关领域提供完整的必要当前机械事实；每轮/每回合使用标记、Reaction 窗口、资源支付状态、效果来源/时钟和关键时间点是当前机械状态，由可信规则路径计算、随 Delta 共同更新。不另建一份“精简历史日志”重复这些事实。RE `/17` 的普通求值／Availability 已不读取历史 event_log，SM 也已采用 history-free Snapshot（§1.6）；新增规则仍须逐项证明当前依赖齐全。本次必要结算结果和有序 ProposedEvents 仍是候选结果，提交后可作为审计/Episode 证据按需保留，不自动回灌每次请求。独立重放可以使用保留的历史、检查点、版本、命令/选择与 RNG 证据。历史 RE-HIST-01 的完成部分按 §1.6／RE history-free 文档理解，尚存消费者仍须先审计真实读者、补齐必要状态再移除耦合；不授权将 event_log 置空、删历史表或删除全部 proposed_events。
 
 **最终受支持规则的执行路径不得依赖 Legacy `_LiveCombat`、`CombatHandle`、`_REGISTRY` 或 Stateful Combat Orchestrator**，包括在每次求值中重建旧对象、调用旧执行器后导出 Delta 的永久适配方案。允许单次求值的局部变量、临时计算对象、派生索引或必要上下文；这些对象只服务于计算，不能使旧 `_LiveCombat` 完整内部结构成为长期前提。可以复用 Nat20 的 D&D 算法、Resolver 和声明式规则数据，重构其状态访问与执行依赖，无须重写已经正确的规则公式。
+
+**运行输入边界补充（2026-10-21）[DECIDED]：** 已加载且有效的必要机械事实、配置与版本从 Session RAM 一致读取范围组装；检查候选中间阶段则使用隔离候选范围。不得为构建 RE Snapshot 重读同批 SQL／聚合 JSON。只加载真实依赖，仍覆盖完整必要机械闭包；固定输入不得泄漏可变世界引用，即使进程内调用或共享结构也须证明旧输入隔离。RE 不读取 SM 数据库、不修改共享运行对象，不创建／恢复跨请求世界或战斗权威。RE 返回未提交 typed result、Delta、事件与 RNG transition，SM 验证并按 §6 持久提交／发布。FrozenRuleset、既有绑定、公开 DTO／Schema 版本保持；此消费者目标不恢复 Legacy Stateful Engine。完整 RAM 接入 [NOT IMPLEMENTED]。
 
 ### 4.1 请求结构 `[DECIDED; PARTIALLY IMPLEMENTED]`
 
@@ -803,32 +853,30 @@ Engine 返回有序、类型化的候选机械事件，不分配权威 event_id 
 
 ### 6.1 执行时序 `[DECIDED; PARTIALLY IMPLEMENTED]`
 
-**适用范围：** 本节描述目标契约；同名当前接口并非全部缺失，见 §1.6 的 Current Implemented Interface／Gap。具体目标字段或未接线分支仍按本节标记，不能以当前受限实现代替目标。
+既有短事务、绑定／OCC／回执／RNG 为部分基础；新增统一候选与提交后 RAM 发布整体 **[NOT IMPLEMENTED]**，当前入口见 §1.8。以下为目标逻辑流程，不冻结 API。
 
 ```text
-Typed Command -> authenticate / authorize / (session_id, command_id) lookup
--> ordinary world operation: trusted deterministic domain handling
-   OR D&D adjudication: Snapshot + pinned RulesetBinding + RNGContext
-      -> Rule Engine.evaluate(RuleEvaluationRequest)    [outside DB write transaction]
-      -> accepted result
--> Handler coordinates domain interfaces with one shared short transaction
-   -> re-check fingerprint / existing CommandReceipt / authoritative versions
-   -> re-check read set, permissions, ruleset pin, typed Delta invariants
-   -> retain combat mechanical audit / recovery records / Episode sources
-   -> non-combat only: determine observable events / Signals from trusted stages
-   -> non-combat only: per-Signal Scope Discovery -> event-local Evidence Capture / binding [§7; stage protocol OPEN]
-   -> each owning domain validates/applies its typed changes in this transaction
-   -> persist authoritative RNG successor with character/effect/combat changes
-   -> allocate event IDs / sequence and persist events + Signals + Evidence
-   -> persist CommandReceipt + idempotency + Outbox
--> COMMIT -> return CommandReceipt / publish only permitted committed projections
+Command / trusted system work -> authorization + original idempotency-key lookup
+-> one consistent Session RAM read scope (load cold persisted instances if needed)
+-> fixed required input + independent RNGContext -> RE outside write/commit lock
+-> isolated candidate: apply all domain changes, inspect intermediate stages/evidence
+-> unique Session/world mutation coordinator + one short SQLite transaction
+   -> recheck authorization, task eligibility, idempotency, binding, versions/original values
+   -> domain admission for complete affected closure, including linked candidate changes
+   -> incrementally persist domain facts + versions + RNG + required events/stage evidence
+   -> persist Receipt + Outbox + reliable work/progress
+-> SQLite COMMIT succeeds (unknown outcome -> reconcile original durable receipt)
+-> publish the corresponding final candidate as current RAM; maintain indexes/dependencies
+   and update/invalidate affected derived caches; publication failure -> pause/rebuild
+-> current version ready -> admit later current-state operations, return success
+   and construct only permitted projections from that version
 ```
 
-非 accepted 不进入上述机械提交；可持久记录结构化拒绝、冲突或前置选择元数据，但不写部分机械 Delta / RNG / 候选事件。Schema / 异常 / 传输错误分别处理，不伪造规则结果。
+持久写入和运行发布范围由真实变化决定，不每条命令保存、重载或扫描整个世界，不要求全 Session 拷贝。已开始的固定旧读取继续表示旧版本；新当前态操作不能在 SQL 已提交而 RAM 尚未就绪时读落后状态。对外成功必须等待对应内存版本就绪；Receipt 在数据库已提交而发布故障时仍是真实持久结果，不能改称未提交失败。Outbox 投递在提交后可靠重试；需要当前投影的消费者也须等待对应版本可读。
 
-战斗不逐机械 Event 建 Signals 或阶段感知证据；Turn／Round 关闭后独立可靠聚合，不扩成整轮长事务。上述非战斗事件步骤表示逻辑依赖，不要求等全部 Delta 应用完才采集证据；可信阶段取证及最终裁剪/绑定遵守 §7，不能用命令结束态冒充各事件阶段。具体阶段采集协议仍 [OPEN]，不由 SM 根据事件重算机械规则。
+保留 accepted 合法尝试失败（可能支付成本）、rejected、unsupported、conflict、pending_choice 与 Schema／传输／存储故障区别。非 accepted 不应用未获准的部分机械 Delta／RNG／候选事件；获准拒绝记录、任务元数据或持久选择进度确有变化时同样经过提交／发布边界。不能把所有非成功响应解释成无状态变化；Continuation 前缀语义仍按 §8 OPEN 边界处理。
 
-**OCC / 幂等**：共享提交设施核验权威版本、Fingerprint、权限与请求关联，各领域保留数据不变量检查。过期 Snapshot 返回 version_conflict，或在授权/有界条件下重取必要完整事实 + RNG 重算，不能把旧 Delta 套在新状态上。持久唯一键 `(session_id, command_id)` 防双提交；相同已提交请求只查原回执。内部重算不增加公共操作标识。当前 `world_version` / `npc_state_version` 继续作为防旧机制；异步返回须重验实际相关版本、权限和前置条件，单线程/单玩家也不能取消防旧防重。细粒度版本、读写集合及锁策略按后续证据决定，不逐字段过度设计。SQLite 是当前实现基线；须验证回滚后已持有对象引用及派生缓存一致性。
+非战斗阶段证据来自实际候选阶段，不能由结束态补造；战斗不逐机械 Event 建感知证据，Turn／Round 关闭后独立可靠聚合，遵守 §7。异步求值返回后仍重验版本、权限、绑定、资格及前提；过期输入返回冲突或有界重新准备，不能套旧 Delta。单写入者不取消 OCC／幂等，提交顺序不代替先攻／争抢规则。world_version／npc_state_version 保留，细粒度依赖版本、仅元数据提交版本策略与锁实现 OPEN。
 
 ### 6.2 CommandReceipt `[DECIDED; PROPOSED; PARTIALLY IMPLEMENTED]`
 
@@ -849,7 +897,7 @@ rng_version_after: 13
 result_ref: result.cmd.example.001
 ```
 
-上述是 committed 分支字段关系。committed 必须与全部状态/RNG/正式事件/Outbox 同事务落盘，只能在 COMMIT 成功后对外报告。rejected / conflict 必须有结构化原因、不含已提交机械事件；pending_choice 仅关联获授权的 PendingOperation。各分支具体类型与字段可空性仍 [OPEN]，不能据此增加另一套回执协议。
+上述是 committed 分支字段关系。committed 必须与全部状态/RNG/正式事件/Outbox 同事务落盘，数据库 COMMIT 后才成为持久结果；正常成功返回及当前投影还须等待对应 RAM 版本发布就绪（§6.1）。rejected / conflict 必须有结构化原因、不含已提交机械事件；pending_choice 仅关联获授权的 PendingOperation。各分支具体类型与字段可空性仍 [OPEN]，不能据此增加另一套回执协议。
 
 RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accepted 经成功提交才对应 committed，规则 rejected / unsupported 可对应 rejected 并保留原因，needs_choice 对应 pending_choice；版本冲突对应 conflict。Schema / 异常 / 传输错误保持各自错误类别，不因此增加规则结果状态；尚未确认提交时先查询持久命令记录。
 
@@ -868,9 +916,21 @@ RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accept
 
 ### 6.4 原子性与故障 `[DECIDED]`
 
-非战斗采用现有 Event 协议时，`StateDelta + RNG + CommittedWorldEvent（含 Signals）+ Event Evidence / 稳定历史引用 + CommandReceipt + Outbox` 同属一个原子提交域，全部成功或全部失败；当前 SM 使用 SQLite 事务。替换提交实现须保留等价正确性，新的数据库配置与映射不在本轮冻结，不要求每条机械审计都生成 WorldEvent。LLM/Rule Engine 求值及对 UI/NPC 的发送均在写事务外；提交后投递失败须可靠、幂等补偿，不回滚已提交世界事实。Schema 错误、求值异常、传输故障、Commit failed/unknown 与 committed response failed 必须分别报告，不能一律要求重新掷骰。
+相关领域事实、版本、RNG、必要正式事件／非战斗阶段证据或战斗审计、Receipt、Outbox 与可靠工作在**同一 SQLite 短事务**内增量提交。SQLite 与 RAM **不是跨介质 ACID 事务**；正确性依靠持久提交、受控发布、版本校验、故障暂停及恢复协议，不能声称两者天然原子同步。RE／LLM／外部 I/O 不占写事务或世界提交临界区。
 
-模块边界不意味着分布式 ACID：Engine 没有要与可信运行层协调提交的第二份权威状态，也不建立两份权威世界的双写同步。任何相关实现演进必须验证 SQL 回滚后内存对象/缓存不会继续暴露或提交失败结果，不能只靠重启恢复；提交后回调也不自动等于可靠 Outbox。性能验证应分别测量 Snapshot 构建、规则求值、提交的 p50 / p95 延迟与内存；派生缓存可丢弃，正确性不依赖缓存跨请求存活。
+| 故障边界 | 必须行为 |
+|---|---|
+| 数据库提交前失败／回滚 | 不发布候选 RAM，不推进权威 RNG，不发送候选事件；旧读取及缓存不受污染 |
+| COMMIT 结果未知 | 按原 command_id／既有稳定工作键与持久回执对账；不能直接重掷或重复应用；不能确定则暂停 |
+| 数据库已提交、RAM 未发布即崩溃 | 重启从已提交事实、RNG、回执及可靠工作恢复，不依赖旧进程对象 |
+| 数据库已提交、RAM 发布异常且进程存活 | 暂停该 Session 的当前态推进，阻止落后读取和后续写入；按数据库对账并重建受影响状态／索引，校验后再开放。不得把持久成功伪装成未提交失败 |
+| RAM 已发布、响应丢失 | 原命令重试返回原回执；不再应用 Delta、支付或掷骰 |
+| Outbox 投递失败 | 可靠、幂等重试并保留进度；不回滚已提交世界事实 |
+| 迁移／导入／修复／维护 | 活跃状态不得被脚本绕过协调直接改库；先停用／排空该 Session，受控持久修改后重新加载校验，再开放。具体工具协议 OPEN |
+
+基础事实恢复与玩法继续分开验收。正常崩溃恢复先核对 Schema、Package／Ruleset、提交结果和可靠工作，再重建活跃 RAM 与必要索引；昂贵派生结果按需重算。定期／手动存档用于一致备份、命名检查点和受控回档，不是普通命令唯一的持久化入口；不能把复制正在写入的 SQLite 主文件等同完整存档。备份须覆盖一致 SQLite 状态，受控回档不能静默覆盖已提交副作用。活跃战斗、PendingChoice／Continuation 的精确续玩限制仍按 MVP／§8，不因事实可恢复而宣称任意阶段可执行。
+
+该完整故障协议 **[NOT IMPLEMENTED]**；现有事务／派生缓存机制不能代替发布失败验收。性能后续分别测量读取／Snapshot、规则求值、提交、发布、索引／缓存维护和内存，不凭本次文档声称收益。
 
 ### 6.5 规则、领域与提交校验分责 `[DECIDED]`
 
@@ -895,22 +955,26 @@ RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accept
 推荐内部形状如下；它是职责示意，不要求创建完整通用工作流框架：
 
 ```python
-prepared = handler.prepare(read_scope, command, authorization)
+prepared = handler.prepare(runtime.consistent_read_scope(), command, authorization)
 result = await rules.evaluate(prepared.request) if prepared.needs_rules else None
-with store.transaction(write=True) as uow:
-    coordinator.recheck(prepared, result, authorization)
-    applied = handler.apply(uow, prepared, result)
-    coordinator.finalize(uow, applied)
-return applied.receipt
+candidate = handler.isolated_candidate(prepared, result)
+with coordinator.commit_scope():  # unique Session/world mutation order; no external waits
+    with store.transaction(write=True) as uow:
+        coordinator.recheck(prepared, candidate, authorization)
+        applied = handler.persist_incremental(uow, candidate)
+        coordinator.finalize(uow, applied)
+    # only after successful COMMIT; failure pauses the Session and reconciles SQLite
+    runtime.publish_committed(candidate, applied)
+return applied.receipt  # current RAM version must be ready
 ```
 
-`prepare` 对完整受支持输入做检查并记下依赖；不产生权威变化。纯世界操作可在同一短事务内直接准备并应用。`apply` 可以调用多个所属组件；非战斗阶段取证发生在实际变化阶段，战斗只保留规则执行／恢复与 Episode 内容所需的已提交记录，不要求逐动作感知证据。`finalize` 按 §2.3／§6.5 的受影响闭包检查必要不变量、维护投影（不默认调用全 Session Audit）、按需分配正式事件身份、持久回执／RNG／可靠工作；战斗机械记录不自动产生感知信号。
+`prepare` 对完整受支持输入做检查并记下依赖；不产生权威变化。纯世界操作也使用已发布 RAM 与隔离候选；有界确定性准备可在短临界区完成，不以读取旧 SQL 忽略候选。上述方法为逻辑伪代码，名称与具体实现 OPEN。候选应用与 `persist_incremental` 可以调用多个所属组件；非战斗阶段取证发生在实际变化阶段，战斗只保留规则执行／恢复与 Episode 内容所需的已提交记录，不要求逐动作感知证据。`finalize` 按 §2.3／§6.5 的受影响闭包检查必要不变量、维护投影（不默认调用全 Session Audit）、按需分配正式事件身份、持久回执／RNG／可靠工作；战斗机械记录不自动产生感知信号。
 
 **ApplyContext 最小语义：** 当前有效 UnitOfWork、session、命令关联、可信操作来源、适用授权、绑定与预期版本、适用记录通道（非战斗阶段取证或战斗审计／Episode 来源）、受影响实体／关系集合。它由运行层创建，不来自模型 JSON；出了事务不可复用。
 
 领域返回覆盖全部连锁变化与候选中间状态的受影响实体／关系、变化与事件阶段关联、需要更新的投影等类型化结果。不能返回任意 SQL／脚本。共同校验由所属领域提供，不在提交协调器里重写规则公式。
 
-所有可写入口都应经过这一最终边界，包括普通 World、RE 结果、检定条件后果、机关、Package 联动、Activity 步骤、NPC 交接和系统时间推进。不同来源保留不同的操作资格：例如远程机关不是玩家伸手开门，但它也不能任意绕过锁具、目标范围和空间约束。
+所有可写入口都应经过这一最终边界，包括普通 World、RE 结果、检定条件后果、机关、Package 联动、Activity／Effects、NPC Meta／Task／模式／交接、系统时间、感知工作／清理及后台维护；各入口须盘点其事实、稳定幂等键和提交／发布责任。不同来源保留不同的操作资格：例如远程机关不是玩家伸手开门，但它也不能任意绕过锁具、目标范围和空间约束。
 
 #### C09 World 操作与空间查询
 
@@ -980,7 +1044,7 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 Outbox／工作记录与来源提交原子保存；投递发生在提交后。消费者以稳定业务键去重、保存进度并可在崩溃后恢复。不同类型的发送确认、投影完成、认知工作完成分别表达；不能因为某个全局 cursor 前进，就宣称所有 NPC 已处理。
 
-恢复先验证数据库版本与 Package／Ruleset 绑定，再读取当前事实、未完成工作和原回执；不能依赖活着的 Python 对象或 Host Context。备份必须覆盖 SQLite 一致性状态，不能只复制正在写入的主文件后承诺完整存档。
+恢复先验证数据库版本与 Package／Ruleset 绑定，对账持久事实、RNG、未完成可靠工作和原回执，再重建活跃内存表示与必要索引，校验后开放当前态读取／推进；昂贵派生值按需重算。不能依赖旧 Python 对象或 Host Context。备份必须覆盖 SQLite 一致性状态，不能只复制正在写入的主文件后承诺完整存档。
 
 活跃战斗精确恢复当前有明确限制；目标未来需保存选择窗口和必要机械流程依赖。该能力未通过独立进程恢复验收前，不宣称任意阶段可继续游玩。
 
@@ -1611,9 +1675,9 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 | C-23 | Turn／Round Episode／EpisodeObservation 的共同协议？ | 本场参战者 Turn、外部 Round、Episode 合批、固定过滤依据与机械审计分流 [DECIDED]；scope／origin 聚合算法、参与切换边界、来源覆盖去重、旧消费迁移、关闭／发布恢复与 Schema [OPEN; NOT IMPLEMENTED]。不再采用整场单一 Episode 或战后才聚合的目标 |
 | C-24 | Mechanical Audit、StageFacts 与感知边界？ | 非战斗独立阶段证据、战斗 Episode 级过滤依据 [DECIDED]；完整机械依赖不裁剪，不逐机械 Event 发 Signal，不要求逐动作感知取证。真实来源映射、审计保留／重放、固定 RE／Adapter 与迁移仍 [OPEN; NOT IMPLEMENTED] |
-| C-25 | 游戏核心的状态/动作/活动关系与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.3。World 候选组件/字段分类见专项草案 §3；其余关系/提交/缓存及替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
+| C-25 | 游戏核心事实访问、Session 内存生命周期与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.3。Session RAM 统一读、隔离候选、SQLite 增量提交后发布及故障恢复已 [DECIDED]（§2.3／§6）；整体 [NOT IMPLEMENTED]。World 候选组件/字段分类见专项草案 §3；具体组织、容量、API／版本与替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
 | C-26 | 动态能力与 Session 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；Coding Agent 可选；来源/版本/权限/预算/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
-| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.3。完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
+| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.3。统一世界修改协调、全部写入口接入及发布故障恢复尚 [NOT IMPLEMENTED]；完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
 | A1 | 探索与战斗的操作编排分离 | [DECIDED] §0.5；当前探索活动/共享位置/受限战斗编排为部分基础（§1.3）。后续验证战斗移动与 World 投影、共享开合/解锁/取放/破坏的规则资格/成本/反应、入口 guard 和原子失败语义；完整集成 [OPEN; NOT IMPLEMENTED] |
 | A2 | StateMachine 模块化与职责边界 | [DECIDED] §0.6；显式组合已有受限实现（§1.3）。逐步减少 Mixin，明确 Facts / Records 与支持组件依赖、库存投影单一权威、共用事务及回滚；不机械分层、不按物体设 Handler、不强制 ECS；剩余切片 [OPEN] |
 

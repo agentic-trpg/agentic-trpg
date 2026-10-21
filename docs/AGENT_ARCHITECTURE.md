@@ -113,12 +113,12 @@ Human Player -> DM Planner -> submit_command(TypedCommand) / trusted authorizati
                                     |
                    Host submits evaluation_id + Result
                                     v
-                       NPC Cognition + shared commit: atomic Meta / Result / EVA completion
+                       NPC Cognition + shared SQLite commit -> RAM publication: Meta / Result / EVA completion
                    |- reliable Dialogue / Action Intent handoff
                    '- independent command_id / Typed Command -> SM authorization
                       -> ordinary world handling OR D&D evaluation (validated Snapshot / Intent
                          + pinned RulesetBinding + explicit RNGContext -> uncommitted Result)
-                      -> responsible domains / shared Atomic Commit / Command Receipt
+                      -> responsible domains / SQLite COMMIT / publish matching RAM / Command Receipt
                                     |
                       Perception / player-visible DM Narrator
 ```
@@ -137,6 +137,8 @@ Agent Host 严格是 **LLM Runtime / Orchestration Infrastructure**，属于 Age
 - 向 SM 报告超时、取消、Context 可用性等运行时信号，由 SM 判断领域任务、模式与完成状态。
 
 Host **不拥有或持久管理** World / NPC Meta、ObservationProcessingStatus、游戏结果或任务完成决定；缓存和日志不成为第二权威。WorldFacts 管唯一世界时钟，Session 提供引用，Cognition 管 Schedule / Gate / 任务授权 / 模式，Perception 管观察生命周期，模型等待不占写锁。已审阅测试的内部模块可经受控领域/持久化接口管理本领域状态，不必反复包装成外部 Agent；Host/LLM 输出、Coding Agent 生成物及未验证脚本不继承这种信任。固定结构化协议与已有机制组合优先，未知字段不产生执行语义，禁止任意数据库/属性写入。
+
+**Session 输入与后台并行（2026-10-21）[DECIDED]：** Host 取得的是 SM 从同版本 Session RAM 构建并授权过滤的固定输入，不能持有可变世界引用或自行回查 SQL 装配第二份世界。NPC／LLM 推理和只读工作可并行，不占世界提交临界区；任务输入后续不被 RAM 发布改写。结果回到 SM 后重验当前权限、world／NPC 版本、任务资格、模式及前提，由唯一修改协调者提交相关 Meta／Task／可靠交接并发布内存；不能因单写入者接受旧结果。Host 不接管发布失败 Session 的当前态，持久提交成功而 RAM 未就绪时等待对账／恢复，不把未就绪投影当当前事实。完整 RAM 接入 [NOT IMPLEMENTED]，公开任务 ABI 不因本次改动改变；统一协议见 [MC §2.3、§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
 
 ### 2.2 DM 与 NPC 使用不同的请求模板及权限
 
@@ -320,6 +322,8 @@ CombatHandler 组织 `initialize → await_decision → evaluate/commit → next
 get_scene_view 给 NPC 返回信息时也必须经过 NPC Perception / 授权投影，不能绕过 get_npc_view / get_current_perceptual_view 等既有入口的感知边界（DOC-02）；不新增查询服务。内部 source_event_id / source_event_seq 只供追溯/排序，不能将事件类型、真实行动者或隐藏目标随引用泄漏给 NPC。
 
 上下文安全边界应在**检索、投影与工具授权**阶段实现，不能将全量世界状态送进 Prompt 后仅靠“不要泄漏”约束。玩家输入、其他 NPC 发言和剧本文本均视为低信任数据，不具有系统级指令权限。
+
+固定授权输入由统一 Session 读取范围构建；已加载事实的角色视图、Snapshot 与 RE 请求不重复查询数据库重新装配。Perception／光照／环境派生使用该范围的必要输入及已有有效结果；候选阶段证据读隔离候选，历史证据绑定原阶段。固定输入可分离拷贝或安全共享不可变结构，具体实现 OPEN；后续发布不原地改旧输入，也不以完整世界 Snapshot 作为每次授权读取的前置条件。
 
 ### 5.2 统一的 Perception 输入：事件与当前状态
 

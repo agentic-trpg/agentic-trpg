@@ -85,6 +85,8 @@
 
 MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块各自拥有 API 的集合。关闭图片生成后仍应完整可玩；**不以 NPC 同伴系统替代 NPC Sub-agent 的独立性验证**。
 
+**2026-10-21 范围与运行架构 [DECIDED]：** 当前首版仍是一名玩家／一个 PC、无 AI 队友。未来同世界 **5–6 名玩家**和适量后台 NPC 是后续并发与合成负载目标，功能 Implementation Status [NOT IMPLEMENTED]，性能阈值由测量确定，不凭人数承诺吞吐量。Session 活跃事实 RAM 读取、SQLite 每次修改增量持久提交后发布是已决定的架构方向，完整运行层 [NOT IMPLEMENTED]；分阶段迁移沿既有 A2／C-25／C-27／DS 轨道，不将全部迁移或多人负载加入本次单人 MVP 验收门槛。非战斗安全恢复与正常战斗仍按既有范围，活跃战斗／PendingChoice／Continuation 精确续玩未扩大。统一契约见 [MC §2.3／§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
+
 ### 1.3 首版产品基线（已确认与候选项分列）
 
 | 维度 | MVP 产品范围 | 决策状态 |
@@ -526,7 +528,7 @@ A22–A45 为公开原创合成场景的架构验收目标，细节见 `AGENT_AR
 | D30 | 完整事态观察与机械审计？ | 本场参与者 Turn／外部 Round 聚合 OB；机械审计不自动进入感知，Event-level OB 非永久粒度 | [DECIDED]；过滤／参战切换／迁移恢复待验证，Schema / 生命周期 [OPEN; NOT IMPLEMENTED] |
 | D31 | 中途选择与正常求值历史依赖？ | 连续规则尽量一次求值；目标 Interrupt 可持久暂停/恢复、RNG 一致且不占长事务；正常求值不反复加载完整 Event Log | [DECIDED]；通用 ABI / 最小路径 [OPEN; NOT IMPLEMENTED] |
 | D32 | 游戏核心演进与动态扩展？ | 当前 SM＋RE 主线，可替换子系统；Evennia 整体迁移 OPEN，`Evennia_base` Deferred / Optional evaluation；扩展不改固定包，Coding Agent 可选 | [DECIDED] 2026-10-12；具体机制/扩展协议 OPEN，无运行验收，单人文字范围不扩大 |
-| D33 | 状态持有与事务组织？ | WorldFacts、CharacterFacts / 机械组件、CombatRecords、Activity、Effects 分责；Facts / Records 读写 SQLite，一次操作共享提交 | [DECIDED]；部分基础已实现见 MC §1.3，完整目标/预算 OPEN |
+| D33 | 状态持有与事务组织？ | WorldFacts、CharacterFacts / 机械组件、CombatRecords、Activity、Effects 分责；Facts / Records 统一事实访问；活跃 RAM 读取、每次 SQLite 增量提交后发布，一次操作共享提交 | [DECIDED]；部分基础已实现见 MC §1.3，完整目标/预算 OPEN |
 | D34 | A1 / A2 与 World 设计如何落实？ | 探索 Navigation / Activity + WorldHandler；战斗 CombatHandler + RE；共用实际位置/对象能力。StateMachine 统一 API / 装配，按需显式组合减少 Mixin，不强制全层/ECS | [DECIDED] 方向，完整目标未完成；架构待办统一 MC §13 的 A1 / A2，字段候选见 World 草案，不设平行 Backlog |
 
 **当前下一步：** 按演进计划 §8 审计现有能力并选择最小原创纵向场景，游戏机制与早期真实 Agentic 证据交错推进；可选 Evennia 评估见 §9，不阻塞主线。完整产品仍须合法取得并核对 First Blush、人工准备本地内容与精选规则、验收敌方 Agent 宏观自主性。本批不实现或创建仓库。

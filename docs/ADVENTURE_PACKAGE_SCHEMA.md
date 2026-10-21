@@ -497,6 +497,8 @@ CreateSessionRequest 的受限 dataclass、创建幂等／授权已有实现（M
 
 返回 Session ID、创建结果及有限的 Package/版本等元数据；不返回全量 WorldState、GM Secret、隐藏 NPC 或未发现事件。后续视图按可信权限读取。创建其他独立 Session 使用新的创建 command_id；多个模板选择不意味着支持多玩家或 AI 队友。
 
+**创建与运行加载（2026-10-21）[DECIDED]：** 新实例仍以批准 Package 完整实例化并在短事务保存，COMMIT 后才发布活跃 RAM。已经存在的实例首次／冷加载及恢复只读取持久化的有效配置、当前状态和关系；不把 Package 默认值作为缺字段回退。加载 RAM、首次实例化、实际玩家进入分别管理，不因加载重发入场／访问／奖励。冷加载必须与读取范围同版本，按需加载不要求所有场景常驻。完整 Session RAM 层 [NOT IMPLEMENTED]，本次不改 Loader／Schema；统一协议见 [MC §2.3–§2.4](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
+
 ### 9.2 一次交互
 
 上述创建协议和延迟 Scene 初始化均须落实 MC §2.4 的完整实例数据，运行中新生成的物体／物品／角色遵循同一原则。已有实例操作经统一实例读取入口获取所属组件有效配置与状态；Package 来源／绑定检查、审计和固定规则／行为引用仍可访问，不以此反向补齐实例字段。
@@ -506,15 +508,18 @@ Player intent / NPC decision proposal
     -> validate controller identity, visible facts, scene version
     -> decide: world operation / Engine rule invocation / narrative-only
     -> prepare unique command_id, expected_world_version
-    -> responsible Handler reads owning domains + pinned Session binding + explicit RNG
+    -> responsible Handler reads one consistent Session RAM version + pinned binding + RNG
     -> Rule Engine evaluates if required (outside write transaction)
-    -> domain interfaces + one shared transaction commit state/RNG/events/receipt/Outbox
+    -> isolated candidate checks -> one shared SQLite incremental state/RNG/events/receipt/Outbox commit
+    -> publish matching Session RAM / indexes / cache dependencies; version ready
     -> receive typed committed result (or structured refusal)
     -> Perception persists authorized Observations; optional NPC updates validated separately
     -> DM narrates from the committed state
 ```
 
-最终数据库提交/响应边界按 (session_id, command_id) 查询稳定 CommandReceipt，无独立回执 ID 或二次 ACK；未提交求值不推进权威 RNG。事件后续触发机械效果时按 §7.3 的可靠独立命令处理，不将两个已提交事务叙述成同一次原子提交。
+已加载有效实例的查询、操作检查与 Snapshot 统一读同版本 Session RAM；未提交检查读隔离候选。每次修改增量持久化，COMMIT 后发布对应 RAM，版本就绪后返回成功及授权投影；故障按 MC §6.4。最终提交/响应边界按 (session_id, command_id) 查询稳定 CommandReceipt，无独立回执 ID 或二次 ACK；未提交求值不推进权威 RNG。事件后续触发机械效果时按 §7.3 的可靠独立命令处理，不将两个已提交事务叙述成同一次原子提交。
+
+手动／定期存档不是普通命令唯一保存入口。每次成功修改已持久化；存档用于一致备份、命名检查点与受控回档，不能把复制正在写入的 SQLite 主文件等同完整存档。恢复须对账已提交事实／RNG／Receipt／可靠工作，校验后重建活跃 RAM 和必要索引，派生结果按需重算；事实可恢复仍不代表活跃战斗、PendingChoice／Continuation 任意阶段精确续玩。
 
 ### 9.3 保存与恢复
 
