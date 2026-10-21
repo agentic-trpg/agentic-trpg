@@ -1,5 +1,13 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
+**2026-10-22 实例字段接入：** 共同决定见 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。
+Service 经现有 SessionMemory／UnitOfWork 读取目标实例和必要关联；Object 持有自身配置、
+容器内容物／重量和机关触发关联，Scene 按 spatial／environment／lighting／mechanisms／objects
+持有相应字段。消费者从有效字段构造 View／固定 Snapshot，不另查库重组同一状态。
+每次修改继续增量持久提交后发布，候选和旧快照隔离；失败恢复必须使所有连接的旧当前态失效，
+各连接在自己的线程重建。按需加载和预算淘汰保留，普通操作不以整场／整会话扫描替代已有索引。
+实现证据与具体限制见 [本次核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)，下述历史状态保留原日期。
+
 **2026-10-21 当前目标：** 活跃事实统一由 Session RAM 提供一致读取，SQLite 每次修改短事务增量持久化，COMMIT 成功后发布 RAM，再正常返回成功及对应投影。Architecture Decision Status **[DECIDED]**；完整运行层 Implementation Status **[NOT IMPLEMENTED]**；运行 Acceptance Status **未执行**。现行协议由 [MC §0.3、§2.3、§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 维护；本文件细化数据模型、协调和恢复。较早日期的源码判断保留原时点，当前基线见 MC §1.8。
 
 > **状态**：Draft v0.20 + 2026-10-21 Session RAM 架构决定（文档补充；完整运行层未实施）

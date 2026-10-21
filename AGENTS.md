@@ -1,5 +1,7 @@
 # Documentation maintenance
 
+- Runtime owner fields and local-query/admission rules are authoritative in MC §2.3a. Read that section before changing caches, snapshots, indices or domain consumers. Follow instance associations and existing indices from the target; do not replace local checks with Session/Scene scans. Distinguish actual consumer migration from added fields. Preserve per-mutation SQLite persistence, candidate/savepoint isolation, fixed inputs and all-context recovery invalidation; retain cold loading and bounded retention. Current branch evidence is in `docs/reviews/RUNTIME_INSTANCE_OWNERSHIP.md`.
+
 - `docs/MODULE_CONTRACTS.md` is the highest cross-module architecture, ownership and target-contract authority. `docs/MVP_SCOPE.md` owns product scope; domain documents refine those boundaries.
 - Read the relevant current architecture before editing. Treat `[DECIDED]` rules as binding; keep `[PROPOSED]` / `[OPEN]` unsettled. Record Implementation Status separately as `[IMPLEMENTED]`, `[PARTIALLY IMPLEMENTED]` or `[NOT IMPLEMENTED]`.
 - Verify current capability claims against the corresponding repository's exact source SHA, tests and appropriate acceptance evidence. Historical reviews, old branches and implementation accidents cannot override current decisions. Preserve dated evidence, especially the v0.4 review; add a new dated finding instead of rewriting history.
