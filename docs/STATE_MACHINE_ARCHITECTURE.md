@@ -25,6 +25,8 @@
 
 ## 1. 目标、边界和核心术语
 
+**2026-10-21 查阅与复用约束：** 设计／实现先读 MC 和对应领域文档，规则／世界观／工程资料入口为 [References](./REFERENCES.md)。全部运行时计算结果复用遵循 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)，状态保存和 Package／实例归属遵循 §2.4，不另建可写缓存权威。容器重量的跨操作内存缓存是 [World §2.1b](./WORLD_SUBSYSTEM_DESIGN.md#21b-容器重量派生与跨操作复用) 的目标；[MC §1.7](./MODULE_CONTRACTS.md#17-2026-10-21-运行时复用与资料核对) 核对的 SM `refactor/scoped-runtime-validation@4341f69` 尚未合并，其 weights 仅单次操作临时复用。本文较早实现描述保留原日期／SHA；本次只改文档，不实现缓存或宣称运行验收。
+
 本文保留 State Machine 文件名与当前 SM 公开入口，区分现有实现和**按领域管理状态、按事实确定权威、按操作组织事务的目标设计**。MODULE_CONTRACTS.md v0.17 §0.3 / §0.5–§0.6 规定领域归属、探索/战斗编排与模块化；`trpg-state-machine`＋RE 仍是开发基础。**StateMachine 是统一 API 与组件装配入口**，各子系统显式依赖协作，不要求中心类理解和批准所有业务细节。已实现的部分组合与仍存 Mixin 见 MC §1.3，不将目标拆分一概写成尚不存在。以下 Task / Perception 协议中的“SM”沿用该逻辑入口。
 
 **适用范围 `[DECIDED]`：** SQLite / WAL、具体表结构及 Event-level OB / Outbox 是当前 SM 实现或可复用设计资产，不是永久实现约束。保留授权、幂等、RNG、回执、故障一致性、NPC 私有状态与可靠处理语义，并通过回归证明替换后的正确性；不要求逐类逐表迁入另一框架。不同表可以保存不同事实，视图/缓存只是派生数据；禁止两份相同权威世界双向同步。替换原型与现有实现使用独立测试 Session。Evennia 整体采用仍 OPEN，可选评估不阻塞主线。
