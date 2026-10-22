@@ -8,6 +8,13 @@ Service 经现有 SessionMemory／UnitOfWork 读取目标实例和必要关联�
 各连接在自己的线程重建。按需加载和预算淘汰保留，普通操作不以整场／整会话扫描替代已有索引。
 实现证据与具体限制见 [本次核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)，下述历史状态保留原日期。
 
+**2026-10-22 后续实现核对：** 重量字段读取只验自身版本，修改时维护必要祖先；机关使用
+安全只读事件／目标索引，命中不复制全表。Scene 的 light／mechanism 成员由实际移动
+子树、携带关系及能力成员事实局部补丁维护，同场景遮光由所选贡献依赖更新。照明地面
+几何另有修改版本，避免上层命中展开所有负向空间能力依赖。这些派生字段、关联补丁和
+失效标记共享既有候选／保存点／增量持久化／RAM 发布边界；跨连接恢复协议保持。
+具体入口、实测及冷准备／完整输出限制见 [后续核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-follow-up-field-validity-and-local-associations)。
+
 **2026-10-21 当前目标：** 活跃事实统一由 Session RAM 提供一致读取，SQLite 每次修改短事务增量持久化，COMMIT 成功后发布 RAM，再正常返回成功及对应投影。Architecture Decision Status **[DECIDED]**；完整运行层 Implementation Status **[NOT IMPLEMENTED]**；运行 Acceptance Status **未执行**。现行协议由 [MC §0.3、§2.3、§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 维护；本文件细化数据模型、协调和恢复。较早日期的源码判断保留原时点，当前基线见 MC §1.8。
 
 > **状态**：Draft v0.20 + 2026-10-21 Session RAM 架构决定（文档补充；完整运行层未实施）

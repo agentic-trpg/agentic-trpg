@@ -4,6 +4,15 @@
 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)，下述历史实现状态保留原日期。
 本次实现核对另见 [分支证据](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)。
 
+**2026-10-22 性能后续 [IMPLEMENTED，限配套 SM 分支]：** 容器三个重量标量使用修改时
+维护的对象版本，变化沿旧／新祖先失效；有效读取不比较各内容物版本。场景机关只读索引
+按条目查询。能力成员进入／离开场景时沿实际移动子树或携带关系补丁更新；灯的同场景
+遮光、开关和模式仍使所选贡献失效，无能力空袋子不使整个场景重新发现。地面遮挡几何
+单独维护字段版本，避免照明命中传播无关物体负向配置依赖。事实、关系和失效状态按
+MC §2.3a／§6 共同候选与发布；None、真实销毁后果、访问／容量／RNG 等语义不变。
+新计数和限制见 [后续核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-follow-up-field-validity-and-local-associations)；
+下文带日期的旧 NOT IMPLEMENTED 与测试记录保留其当时含义。
+
 Scene 的 spatial 字段持有解析地图／基础拓扑及由实际位置维护的占用、阻挡索引；
 environment 持有自身环境／来源、防护和有界位置／高度结果；lighting 持有光源贡献及
 光照结果；mechanisms 持有事件／目标索引；objects 只列直接落地对象。
