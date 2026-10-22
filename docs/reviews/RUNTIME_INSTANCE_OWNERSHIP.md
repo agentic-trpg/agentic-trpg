@@ -1,5 +1,187 @@
 # Runtime instance ownership — 2026-10-22
 
+## 2026-10-22 four fixes: transaction and local costs
+
+Architecture Decision Status **[DECIDED]**, under
+[MC §2.3a](../MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided).
+Implementation Status **[IMPLEMENTED in the paired SM branch]**. Documentation
+continues the existing `docs/runtime-versioned-cache-keys` worktree at reviewed
+`8b18c198a9d724c1bb5b48b25d1911b0ba338a5e`; SM continues
+`refactor/session-memory-runtime` from reviewed/remote
+`5137742d8126588047f04ff4699ee14a94d3058b`. No main merge/push, RE/Pages changes,
+new branch, schema, pin, Session directory or parallel transaction system.
+Delivered SM implementation: [a2a2fe00d5f051978a6f4738df25fc81d838361e](https://github.com/agentic-trpg/trpg-state-machine/commit/a2a2fe00d5f051978a6f4738df25fc81d838361e).
+Earlier independent OPEN findings and measurements below are historical records;
+this section supersedes the four findings only in its verified scope.
+
+### Implemented protocol and actual consumers
+
+SQL failure uses the requested **B protocol** in existing RuntimeConnection /
+UnitOfWork: execute or executemany failure (including a parameter generator after
+an earlier write) marks the write scope failed. Guards, write requirements and
+pre-COMMIT checks forbid untrusted candidate reads/writes/commit even when the SQL
+exception was caught. Existing savepoints retain pending values, immutable version
+root, change-log length and prior failure flag. ROLLBACK TO a valid pre-failure
+savepoint restores all of them and clears memo/derived candidates, allowing legal
+continuation while preserving prior work. Without recovery the whole scope rolls
+back. SQLite's ROLLBACK policy can already remove the transaction/savepoints;
+cleanup handles that separately. RELEASE in existing finally blocks is allowed
+only as cleanup and never clears failure or authorizes COMMIT. The error does not
+permanently poison the Session. Unknown COMMIT and committed-but-unpublished
+failure retain the original pause, original-key reconciliation and all-context
+recovery fence. No per-statement full checkpoint was added.
+First-persistence upgrade failures (BEGIN IMMEDIATE, fixed SQL snapshot pin or
+savepoint recreation) mark the same scope failed: that upgrade may already have
+ended its prepared reading transaction. Catching that error cannot reuse/publish
+old RAM. Separate lock and snapshot-pin fault tests cover this boundary too.
+
+StepActor → actor coordinate write → inventory maintenance now compares actual
+OLD/NEW fields. Coordinates, character HP/max HP/XP and mechanical actor
+action/equipment metadata do not affect the current InventoryState. Real owner
+membership, core carried slugs/legacy-source rejection, object item/ownership/state,
+old/new ancestor access, barred/locked, destruction zero-HP boundary and relevant
+configs still maintain actual affected owners. Known inventory patches use both
+owner sets; unknown aggregate writes retain shared conservative invalidation.
+`_validated_rule_components` caches one fully strict typed result. Dictionary
+projection and inventory_model reuse it with equivalent normalized selection keys;
+owner filtering cannot introduce new IDs or invalid scalars. Duplicate IDs,
+portable projection consistency, strict list→tuple-only adaptation and disclosure
+remain. Full inventory output has its proportional copy/serialization cost.
+
+Real NPC handoff → dispatch_npc_output → target guard selects only acting/target
+IDs through the existing RAM identity index and current candidate scope. Both
+pre-evaluation and pre-apply checks remain, with grants, perception, same-scene,
+existence, fixed snapshot, OCC and retry semantics unchanged.
+
+VersionMap supplies private root handles over immutable AVL nodes within the same
+SessionMemory. Scope startup, savepoint/rollback and read/write publication fork
+roots in O(1); lookup/advance copy at most O(log N) search paths, not full version
+records. Roots have no historical overlay link; actual old scopes/savepoints alone
+retain old nodes. Explicit pruning above capacity×32 retains live dependencies and
+inventory's aggregate/membership/layout components. If the retained set exceeds
+capacity×16, rebuildable caches are released; otherwise at least half a budget of
+new entries precedes another prune. This hysteresis avoids full work on every
+near-limit operation. Unload/recovery remain explicit lifecycle work. Composite
+stamps, old-reader publication refusal and cross-connection generations remain.
+
+### Matched measurements and corrected atomicity finding
+
+The same final production fixtures ran against archived, unmodified `5137742/src`
+and delivery code in the locked environment. Six old-source performance assertions
+fail after valid successful actions, reproducing the issues. The original CHECK
+probe also fails on old source with public `closed` / SQLite `open`, commit not
+refused. Current probe gives `open` / `open`, commit refused. This is the evidence
+for changing that specific earlier **unresolved** finding to **repaired**.
+The older `e776fab1` 298/798 metadata-copy figure retains its historical meaning;
+it is not this run's baseline.
+
+| Slice / deterministic counter | 5137742 before | After |
+|---|---|---|
+| Step→inventory with 11 / 101 entries: full validations; entries validated | 2 / 2; 22 / 202 | 0 / 0; 0 / 0 |
+| Same: RAM calls/rows | 26/25 ; 206/205 | 2/2 ; 2/2 |
+| Same: version checks; inventory field builds | 154 / 1324; 1 / 1 | 6 / 6; 0 / 0 |
+| Same: legitimate full output entries | 11 / 101 | 11 / 101 |
+| Same box read, +0 / +100 unrelated loaded objects: version records copied | 300 / 900 | 0 / 0 |
+| Local write/savepoint rollback/write/commit: version records copied | 900 / 2700 | 0 / 0 |
+| NPC, +0 / +100 remote actors: two target-check returned records | 6 / 206 | 4 / 4 |
+| Same whole dispatch: RAM accessed rows | 76 / 276 | 70 / 70 |
+
+Step-following and local read slices use zero SQL SELECTs/rows; local reads remain
+31 RAM calls/13 rows, 155 checks, no field rebuild or parse at either size. Local
+write slice retains RAM 6/2, two checks, two UPDATEs, no domain SELECT. Both slices
+enumerate zero full version records. Write path node construction is proportional
+to changed-key paths (208 / 266 nodes in the final recorded run), so no claim of
+zero allocation or N-independent tree updates. Whole NPC dispatch SQL remains
+28 SELECTs/25 rows at both sizes and retains one one-entry inventory validation
+and one snapshot build. Two target checks are retained; version checks 141→143
+are fixed with unrelated growth; whole-dispatch RAM calls stay 114, rows become
+70 at both sizes. Counters are SQL / returned rows, RAM calls /
+rows, validations / entries, metadata copies / enumeration, and rebuilds separately.
+
+### Acceptance boundaries
+
+Final focused acceptance is **75 passed, exit 0**, using
+`uv run --locked --no-sync pytest -q -s` on the six SM runtime four-fix, transaction
+failure, version-map, versioned-input, ownership and field-maintenance files,
+with unique local basetemp, JUnit output and `-o faulthandler_timeout=60`.
+The separate **35-passed** upgrade/RNG/publication subset is not added again.
+Tests cover ABORT/FAIL/ROLLBACK with/without savepoint recovery, trigger/FK
+cascades, swallowed errors followed by read/write/commit, earlier legal work,
+executemany/parameter failure, first-persistence lock/pin faults, RELEASE cleanup,
+movement/HP/actions, true
+quantity/charges, one validation shared by both consumers, pruning and immutable
+AVL snapshots. Existing regression covers owner transfer/access/config, strict
+negatives, other-owner growth, rollback/unload/restart, stale NPC grants/targets,
+fixed readers, authorization, RNG, idempotency, SQLite commit and RAM publication
+failures, including another connection's recovery. Final commands/results follow
+below with the full union audit.
+
+Cold aggregate ComponentInputs preparation, SQLite aggregate inventory storage,
+real dependencies, full public lists/evidence and fixed external inputs retain
+their existing costs. Native SQLite cursor/executescript mutation is not a
+supported runtime bypass; migration/maintenance retains an explicit stop/reload
+boundary. Controlled REPLACE/table maintenance stays conservative. This does not
+claim multiplayer capacity, remote CI, live item-stack editing or unsupported
+combat continuation recovery. Architecture decisions, implementation and this
+finite acceptance are distinct; historical sections below remain dated evidence.
+
+Whole-Session configuration replacement still traverses Store-retained versions
+to select that Session's light-candidate stamps; controlled REPLACE/table invalidation also
+retains its old broad scope. Neither is newly introduced by version roots or
+included in the local fixed-target cost claims.
+
+SQL is measured at real Connection.execute and fetched cursors. Step-following
+and box read each retain BEGIN×1 / PRAGMA×3; the local write slice retains
+BEGIN×2 / PRAGMA×5 / SAVEPOINT×2 / ROLLBACK TO×1 / RELEASE×1 / UPDATE×2.
+NPC dispatch retains BEGIN×8 / PRAGMA×24 / SAVEPOINT×2 / RELEASE×1 /
+SELECT×28 / UPDATE×59 / INSERT×49 at both sizes. Native commit()/rollback()
+method calls are excluded from execute counts and tested separately for durable
+semantics. These are not trigger trace repeats, and metadata SQL is not called zero.
+
+### Final complete-source acceptance
+
+Final SM locked-environment regression: **2,119 unique cases pass**, partitioned
+**739 / 703 / 675 + 2 isolated**. Collection/JUnit union reports no missing,
+unexpected, duplicate, failed, errored or skipped case. All **220** Python source,
+test and example hashes remain unchanged throughout the final run, including
+first-persistence upgrade protection. Historical migration cases are included;
+no unavailable-Git-history case is described as passing. Focused 75 and fault
+subset 35 are overlapping evidence and not added again to this total.
+
+Actual commands use `uv run --locked --no-sync pytest -q`, sorted test files
+assigned modulo three, unique local basetemps, JUnit output and
+`-o faulthandler_timeout=60`. Main groups exclude only the two exact names
+test_live_compatibility_baseline_vs_sm_frozen_verification and
+test_real_vertical_pipeline_committed_observations_fresh_process_audit; those
+original cases run separately and **both pass**, with unchanged assertions and
+timeouts. This is partitioned complete acceptance, not skipped tests.
+
+An intermediate concurrent run had one Windows native access violation
+`0xC0000005` reading SRD files and one existing 30-second child-process timeout.
+Those attempts are preserved as nonpassing evidence. The final isolated cases
+pass; this repair does not claim to diagnose the native failure's root cause or
+guarantee repeated concurrent whole-corpus stress. Early test-fixture mistakes
+and the superseded RELEASE-cleanup error are not final acceptance evidence.
+
+SM local evidence is `.test-tmp/four-fixes-complete-delivery-{0,1,2}.{log,xml}`,
+`four-fixes-complete-isolated.*`, `four-fixes-complete-delivery-collection.txt`,
+`four-fixes-complete-audit.json`, `four-fixes-complete-hashes.json`,
+`four-fixes-complete-counts.json` and `four-fixes-complete-target.*`.
+The unchanged archived baseline's seven expected failures are in
+`four-fixes-final-before.log`; intermediate crash/timeout attempts remain in
+`four-fixes-final-delivery-2-native-crash.log` / `four-fixes-final-delivery-1.log`.
+
+Required Ruff check and format check (`uv run --locked --no-sync ruff check src tests examples`
+and `uv run --locked --no-sync ruff format --check src tests examples`) exit 0,
+220 files. Changed Markdown links/anchors/fences pass in both repos: **9 files /
+137 local links**; staged/unstaged whitespace checks pass. Final pytest groups
+only report the two existing Lark deprecations. No remote CI, dependency upgrade,
+multiplayer load or unsupported combat recovery is claimed. Cold aggregate work,
+full output, logarithmic metadata updates, controlled broad configuration
+maintenance and the unassigned intermediate native failure remain explicit limits.
+
+## Earlier acceptance records
+
 The [follow-up evidence](#2026-10-22-follow-up-field-validity-and-local-associations)
 below records the second performance repair. Earlier numbers retain their original
 time, source and measurement scope.

@@ -1,5 +1,15 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
+**2026-10-22 四项修复 [IMPLEMENTED，限配套 SM 分支]：**
+遵循 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)：SQL 语句失败
+标记当前 UnitOfWork 不可用，在有效保存点回滚或整体回滚前拒绝候选读写和提交；提交后
+故障仍暂停并对账。库存按实际字段和来源一致性失效，复用一次完整校验的类型结果；NPC
+目标资格仅取行动者／目标身份，保留求值前后两次确认。版本元数据采用原 UnitOfWork
+中的不可变 AVL 根共享，事务／保存点／发布不复制全表，局部推进复制对数长度索引路径，
+按有间隔的预算阈值裁剪。旧范围、候选、卸载、跨连接恢复及组合版本隔离沿用原协议。
+当前计数与范围见 [四项修复验收](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-four-fixes-transaction-and-local-costs)；
+下述历史未修复状态和数字仍属于其原日期／源码。
+
 **2026-10-22 受管理缓存输入：** 身份、版本、实例归属和固定阶段隔离统一遵循
 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。基础地图／拓扑
 及完整感知类型表示由 Scene.spatial 共享，动态占用／阻挡分别从位置与状态索引维护；
