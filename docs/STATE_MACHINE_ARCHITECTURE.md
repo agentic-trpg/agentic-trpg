@@ -1,5 +1,22 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
+## 2026-10-22 局部查询复用实现补充
+
+Architecture Decision 遵循 MC §2.3a；Implementation 为配对 SM 的
+`fix/runtime-local-query-reuse`（基线 `a2a2fe0`），文档分支为
+`docs/runtime-local-query-reuse`（基线 `6b0cb55`）。不合并／推送 main。
+本批将 Light 的 sources／geometry 及上层光照结果接入修改维护的常数大小版本；
+Scene 关联、相关子树／祖先、地图及共享门变化在原候选范围维护，热读不展开叶子。
+版本预算清理也保留组合 stamp 的子版本；恢复／卸载与旧输入隔离沿已有机制。
+
+固定 GridView 准备自己的双向占用索引、移动及掩体覆盖层；局部查询不借用后来的当前
+索引。地图准备保存墙段资格和只读候选索引，空间候选保留原 RE 精确几何与局部校验。
+环境防护整批共享尺寸输入，明确空贡献在取地图前识别，未知和 unsupported 保持区别。
+不新增状态权威、Session 目录、事务系统、Schema、DTO 或规则依赖。
+实际调用链、测试和必要冷／完整输出成本见
+[本批验收](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-local-query-reuse)。
+以下日期化架构与历史验收仍保留原适用范围。
+
 **2026-10-22 四项修复 [IMPLEMENTED，限配套 SM 分支]：**
 遵循 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)：SQL 语句失败
 标记当前 UnitOfWork 不可用，在有效保存点回滚或整体回滚前拒绝候选读写和提交；提交后

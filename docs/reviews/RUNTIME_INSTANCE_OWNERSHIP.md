@@ -1,5 +1,112 @@
 # Runtime instance ownership — 2026-10-22
 
+## 2026-10-22 local query reuse
+
+Architecture Decision **[DECIDED]**, MC §2.3a; Implementation **[IMPLEMENTED in
+the paired SM fix/runtime-local-query-reuse branch]**. New SM branch inherits
+latest pushed `refactor/session-memory-runtime@a2a2fe00d5f051978a6f4738df25fc81d838361e`;
+this new docs branch inherits latest pushed
+`docs/runtime-versioned-cache-keys@6b0cb55320aec840e57d71d686d696b5773f49e8`.
+Fetch found no later source commits. Both original tracked workspaces were clean;
+untracked files/worktrees are preserved. No merge/main push, RE/Pages edits,
+schema/DTO/pin upgrade, new authority or transaction system.
+
+Delivered implementation: [SM 9627eb0c9b906bb7a5d2e477539e586e7d58ac5a](https://github.com/agentic-trpg/trpg-state-machine/commit/9627eb0c9b906bb7a5d2e477539e586e7d58ac5a).
+
+### Five repaired production chains
+
+| Consumer | Cause at a2a2fe0 | Implemented boundary |
+|---|---|---|
+| get_illumination → Light.current_cell/sources → resolve_field | Cache hits rechecked and propagated all source leaves | Mutation-maintained source and separate geometry stamps; result/upper consumers depend on their fixed-size composite. Both child stamps survive pruning, including ambient-only results |
+| query_world_action/commit PlaceObject → _validate_placement | scene_occupants returned every actor and an unused object list | Existing target-cell occupancy index; original reach/local topology/shared-door/candidate admission remains |
+| Fixed GridView occupied/entity_cells/can_step/cover_between | Whole occupant scans, map copies, blocked merging and per-object topology construction | View-owned read-only cell/ID indices, shared movement overlay and prepared independent-source cover maxima, with creature endpoints preserved |
+| RepositionObject → _check_shape | Full map copy and repeated static-wall qualification | Parsed map version owns integer/axis qualification and immutable wall bounding index; original RE handles exact intersections and local candidate validity |
+| prepare_scene_protection → _protection_input → projection | Each object copied/encoded the same map; each direction parsed it for width/height | One consistent batch lazily shares fixed dimensions. Explicit empty contribution is identified before map preparation; unknown/unsupported stay distinct |
+
+Source validity follows actual emitters, carried/moved subtrees, container ancestors,
+open/transmission/destruction and relevant configuration. Geometry follows actual
+ground blockers, map changes and both shared-door endpoints. Empty unrelated
+transfers and nonblocking unrelated changes do not rebuild all lighting. Existing
+parent/member indices determine actual contributions; ordinary queries do not
+rediscover the Scene. All changes share existing candidate/savepoint/version root
+and SQLite COMMIT→RAM publication, paused recovery generation, unload and eviction.
+Old fixed inputs keep their own immutable index/map; no current-scene pointer leaks
+into them. A callback-local ancestor-read memo lasts one synchronous callback only.
+
+### Newly measured before/after evidence
+
+Baseline was rerun using archived unmodified `a2a2fe0/src` and the same new
+production-path fixtures/counters. Baseline performance assertions deliberately
+fail, then pass after repair; old dated evidence below is not relabeled.
+
+| Measurement, small / large fixture | Before | After |
+|---|---:|---:|
+| Hot public light +10/+100 disabled emitters: version checks | 43 / 313 | 9 / 9 |
+| Same hot light: derived field builds | 0 / 0 | 0 / 0 |
+| PlaceObject +0/+100 far actors: copied actor/object directory | 2+5 / 102+5 | 0+0 / 0+0 |
+| View occupied + entity_cells together: entity visits | 13 / 213 | 0 / 0 |
+| View can_step and cover_between, 8×8/64×64: copied blockers per call | 24 / 3776 | 0 / 0 |
+| Same local View rays: exact wall segment tests | 16 / 3712 | 0 / 0 |
+| Public shape query, same maps: copied blockers | 24 / 3776 | 0 / 0 |
+| Same shape query: wall-format coordinate tests | 64 / 14848 | 0 / 0 |
+| Protection batch +10/+100 empty objects: map copies/encodings each | 14 / 104 | 0 / 0 |
+| Same prepared batch, two directions: map parses | 28 / 208 | 0 / 0 |
+
+The View point row combines two calls; the independent review's earlier 7/107
+occupied-only count keeps its original meaning. Repaired hot light has 0 SELECTs,
+1 RAM query/row, 9 checks and 0 builds at both sizes; a new dark cell has 11 checks
+and one field build. Placement has 0 SELECTs, 7 RAM queries/4 rows and 65 checks;
+shape has 0 SELECTs, 3 RAM queries/2 rows and 22 checks. Each public read also has
+BEGIN×1/PRAGMA×3. Fixed View methods read no facts or versions and open no SQL scope.
+Cold protection still has 15/105 actual member/pose SQL queries and rows, 15/105 RAM
+query calls and 106/736 version checks; source qualification remains linear.
+The entire batch now uses one read scope; first/invalidated protection is not
+misdescribed as an old environment cache hit. Registered-provider cold/rebuild/
+detached-direction/hot phases are measured separately in the linked SM report.
+
+Original empty-bag PutItem/TakeItem bounds remain unchanged and pass with +0/+100
+unrelated objects: 280 RAM calls, 168 RAM rows, 844 version checks at both sizes;
+source/geometry/association/index recomputation remains zero. SQLite persistence,
+evidence and required weight/container work still execute (36 SELECTs/16 rows for
+four operations). No production test flags or relaxed historical bounds.
+
+### Acceptance and remaining scope
+
+The collection/coverage audit covers **2147 unique cases**: disjoint groups
+703/713/729 plus two real compatibility/fresh-process tests run independently.
+Group 0 first had 701 passes and two AttributeErrors from map-update fixtures
+using world_spatial.canonical_json. The unused compatibility export was restored;
+the complete environment file and five-group/lifecycle/field-maintenance subset
+then passed **68/68** on final source. Groups 1/2 passed 713/729 respectively and
+isolated tests passed 2/2. Original group-0 failures remain recorded; the final
+coverage audit has no unresolved failure, skip, missing or duplicate. Supplementary
+reruns are not added to the unique count.
+
+Only the one compatibility import line differs between the first two groups and
+final Python source; removing it reproduces the earlier SHA256 exactly, and the
+other 221 Python files are unchanged. Final 222-file hashes stay fixed during final
+focused/group-2/isolated runs. This is explicit revision attribution, not a claim
+that the earlier group-0 exit was zero. Ruff check/format pass all 222 files; both
+diff checks and 13 Markdown files / 186 relative-link/anchor/fence checks pass.
+Historical migration tests executed, with no unavailable case recorded as passed.
+The [paired SM report](https://github.com/agentic-trpg/trpg-state-machine/blob/9627eb0c9b906bb7a5d2e477539e586e7d58ac5a/docs/reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-local-query-reuse)
+retains exact commands, raw JUnit logs, deterministic counters and hash audit.
+New tests cover public queries/commits, relevant/irrelevant change, candidate
+savepoint/full rollback, old DTO/View, map replacement, unload/restart and two-context
+post-commit/unknown-commit recovery; RE differential geometry retains touches,
+fractional/degenerate walls, diagonal steps, independent/creature cover and ordering.
+Architecture principles, implemented scope and acceptance are separate statements.
+
+Cold source/Scene/View preparation, full requested output, necessary provider/pose
+qualification, real new-cell illumination and relevant RE geometry retain real
+costs. Wall bounds may overlap heavily; nonfinite legacy geometry keeps original
+RE fallback. GridView.entities_within_range retains its existing footprint walk.
+The read-only adapter uses pinned RE's _step_is_legal/_in_bounds and backing fields;
+future upgrades must verify that seam, with no RE change or dependency upgrade here.
+Explicit audits, dynamic-vision unsupported behavior and external-provider limits
+remain; this is not a claim that every scan, encoding or runtime bottleneck has
+been removed. Multiplayer load and remote CI are not verified by these local runs.
+
 ## 2026-10-22 four fixes: transaction and local costs
 
 Architecture Decision Status **[DECIDED]**, under
