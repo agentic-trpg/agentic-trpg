@@ -1,5 +1,16 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
+## 2026-10-22 通路反向关联实现补充
+
+沿用 MC §2.3a 的 World 跨场景关联与字段有效性契约，无需新增重复原则。配对 SM
+从 `9627eb0` 修复 SetObjectState 的光照版本维护展开全 Session 通路的问题：
+WorldRuntime.passages 保存共享只读通路索引，InstanceData 的按门／场景／ID 查询与
+光照 helper 共用，负向关联有效且 OLD/NEW 去重。有效读取只比较维护版，配置增删、
+绑定、端点／场景及受控替换在原候选回调失效；不把全量准备移到普通对象修改。
+首次／冷补从持久实例准备一次，原候选／保存点／提交后发布、预算、卸载与跨连接恢复
+管理索引，旧关系固定。冷准备和必要完整输出成本分别记录，实测和限制见
+[本次验收](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-shared-passage-reverse-association)。
+
 ## 2026-10-22 局部查询复用实现补充
 
 Architecture Decision 遵循 MC §2.3a；Implementation 为配对 SM 的

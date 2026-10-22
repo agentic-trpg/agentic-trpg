@@ -1,5 +1,17 @@
 # Agentic TRPG — World Subsystem Design
 
+## 2026-10-22 World 通路关联与光照维护
+
+MC §2.3a 已规定跨场景通路由 World 持有并按实例关联访问。配对 SM 本次让统一
+InstanceData.passages 与光照几何版本维护共用 WorldRuntime.passages 的只读索引，
+包含门→通路、场景／通路 ID 桶及门→去重端点场景；普通箱子直接得到空关系，多通路
+共用门更新全部实际相关场景。地面阻挡维护仍独立，OLD/NEW 同对象关联只查一次。
+相关配置修改维护单字段版本，热读不查库、不解析或遍历通路；冷准备从持久实例共享，
+不以 Package 补字段。索引与事实沿同一候选／回滚／发布／恢复边界，保留预算／淘汰
+与旧输入。冷布局准备、配置替换及实际完整输出仍有范围成本。实现状态 **[IMPLEMENTED，
+限配对分支]**；计数、回归与限制见
+[后续验收](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-shared-passage-reverse-association)。
+
 ## 2026-10-22 光照、固定视图及空间准备补齐
 
 本批工程决定遵循 MC §2.3a。配对 SM 从 `a2a2fe0` 修复五组实际消费者：
