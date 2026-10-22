@@ -217,3 +217,127 @@ repository-local basetemps were used. Two existing Lark deprecation warnings occ
 per test group. These are local checks, not GitHub Actions or sustained multiplayer
 load evidence. Schema/DTO/RE pin and rules remain unchanged; the above cold,
 subtree/region-index, full-output and heap boundaries still apply.
+
+## 2026-10-22 follow-up: managed versioned inputs
+
+Architecture Decision Status: **[DECIDED]**, MC §2.3a. Implementation Status:
+**[IMPLEMENTED] within the following production paths**, with the limits below.
+SM starts at `refactor/session-memory-runtime@e776fab1`; this Doc branch starts
+at `a593a9d9`. Fetch/remote ancestry proves `docs/runtime-instance-ownership`
+has not entered main `5619e7a`; the authorized new branch
+`docs/runtime-versioned-cache-keys` therefore includes its latest work directly.
+No merge, main push, RE or Pages edits; existing worktrees/untracked files stay.
+
+| Actual owner / consumer | Identity and dependencies | Modification / isolation / recovery |
+|---|---|---|
+| Scene.spatial.record/map/mechanical_map; GridMaps.scene, GridReader, GridService | Store, Session, Scene; existing RAM projection versions of persisted map and spatial qualification | Mechanical scene changes invalidate; actor/object position changes leave base geometry reusable; immutable PreparedGrid shared under original candidate/publication boundary |
+| Scene.spatial dynamic blockers; local_topology | Indexed requested/edge-neighbor Actor and Schema40 cells, relevant door states, exclusions and handled thresholds | Local read-only blocked-set overlay shares the base; actual position/open state drives versions; diagonal/wall/multi-cell/shared-door semantics retained |
+| Scene.lighting; public query_illumination/current_cell and full current_project/current_topology | Actual source/configuration/mode/position, enclosing transmission, ground geometry, doors and map dependencies | Original source/geometry fields and bounded cell/projection fields remain; visibility uses same-scope base topology, output still applies current authorization and disclosure |
+| CharacterRuntime.inventory; public read_carried_items | Session + actor; affected-owner stamp plus aggregate fallback, actor membership and controlled layout stamps | World/container/actor changes invalidate old/new actual carriers; validated inventory patches target known owners; other aggregate writes conservatively invalidate; original component/portable consistency checks remain |
+| CharacterFacts rule_components and _inventory_selection | Explicit owner sets and item-ID selections, component and relationship versions | Indexed ComponentInputs selects actual owners; inventory validates directly with strict tuple normalization; current outer cache retained, rollback discards candidate selections |
+| Scene.spatial.sensory; EventCapture._perception_geometry | Scene/map version and MechanicalGrid model type | Complete sensory validation of original prepared data, no GridScene defaults promoted; later stages/old fixed maps remain isolated |
+| Event phase evidence | Corresponding candidate stage and existing evidence/Signal identity | Detached full output, evidence JSON persists with the existing transaction; later cache updates/unload do not rewrite evidence |
+
+The implementation uses existing SessionMemory/UnitOfWork owner replacement,
+savepoints, bounded retention and post-SQLite-COMMIT publication. No second current
+state, directory or transaction protocol. Map lookup no longer thaws/sorts/encodes
+the whole grid for a few extra blockers. Current Grid, Light, combat-position and
+event consumers pass the prepared input; explicit unknown-version dict/foundation
+inputs retain exact content identification and never select by scene_id alone.
+Inventory mutation capture follows actual old/new ancestry, durability, bars,
+locks, configuration and actor facts. A transient synchronous attribution hint
+lets the existing validated inventory writer advance only its known owners;
+unknown aggregate writes retain a conservative fallback. Composite stamp retention
+survives pruning. Old read scopes, failed candidates, repeated version numbers,
+unload and cross-connection recovery use the existing isolation/generation fences.
+
+### Deterministic measurements
+
+Same final performance fixtures run against archived, unmodified `e776fab1/src`
+and delivery code, in the locked environment. All 14 new performance assertions
+fail on old source as expected and pass after the fix. Growth is 10 / 100 distant
+blocked cells, unrelated objects, remote actors and another actor's inventory
+entries; target geometry and its sources are fixed. Query slices include repeated
+targets and one new local target where applicable.
+
+| Production slice / count (10 / 100) | Before | After |
+|---|---|---|
+| Local movement input: encoded blocked records | 10 / 100 | 0 / 0 |
+| Same: full map copies; sorted records | 1 / 1; 22 / 112 | 0 / 0; 12 / 12 local cells |
+| Public single-cell Light: encoded blocked records; Scene copies | 30 / 300; 3 / 3 | 0 / 0; 0 / 0 |
+| Sensory map: encoded blocked records; Scene copies | 20 / 200; 2 / 2 | 0 / 0; 0 / 0 |
+| Target inventory output (11 / 101 entries): encoded entries; version checks | 11 / 101; 41 / 311 | 0 / 0; 4 / 4 |
+| After another actor's actual transfer: target RAM queries/rows | 18 / 108 | 2 / 2 |
+| Real StepActor: internal key blocked records; topology builds | 40 / 400; 1 / 1 | 0 / 0; 0 / 0 |
+| Same: required evidence encodings; persisted blocked records | 1 / 1; 10 / 100 | unchanged |
+
+Lookup encoding calls, equal at both sizes: local 1 -> 0, Light 3 -> 0,
+small inventory 2 -> 0, sensory 2 -> 0, full target inventory 1 -> 0,
+post-foreign-transfer target 5 -> 0, movement 4 -> 0. Movement's necessary
+evidence encoding is separately counted and remains 1 -> 1.
+
+SQL SELECTs/rows are unchanged: local slice 3/0 (new local cell preparation),
+Light/sensory/inventory/foreign-inventory reads 0/0, movement 6/2. Local RAM
+calls/rows stay 10/2 and checks 136. Light RAM 6/6 -> 3/3, checks 41 -> 44;
+sensory RAM 2/2 -> 0/0, checks 0 -> 4. Full target inventory RAM remains 2/2;
+foreign transfer target checks 33 -> 4. Movement RAM 49/29 -> 46/26, checks
+133 -> 137. Each figure is identical in the two growth groups. Warm topology
+construction and JSON-model parse counts were already zero; delivery's instrumented
+Python InventoryState/MechanicalGrid validations are zero too. The separate
+encoding/copy counters establish the removed work rather than merely “no parse”.
+
+Dependency-check counts are actual SessionMemory.version calls, not SQL or
+individual integer comparisons. Inventory compares a fixed four-part version
+stamp plus memory generation; no per-entry dependency validation is hidden there.
+
+SM's final targeted slice passes **47 tests**, including 22 new cases. It covers
+actual command/event capture, owner/item selection separation, malformed/unprojected
+source rejection, repeated candidate stages, savepoint/outer rollback, full sensory
+fields, old fixed maps, unload/restart and cross-connection map recovery after
+commit failure/unknown commit/publication failure. Existing four publisher failure
+modes additionally verify old/current inventory models. Final full-suite and docs
+checks are recorded in the following acceptance section.
+
+### Scope and open work
+
+Full inventory, map projections and evidence retain proportional output costs.
+Cold ComponentInputs index construction and existing aggregate SQLite inventory
+updates retain their actual storage cost; the hot target read after another
+owner's domain patch does not rebuild them. Unattributed aggregate SQL/imports
+conservatively invalidate owner models. Genuine Light/source/door and scene-passage
+dependencies remain; no constant-cost claim across growing relevant sources or
+geometry. External fixed inputs without versions may retain content keys.
+
+Serialization retained for persistence/protocols, evidence integrity, idempotency
+conflicts and bindings is intentional. Existing JSON strings remain decoder-cache
+inputs. Casting/effect selection uses the pinned strict JSON-model route on an
+actual rule_components rebuild; its valid outer results still reuse normally.
+No rule/Schema/RE pin/public DTO or multiplayer/recovery scope expansion.
+
+**Independent unresolved work:** NPC all-actor queries, whole version-dictionary
+copies, and the reported caught SQL statement error followed by continued commit
+causing possible RAM/SQLite divergence. None is fixed or accepted by these cache
+tests. All earlier historical numbers, statuses and limitations retain their dates.
+
+### Final managed-input acceptance
+
+The final SM sources pass **2,091 unique tests**, disjoint sorted-file groups
+**665 / 757 / 669**, all exit 0. Collection/JUnit union has no failed, errored,
+skipped, duplicate, missing or unexpected cases. All 216 Python source/test/example
+hashes remain unchanged throughout that run. Historical migration cases execute
+without an environment-blocked/skipped case. A final 47-test focused run also
+passes; it is already part of the full count. Earlier fixture/strict-model
+compatibility failures are intermediate work, not final passing evidence.
+
+Validation uses the existing locked environment (`uv run --locked --no-sync`),
+repository-local unique basetemps, pytest/JUnit and actual source instrumentation.
+Ruff check and format-check over src/tests/examples pass (216 files). Changed
+Markdown links/anchors/fences across both repositories pass: 13 files / 170 local
+links; diff whitespace checks pass. Two existing Lark deprecation warnings occur
+per pytest group. These are local checks; remote CI and sustained multiplayer load
+were not executed. This acceptance does not close any independent issue above.
+
+Verified SM delivery: [`5137742d8126588047f04ff4699ee14a94d3058b`](https://github.com/agentic-trpg/trpg-state-machine/blob/5137742d8126588047f04ff4699ee14a94d3058b/docs/reviews/RUNTIME_INSTANCE_OWNERSHIP.md),
+normally pushed on `refactor/session-memory-runtime` from `e776fab1`. This Doc
+change remains separately on `docs/runtime-versioned-cache-keys` from `a593a9d9`;
+the predecessor worktree/branch and both main branches are unchanged.

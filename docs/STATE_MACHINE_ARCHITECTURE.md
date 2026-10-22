@@ -1,5 +1,15 @@
 # Agentic TRPG — State Machine Architecture（MVP）
 
+**2026-10-22 受管理缓存输入：** 身份、版本、实例归属和固定阶段隔离统一遵循
+[MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。基础地图／拓扑
+及完整感知类型表示由 Scene.spatial 共享，动态占用／阻挡分别从位置与状态索引维护；
+Scene.lighting 保存相关光照结果，角色／库存领域持有实际库存模型与选择投影。
+热读取不展开整图／库存制作缓存键，修改在原候选事务推进完整相关版本，持久提交后发布。
+固定地图、旧 Snapshot 和 Event 阶段证据保持原身份，感知模型须完整校验；证据持久化
+编码及完整输出成本保留。架构决定为 `[DECIDED]`；已接入的实际入口、验收与限制见
+[本次审查](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-follow-up-managed-versioned-inputs)，
+不将下面的历史日期状态改写成全系统验收。
+
 **2026-10-22 实例字段接入：** 共同决定见 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。
 Service 经现有 SessionMemory／UnitOfWork 读取目标实例和必要关联；Object 持有自身配置、
 容器内容物／重量和机关触发关联，Scene 按 spatial／environment／lighting／mechanisms／objects

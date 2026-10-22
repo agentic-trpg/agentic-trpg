@@ -1,5 +1,16 @@
 # Agentic TRPG — World Subsystem Design
 
+**2026-10-22 地图／光照／库存缓存接入：** 共同规范与归属表见
+[MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。SM 本次让局部移动
+共享 Scene.spatial 基础拓扑，以只读局部阻挡覆盖结合动态索引；普通角色／物体移动不重建
+基础地图。公开单格 Light 使用同范围已准备拓扑，完整投影与单格成本分开。库存模型由
+实际角色字段持有，容器／归属变化及受控库存补丁维护受影响拥有者；完整输出仍按条目处理。
+EventCapture 共享 Scene.spatial 地图，但另做完整 MechanicalGrid 类型验证，保留旧阶段
+固定证据及持久化编码。候选、保存点、卸载和跨连接恢复沿原协议，不用仅 scene_id 或
+Python id() 替代版本。已实现入口、实测、保留编码与限制见
+[后续审查](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-follow-up-managed-versioned-inputs)；
+下文的历史目标／未实施状态保留原日期，具体字段名不成为跨仓库冻结 API。
+
 **2026-10-22 运行实例归属 [DECIDED]：** 统一规则只维护于
 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)，下述历史实现状态保留原日期。
 本次实现核对另见 [分支证据](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)。
