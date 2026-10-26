@@ -1,0 +1,28 @@
+{
+  "version": "bm25-value-v1",
+  "source_commit": "b9ae704abe4e5d049fa4664873662d7cf991ac39",
+  "reviewed_experiment_commit": "35e79ce8d2ac81d0b62902cff429b52fdda05562",
+  "primary_pool_quota": [40, 10],
+  "exploratory_development_quotas": [[45, 5], [35, 15]],
+  "top10_quota": [7, 3],
+  "conditions": ["zh", "expanded"],
+  "reranker": {
+    "status": "not_run",
+    "model": null,
+    "version": null,
+    "endpoint": null,
+    "query": "original condition text",
+    "document": "original C text, verbatim; no scores or annotations",
+    "truncation": false,
+    "overlength": "fail both arms; do not truncate silently",
+    "top_n": 10,
+    "ties": "score descending then node ID ascending",
+    "candidate_order": "node ID ascending in both arms",
+    "cache": "SHA256 of full model/version/query/document request",
+    "retries": 0,
+    "max_requests": 0,
+    "max_input_tokens": 0,
+    "max_cost_usd": 0,
+    "authorization": "No reranking authorization inferred from embedding credentials. Configure explicit model, limits, pricing and interface before a future run."
+  }
+}

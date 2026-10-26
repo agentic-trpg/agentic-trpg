@@ -1,0 +1,747 @@
+{
+  "source_commit": "b9ae704abe4e5d049fa4664873662d7cf991ac39",
+  "source_files": [
+    {
+      "path": "src/trpg_state_machine/__init__.py",
+      "git_blob_sha256": "050febd07fc2e7a5ea0c78da2fd0e2a8490218bd51dbab83c9251fe3a61fdebe",
+      "git_blob_bytes": 4129,
+      "original_manifest_sha256": "050febd07fc2e7a5ea0c78da2fd0e2a8490218bd51dbab83c9251fe3a61fdebe",
+      "original_manifest_bytes": 4129,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/_execution.py",
+      "git_blob_sha256": "44a4f23ebce8b94d0fb7a1ab37acf3a15aebd25d29980ef2d72ab5496efc750c",
+      "git_blob_bytes": 1426,
+      "original_manifest_sha256": "44a4f23ebce8b94d0fb7a1ab37acf3a15aebd25d29980ef2d72ab5496efc750c",
+      "original_manifest_bytes": 1426,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/_operations.py",
+      "git_blob_sha256": "6a7e17d3e7244b31eee959aaebfd23fa39f35054d083629a7cc40009c79ffcee",
+      "git_blob_bytes": 2840,
+      "original_manifest_sha256": "6a7e17d3e7244b31eee959aaebfd23fa39f35054d083629a7cc40009c79ffcee",
+      "original_manifest_bytes": 2840,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/activity_handler.py",
+      "git_blob_sha256": "4bdb0e7a928b0c4cb027897bba6e10cd29317dcbfe0e8c250be626c350947673",
+      "git_blob_bytes": 10010,
+      "original_manifest_sha256": "4bdb0e7a928b0c4cb027897bba6e10cd29317dcbfe0e8c250be626c350947673",
+      "original_manifest_bytes": 10010,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/activity_records.py",
+      "git_blob_sha256": "c17f3dd830983956c6931ca351d87d099bba2b2d08a1d60840c929bc44108b54",
+      "git_blob_bytes": 6863,
+      "original_manifest_sha256": "c17f3dd830983956c6931ca351d87d099bba2b2d08a1d60840c929bc44108b54",
+      "original_manifest_bytes": 6863,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/availability.py",
+      "git_blob_sha256": "9082e8833edaf817aae4ada573f2dc02f04bb65ef4dee3b43f06a8a3206c2f36",
+      "git_blob_bytes": 333,
+      "original_manifest_sha256": "9082e8833edaf817aae4ada573f2dc02f04bb65ef4dee3b43f06a8a3206c2f36",
+      "original_manifest_bytes": 333,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/combat.py",
+      "git_blob_sha256": "a3f4d8dc8c9bc0a917f4b4761871606ca583f7c5acd23f09976902982b946538",
+      "git_blob_bytes": 4109,
+      "original_manifest_sha256": "a3f4d8dc8c9bc0a917f4b4761871606ca583f7c5acd23f09976902982b946538",
+      "original_manifest_bytes": 4109,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/combat_handler.py",
+      "git_blob_sha256": "46c409163f402c1f5c36c3f70eb5656e9230f7b41cad7e669909759949dd808b",
+      "git_blob_bytes": 9515,
+      "original_manifest_sha256": "46c409163f402c1f5c36c3f70eb5656e9230f7b41cad7e669909759949dd808b",
+      "original_manifest_bytes": 9515,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/commands.py",
+      "git_blob_sha256": "d8dfb29392ba41676c2fd0144a2372890744462d4bc49d9ce4319e60b4662235",
+      "git_blob_bytes": 22613,
+      "original_manifest_sha256": "d8dfb29392ba41676c2fd0144a2372890744462d4bc49d9ce4319e60b4662235",
+      "original_manifest_bytes": 22613,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/component_reads.py",
+      "git_blob_sha256": "2823f1c652e40e0adfa5fc73cf1293a0b24ce907e170710dd33ed18b846ac4cd",
+      "git_blob_bytes": 3701,
+      "original_manifest_sha256": "2823f1c652e40e0adfa5fc73cf1293a0b24ce907e170710dd33ed18b846ac4cd",
+      "original_manifest_bytes": 3701,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/derived_cache.py",
+      "git_blob_sha256": "22fc2c426b86522b9565c8a0d94c4db9cd3f7f6671b6f9a4b65c0651f335b468",
+      "git_blob_bytes": 2101,
+      "original_manifest_sha256": "22fc2c426b86522b9565c8a0d94c4db9cd3f7f6671b6f9a4b65c0651f335b468",
+      "original_manifest_bytes": 2101,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_checks.py",
+      "git_blob_sha256": "13e05fb980c44c5f501bc961f0c962ce2977361c5c8877524ecf77515818549c",
+      "git_blob_bytes": 3690,
+      "original_manifest_sha256": "13e05fb980c44c5f501bc961f0c962ce2977361c5c8877524ecf77515818549c",
+      "original_manifest_bytes": 3690,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_closure.py",
+      "git_blob_sha256": "4869db0b66a59ddec45d487628227d8b204740bd6255992637275525bc67c471",
+      "git_blob_bytes": 2407,
+      "original_manifest_sha256": "4869db0b66a59ddec45d487628227d8b204740bd6255992637275525bc67c471",
+      "original_manifest_bytes": 2407,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_runtime.py",
+      "git_blob_sha256": "a040df034d4cc116702526d749c06eefb860a5403acfa5bbb9acf8a95c50b8c0",
+      "git_blob_bytes": 202,
+      "original_manifest_sha256": "a040df034d4cc116702526d749c06eefb860a5403acfa5bbb9acf8a95c50b8c0",
+      "original_manifest_bytes": 202,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/domain_facts.py",
+      "git_blob_sha256": "6a4a4e48b4af331160d3d96442e93348ce217218544706138ca9df3f83c83120",
+      "git_blob_bytes": 66936,
+      "original_manifest_sha256": "6a4a4e48b4af331160d3d96442e93348ce217218544706138ca9df3f83c83120",
+      "original_manifest_bytes": 66936,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/environment.py",
+      "git_blob_sha256": "ac151bee69952d8b2a3c20218cab47ce939c0afeb31b917d42751a005090414e",
+      "git_blob_bytes": 34685,
+      "original_manifest_sha256": "ac151bee69952d8b2a3c20218cab47ce939c0afeb31b917d42751a005090414e",
+      "original_manifest_bytes": 34685,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/environment_commands.py",
+      "git_blob_sha256": "c7c0a0a09f28d8d752786e4d9fa6c994a6abf89f5850b0773decf1469b86b6ea",
+      "git_blob_bytes": 8130,
+      "original_manifest_sha256": "c7c0a0a09f28d8d752786e4d9fa6c994a6abf89f5850b0773decf1469b86b6ea",
+      "original_manifest_bytes": 8130,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/environment_models.py",
+      "git_blob_sha256": "859da6d89fe3523bd37f3c0d9803ab50b00463e2423c5eeef07c9bea7a3ec214",
+      "git_blob_bytes": 10564,
+      "original_manifest_sha256": "859da6d89fe3523bd37f3c0d9803ab50b00463e2423c5eeef07c9bea7a3ec214",
+      "original_manifest_bytes": 10564,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/environment_versions.py",
+      "git_blob_sha256": "db3a89db62d2171eaed0fbc34af3231589dd09a2b14b3ea48b025f2fe239b74d",
+      "git_blob_bytes": 17733,
+      "original_manifest_sha256": "db3a89db62d2171eaed0fbc34af3231589dd09a2b14b3ea48b025f2fe239b74d",
+      "original_manifest_bytes": 17733,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/errors.py",
+      "git_blob_sha256": "d7b04eec50546dd5a0a5d45a0bb8351d8ce3a6fc04afc6935bfb647ef8afaa75",
+      "git_blob_bytes": 564,
+      "original_manifest_sha256": "d7b04eec50546dd5a0a5d45a0bb8351d8ce3a6fc04afc6935bfb647ef8afaa75",
+      "original_manifest_bytes": 564,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/event_capture.py",
+      "git_blob_sha256": "ee4e79b8c239638bb521e09ca646728e5b58a71050e5bdfd95d46269f1680ef4",
+      "git_blob_bytes": 13306,
+      "original_manifest_sha256": "ee4e79b8c239638bb521e09ca646728e5b58a71050e5bdfd95d46269f1680ef4",
+      "original_manifest_bytes": 13306,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/event_persistence.py",
+      "git_blob_sha256": "057fddd5a75844cf9859cdb666499bfa603d600fd83cdf6c22dfad4b141ca005",
+      "git_blob_bytes": 8994,
+      "original_manifest_sha256": "057fddd5a75844cf9859cdb666499bfa603d600fd83cdf6c22dfad4b141ca005",
+      "original_manifest_bytes": 8994,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/events.py",
+      "git_blob_sha256": "1e619f98da55df054fb9da58b7ff674401b2b908a36284406949aab349411c93",
+      "git_blob_bytes": 5645,
+      "original_manifest_sha256": "1e619f98da55df054fb9da58b7ff674401b2b908a36284406949aab349411c93",
+      "original_manifest_bytes": 5645,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/game_time.py",
+      "git_blob_sha256": "f112c6e478c49fe02a980cf3f83167d583d54ae990977a79ec5cdc7ce8919df1",
+      "git_blob_bytes": 6022,
+      "original_manifest_sha256": "f112c6e478c49fe02a980cf3f83167d583d54ae990977a79ec5cdc7ce8919df1",
+      "original_manifest_bytes": 6022,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/grid.py",
+      "git_blob_sha256": "7870981d635433ce563a0a141f8beaeeba5c32f8da11b42ee3e1af790b632a03",
+      "git_blob_bytes": 25966,
+      "original_manifest_sha256": "7870981d635433ce563a0a141f8beaeeba5c32f8da11b42ee3e1af790b632a03",
+      "original_manifest_bytes": 25966,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/grid_maps.py",
+      "git_blob_sha256": "5b84c0e167a24d1903189430f0d51687f5c2d46c8c60277433eff66f161010cf",
+      "git_blob_bytes": 12899,
+      "original_manifest_sha256": "5b84c0e167a24d1903189430f0d51687f5c2d46c8c60277433eff66f161010cf",
+      "original_manifest_bytes": 12899,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/instance_data.py",
+      "git_blob_sha256": "0961ffdf45a57e5c7f52cbbdeb35f3a0418874b10cd06c0997937c3cc94c7210",
+      "git_blob_bytes": 20572,
+      "original_manifest_sha256": "0961ffdf45a57e5c7f52cbbdeb35f3a0418874b10cd06c0997937c3cc94c7210",
+      "original_manifest_bytes": 20572,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/item_package.py",
+      "git_blob_sha256": "bb7a0db38bb02b70f2fffafcb492a22a222e08538687b4f678560207787758e6",
+      "git_blob_bytes": 3408,
+      "original_manifest_sha256": "bb7a0db38bb02b70f2fffafcb492a22a222e08538687b4f678560207787758e6",
+      "original_manifest_bytes": 3408,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/item_units.py",
+      "git_blob_sha256": "53d46f8d28771e69ea8312b80b7c715d87db93c14d6698b4ed4fca2cbe8da02e",
+      "git_blob_bytes": 649,
+      "original_manifest_sha256": "53d46f8d28771e69ea8312b80b7c715d87db93c14d6698b4ed4fca2cbe8da02e",
+      "original_manifest_bytes": 649,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/lock_package.py",
+      "git_blob_sha256": "ca9b781832f9c246a93484bdc0487626a5e5de23ad8f105e30f9a19449962d57",
+      "git_blob_bytes": 2393,
+      "original_manifest_sha256": "ca9b781832f9c246a93484bdc0487626a5e5de23ad8f105e30f9a19449962d57",
+      "original_manifest_bytes": 2393,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/mechanical_runtime.py",
+      "git_blob_sha256": "256b32752b16c3f4377b216ee660efc2b886b00bcf5e80b4ced97888cafabe18",
+      "git_blob_bytes": 13356,
+      "original_manifest_sha256": "256b32752b16c3f4377b216ee660efc2b886b00bcf5e80b4ced97888cafabe18",
+      "original_manifest_bytes": 13356,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/mechanics.py",
+      "git_blob_sha256": "5e3181a28ec54b3476a0022b5330a85924bd5611f7839b38e9cf5ef7f82f61bd",
+      "git_blob_bytes": 5914,
+      "original_manifest_sha256": "5e3181a28ec54b3476a0022b5330a85924bd5611f7839b38e9cf5ef7f82f61bd",
+      "original_manifest_bytes": 5914,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/mechanism_effects.py",
+      "git_blob_sha256": "ef2b2e9d4fd789497092640cdca5cce8930db44c7e692f15b7153fa742cce5b9",
+      "git_blob_bytes": 21660,
+      "original_manifest_sha256": "ef2b2e9d4fd789497092640cdca5cce8930db44c7e692f15b7153fa742cce5b9",
+      "original_manifest_bytes": 21660,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/mechanism_models.py",
+      "git_blob_sha256": "ae6d5cbcde34a43bb4da1507510526415b169241548c08fa8a2ba18a8b15adbb",
+      "git_blob_bytes": 14395,
+      "original_manifest_sha256": "ae6d5cbcde34a43bb4da1507510526415b169241548c08fa8a2ba18a8b15adbb",
+      "original_manifest_bytes": 14395,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/models.py",
+      "git_blob_sha256": "94318aa8e18ba22f7f2bcb8e25bb2c3c8dc4781c7b15eae88b08bc226acc71fd",
+      "git_blob_bytes": 3020,
+      "original_manifest_sha256": "94318aa8e18ba22f7f2bcb8e25bb2c3c8dc4781c7b15eae88b08bc226acc71fd",
+      "original_manifest_bytes": 3020,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_driver.py",
+      "git_blob_sha256": "af5038994e621fadd4c25ad8f0c6987d422fc84ea147fdfdf865f484659c0bcf",
+      "git_blob_bytes": 3085,
+      "original_manifest_sha256": "af5038994e621fadd4c25ad8f0c6987d422fc84ea147fdfdf865f484659c0bcf",
+      "original_manifest_bytes": 3085,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_models.py",
+      "git_blob_sha256": "b5657ecbf40d7c6f78ebf3755d9941c80f6dfc04fe31f5c7c1299ece8c76842f",
+      "git_blob_bytes": 1840,
+      "original_manifest_sha256": "b5657ecbf40d7c6f78ebf3755d9941c80f6dfc04fe31f5c7c1299ece8c76842f",
+      "original_manifest_bytes": 1840,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_package.py",
+      "git_blob_sha256": "045b1367d1d24bd2ccc1346d61015247dff9d7f38acb8257bebe59be52192652",
+      "git_blob_bytes": 2960,
+      "original_manifest_sha256": "045b1367d1d24bd2ccc1346d61015247dff9d7f38acb8257bebe59be52192652",
+      "original_manifest_bytes": 2960,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_plan.py",
+      "git_blob_sha256": "96cf2d2f3922e4a94048f37afd8ec047cec7c3a45af7cd8337261174987c194f",
+      "git_blob_bytes": 4975,
+      "original_manifest_sha256": "96cf2d2f3922e4a94048f37afd8ec047cec7c3a45af7cd8337261174987c194f",
+      "original_manifest_bytes": 4975,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_bootstrap.py",
+      "git_blob_sha256": "8eeee60acc54e842103abc7c877f14e437eca19dc74fc00afaeea9a01026f1c7",
+      "git_blob_bytes": 4014,
+      "original_manifest_sha256": "8eeee60acc54e842103abc7c877f14e437eca19dc74fc00afaeea9a01026f1c7",
+      "original_manifest_bytes": 4014,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_evaluation.py",
+      "git_blob_sha256": "892ce46785c7853ead63ff72e6dba9eab3f8206844627ef5e39d68fd517b56a9",
+      "git_blob_bytes": 14153,
+      "original_manifest_sha256": "892ce46785c7853ead63ff72e6dba9eab3f8206844627ef5e39d68fd517b56a9",
+      "original_manifest_bytes": 14153,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_modes.py",
+      "git_blob_sha256": "6af2c9fd57ab587f44b11f5c2cb78d1e4e1f389c3fbdc84e3fa055cd07f5170e",
+      "git_blob_bytes": 28053,
+      "original_manifest_sha256": "6af2c9fd57ab587f44b11f5c2cb78d1e4e1f389c3fbdc84e3fa055cd07f5170e",
+      "original_manifest_bytes": 28053,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_outputs.py",
+      "git_blob_sha256": "2d23b95cb37e291846112a744cd28c96542052a094b1f361305205591be90431",
+      "git_blob_bytes": 13070,
+      "original_manifest_sha256": "2d23b95cb37e291846112a744cd28c96542052a094b1f361305205591be90431",
+      "original_manifest_bytes": 13070,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_results.py",
+      "git_blob_sha256": "88c7731131bf9dc7d25f3d93fd1ef10f4deef294dfc3576b91b7ea7c8f0e79a4",
+      "git_blob_bytes": 24617,
+      "original_manifest_sha256": "88c7731131bf9dc7d25f3d93fd1ef10f4deef294dfc3576b91b7ea7c8f0e79a4",
+      "original_manifest_bytes": 24617,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_schema.py",
+      "git_blob_sha256": "430626e11e538e07a61d570e60e083f3dd0c84808a20c4163cf9f0bccb9d205f",
+      "git_blob_bytes": 10242,
+      "original_manifest_sha256": "430626e11e538e07a61d570e60e083f3dd0c84808a20c4163cf9f0bccb9d205f",
+      "original_manifest_bytes": 10242,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/npc_state.py",
+      "git_blob_sha256": "4ba342bbd0b04ec78812298e8c997d2195831be8eb6a33173a8e4bd2d40ba055",
+      "git_blob_bytes": 8995,
+      "original_manifest_sha256": "4ba342bbd0b04ec78812298e8c997d2195831be8eb6a33173a8e4bd2d40ba055",
+      "original_manifest_bytes": 8995,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/object_durability.py",
+      "git_blob_sha256": "f192718d0fe03492444ffdf8b33cefcaafbd864fd4d2d8a46819759df707d42f",
+      "git_blob_bytes": 5026,
+      "original_manifest_sha256": "f192718d0fe03492444ffdf8b33cefcaafbd864fd4d2d8a46819759df707d42f",
+      "original_manifest_bytes": 5026,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/object_protection.py",
+      "git_blob_sha256": "9fd1c15dfadabee2df283102837d665dcafedfa3fb122e070af0609d86a81df9",
+      "git_blob_bytes": 12469,
+      "original_manifest_sha256": "9fd1c15dfadabee2df283102837d665dcafedfa3fb122e070af0609d86a81df9",
+      "original_manifest_bytes": 12469,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/observation_lifecycle.py",
+      "git_blob_sha256": "bad33d12dd8bc21c747f86e6d0b6af2b95c3cc4f2676624b47884007aa25df6a",
+      "git_blob_bytes": 7321,
+      "original_manifest_sha256": "bad33d12dd8bc21c747f86e6d0b6af2b95c3cc4f2676624b47884007aa25df6a",
+      "original_manifest_bytes": 7321,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/package.py",
+      "git_blob_sha256": "3bc1497c3c0d06f4868dc5ef45d25172895aa005533cd076ae47de258a5252d4",
+      "git_blob_bytes": 51793,
+      "original_manifest_sha256": "3bc1497c3c0d06f4868dc5ef45d25172895aa005533cd076ae47de258a5252d4",
+      "original_manifest_bytes": 51793,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/package_effects.py",
+      "git_blob_sha256": "49ff2e85a6724742961f5ab03498947f631f02473c098d207ec261b972ec778b",
+      "git_blob_bytes": 4461,
+      "original_manifest_sha256": "49ff2e85a6724742961f5ab03498947f631f02473c098d207ec261b972ec778b",
+      "original_manifest_bytes": 4461,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/perception.py",
+      "git_blob_sha256": "adb96ef1baeb4a0ea0326e02c677405218b86f78f0838f15ae2e0894066f8bd8",
+      "git_blob_bytes": 33192,
+      "original_manifest_sha256": "adb96ef1baeb4a0ea0326e02c677405218b86f78f0838f15ae2e0894066f8bd8",
+      "original_manifest_bytes": 33192,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/perception_conditions.py",
+      "git_blob_sha256": "43c39d6bdbd066d97ee9ae9e2123b66d93d0c3f384bd644faddbc051fd1d974b",
+      "git_blob_bytes": 10808,
+      "original_manifest_sha256": "43c39d6bdbd066d97ee9ae9e2123b66d93d0c3f384bd644faddbc051fd1d974b",
+      "original_manifest_bytes": 10808,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/perception_queue.py",
+      "git_blob_sha256": "8706d5c4f9f742156364edd1e83c8690201f949c141400f23ab6943e7c15b444",
+      "git_blob_bytes": 4034,
+      "original_manifest_sha256": "8706d5c4f9f742156364edd1e83c8690201f949c141400f23ab6943e7c15b444",
+      "original_manifest_bytes": 4034,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/rule_execution.py",
+      "git_blob_sha256": "8191bf213fe4b56593c864844cb31c06cbc70402e123996c23180587b5518321",
+      "git_blob_bytes": 18528,
+      "original_manifest_sha256": "8191bf213fe4b56593c864844cb31c06cbc70402e123996c23180587b5518321",
+      "original_manifest_bytes": 18528,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/rules_adapter.py",
+      "git_blob_sha256": "ff5013a01e4e14bca76107e7b0f1149c65cfee2d0293abd75325fd01fcfbbf5f",
+      "git_blob_bytes": 30450,
+      "original_manifest_sha256": "ff5013a01e4e14bca76107e7b0f1149c65cfee2d0293abd75325fd01fcfbbf5f",
+      "original_manifest_bytes": 30450,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/rules_migration.py",
+      "git_blob_sha256": "9e961496020f478ed4887786a6994d871e2569dcd4f96d04c4cd5907817f5cac",
+      "git_blob_bytes": 1973,
+      "original_manifest_sha256": "9e961496020f478ed4887786a6994d871e2569dcd4f96d04c4cd5907817f5cac",
+      "original_manifest_bytes": 1973,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/runtime_instances.py",
+      "git_blob_sha256": "2605c05c664aefc18259fa25451333a4a8118a88fc27055f1f23e507a060daac",
+      "git_blob_bytes": 14809,
+      "original_manifest_sha256": "2605c05c664aefc18259fa25451333a4a8118a88fc27055f1f23e507a060daac",
+      "original_manifest_bytes": 14809,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/runtime_integrity.py",
+      "git_blob_sha256": "0ce781da14f77a39c3d7a652f1d584d1b57b17e4b5bb2af53463f475ccc34f71",
+      "git_blob_bytes": 5132,
+      "original_manifest_sha256": "0ce781da14f77a39c3d7a652f1d584d1b57b17e4b5bb2af53463f475ccc34f71",
+      "original_manifest_bytes": 5132,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/scene_lifecycle.py",
+      "git_blob_sha256": "6b3779dfcff0e72537f247b14996d52fc80d25df724ef2f626ed892b1494f335",
+      "git_blob_bytes": 11121,
+      "original_manifest_sha256": "6b3779dfcff0e72537f247b14996d52fc80d25df724ef2f626ed892b1494f335",
+      "original_manifest_bytes": 11121,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/scoped_reads.py",
+      "git_blob_sha256": "eb22e68fd47e59f61a6a7ae39d464649e154fe74d8e1c951c201c3cb80f9418d",
+      "git_blob_bytes": 4294,
+      "original_manifest_sha256": "eb22e68fd47e59f61a6a7ae39d464649e154fe74d8e1c951c201c3cb80f9418d",
+      "original_manifest_bytes": 4294,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/service.py",
+      "git_blob_sha256": "7f9c2e2d41827128b004cd4dfe9a910f7b2395ee81d97185d89acc509d29cc1f",
+      "git_blob_bytes": 21889,
+      "original_manifest_sha256": "7f9c2e2d41827128b004cd4dfe9a910f7b2395ee81d97185d89acc509d29cc1f",
+      "original_manifest_bytes": 21889,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/session_access.py",
+      "git_blob_sha256": "83eb26c03cc423b3070a4995c2912977aa9f094d76be903118f0bebf529df743",
+      "git_blob_bytes": 12863,
+      "original_manifest_sha256": "83eb26c03cc423b3070a4995c2912977aa9f094d76be903118f0bebf529df743",
+      "original_manifest_bytes": 12863,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/session_creation.py",
+      "git_blob_sha256": "029a65d91a53d3ca27a054ee4d84ca12cfd906eb17a56f1cea32a5f549ee6468",
+      "git_blob_bytes": 10451,
+      "original_manifest_sha256": "029a65d91a53d3ca27a054ee4d84ca12cfd906eb17a56f1cea32a5f549ee6468",
+      "original_manifest_bytes": 10451,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/session_memory.py",
+      "git_blob_sha256": "3536d5fb757c804f674c761c763a037ea49466536552c80f9053f7439e5fdfc0",
+      "git_blob_bytes": 67514,
+      "original_manifest_sha256": "3536d5fb757c804f674c761c763a037ea49466536552c80f9053f7439e5fdfc0",
+      "original_manifest_bytes": 67514,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/session_runtime.py",
+      "git_blob_sha256": "736fe477aadd354a79389c7a2ca9a4f6ea0679a93488ffb500f83eda4a696bbe",
+      "git_blob_bytes": 23149,
+      "original_manifest_sha256": "736fe477aadd354a79389c7a2ca9a4f6ea0679a93488ffb500f83eda4a696bbe",
+      "original_manifest_bytes": 23149,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/spatial.py",
+      "git_blob_sha256": "3fe7a52746da5d036b7ecd8ed6f04f098c166629921d96e08eae3bed12ddf0fe",
+      "git_blob_bytes": 49022,
+      "original_manifest_sha256": "3fe7a52746da5d036b7ecd8ed6f04f098c166629921d96e08eae3bed12ddf0fe",
+      "original_manifest_bytes": 49022,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/storage.py",
+      "git_blob_sha256": "2ec5143e1d5cc34891706aa067c6275a24c6a9769f1869e302f8a9642ea0f769",
+      "git_blob_bytes": 24101,
+      "original_manifest_sha256": "2ec5143e1d5cc34891706aa067c6275a24c6a9769f1869e302f8a9642ea0f769",
+      "original_manifest_bytes": 24101,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/storage_migrations.py",
+      "git_blob_sha256": "0a0eabf3d5736b759861e1b1a4ac13c3bc7d383e25ef50894d9bafe60ab17d3b",
+      "git_blob_bytes": 7522,
+      "original_manifest_sha256": "0a0eabf3d5736b759861e1b1a4ac13c3bc7d383e25ef50894d9bafe60ab17d3b",
+      "original_manifest_bytes": 7522,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/time_binding.py",
+      "git_blob_sha256": "42d1a987d0f3b81e20d8eb04d5ca4d0c5f3c55f6a28bfc438049e11a90dd945d",
+      "git_blob_bytes": 2806,
+      "original_manifest_sha256": "42d1a987d0f3b81e20d8eb04d5ca4d0c5f3c55f6a28bfc438049e11a90dd945d",
+      "original_manifest_bytes": 2806,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/time_coordination.py",
+      "git_blob_sha256": "6577f93b5b4fd72c4e0d7e3f6b7f8c1ebf5cca5bf443c220d4911eb0a57257e0",
+      "git_blob_bytes": 17994,
+      "original_manifest_sha256": "6577f93b5b4fd72c4e0d7e3f6b7f8c1ebf5cca5bf443c220d4911eb0a57257e0",
+      "original_manifest_bytes": 17994,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/time_driver.py",
+      "git_blob_sha256": "b7f0d1dfa4ee41e6205007a56603982e695f678df4f440dd0464a36d0b6d5c3a",
+      "git_blob_bytes": 9892,
+      "original_manifest_sha256": "b7f0d1dfa4ee41e6205007a56603982e695f678df4f440dd0464a36d0b6d5c3a",
+      "original_manifest_bytes": 9892,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/time_waits.py",
+      "git_blob_sha256": "cdc472eb18c13fe76c5e4a0162ec04aabd5ea792e2c6f66cb877d7f91374c3a7",
+      "git_blob_bytes": 9599,
+      "original_manifest_sha256": "cdc472eb18c13fe76c5e4a0162ec04aabd5ea792e2c6f66cb877d7f91374c3a7",
+      "original_manifest_bytes": 9599,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/version_map.py",
+      "git_blob_sha256": "e6f7ea19b024d43ea1bf4926954f2ffd7419edfecc03fc145248452baef88d0a",
+      "git_blob_bytes": 4468,
+      "original_manifest_sha256": "e6f7ea19b024d43ea1bf4926954f2ffd7419edfecc03fc145248452baef88d0a",
+      "original_manifest_bytes": 4468,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_commands.py",
+      "git_blob_sha256": "44d2bae70526f2259cddabf59b6efc4b72b111ff9f192a3bcd26bf5913a0c5d3",
+      "git_blob_bytes": 3584,
+      "original_manifest_sha256": "44d2bae70526f2259cddabf59b6efc4b72b111ff9f192a3bcd26bf5913a0c5d3",
+      "original_manifest_bytes": 3584,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_containers.py",
+      "git_blob_sha256": "776587a544f2ee8ccb6a4f25ca1b764d4746acc9972c249c3318975565b3927e",
+      "git_blob_bytes": 18648,
+      "original_manifest_sha256": "776587a544f2ee8ccb6a4f25ca1b764d4746acc9972c249c3318975565b3927e",
+      "original_manifest_bytes": 18648,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_lights.py",
+      "git_blob_sha256": "edd1cae76ef93a8538a3f4fd0786492c008c27b0059c487cdef0ee540eeb6291",
+      "git_blob_bytes": 12835,
+      "original_manifest_sha256": "edd1cae76ef93a8538a3f4fd0786492c008c27b0059c487cdef0ee540eeb6291",
+      "original_manifest_bytes": 12835,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_mechanisms.py",
+      "git_blob_sha256": "3a3de6297c8ce7948956a4576f6c32e7918491a1252a78a2402bc4ddd7ce5b8c",
+      "git_blob_bytes": 34173,
+      "original_manifest_sha256": "3a3de6297c8ce7948956a4576f6c32e7918491a1252a78a2402bc4ddd7ce5b8c",
+      "original_manifest_bytes": 34173,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_objects.py",
+      "git_blob_sha256": "66df16eddc6886a1750dbcf17f06d7368d55643521eb8e53e696c07547357b1b",
+      "git_blob_bytes": 11611,
+      "original_manifest_sha256": "66df16eddc6886a1750dbcf17f06d7368d55643521eb8e53e696c07547357b1b",
+      "original_manifest_bytes": 11611,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_openable.py",
+      "git_blob_sha256": "bba10e9715934bdb2982c4f16a628ba7e0c183a77629cc295d3e9c0931fd638e",
+      "git_blob_bytes": 25044,
+      "original_manifest_sha256": "bba10e9715934bdb2982c4f16a628ba7e0c183a77629cc295d3e9c0931fd638e",
+      "original_manifest_bytes": 25044,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_package.py",
+      "git_blob_sha256": "7417a6d190a50560a26f870c10807d8fc9f8c7c4819d1c48d2929233cbed8327",
+      "git_blob_bytes": 30917,
+      "original_manifest_sha256": "7417a6d190a50560a26f870c10807d8fc9f8c7c4819d1c48d2929233cbed8327",
+      "original_manifest_bytes": 30917,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_spatial.py",
+      "git_blob_sha256": "49f1d8af04a7b9d5a480aad6cce47481d09e497ea140391b91826d6116872773",
+      "git_blob_bytes": 29724,
+      "original_manifest_sha256": "49f1d8af04a7b9d5a480aad6cce47481d09e497ea140391b91826d6116872773",
+      "original_manifest_bytes": 29724,
+      "recovery": "exact_git_blob"
+    },
+    {
+      "path": "src/trpg_state_machine/world_time.py",
+      "git_blob_sha256": "49a955f47de7705eaad223f042b8b6d9b26a0474eb8be31abcb7c065b51ccec5",
+      "git_blob_bytes": 8419,
+      "original_manifest_sha256": "49a955f47de7705eaad223f042b8b6d9b26a0474eb8be31abcb7c065b51ccec5",
+      "original_manifest_bytes": 8419,
+      "recovery": "exact_git_blob"
+    }
+  ],
+  "nodes": 1059,
+  "node_ids_sha256": "d18e2e012cbe8c7c376de09f749a7a9e2f63ce0b046626652b048efd5e20279f",
+  "nodes_cache_sha256": "0e21ae669d383f3e37bd166f69378ba3ff638c48b75294c2525714deb3fa86fc",
+  "complete_rankings_sha256": "f8a7b94856e8bae05382d7266aac08c19b944e6a4d49a400b891dcf2ceca8036",
+  "history_file_hashes": {
+    "experiments/code-retrieval-ablation/.gitattributes": "a79691a93b46e49ce460c26ef22afcc03d6eca1e63bf2edbc20e96159510f6c9",
+    "experiments/code-retrieval-ablation/.gitignore": "5fe496a917a6009e370a0368f1f3bf898b3972513ffa0ba7bb8d4ff69c67fdf5",
+    "experiments/code-retrieval-ablation/README.md": "b0fa70024a5ec1cac7481912db144fc46061fbfa07eacf063c1df33ebd616f0e",
+    "experiments/code-retrieval-ablation/REPORT.md": "3a57bd04100cd8ab1c1b9663068901f7ca1b2cab0cccb722310a21aa6849cf70",
+    "experiments/code-retrieval-ablation/annotations.json": "1f53156a378ec5a023c3e0e19743ecf353fec8c7572649a997d2f92a44c39087",
+    "experiments/code-retrieval-ablation/audit.py": "ac41659770f9637d78e6e8ee5a7d9c19e17818c2efb66cb60fe0fef05968764f",
+    "experiments/code-retrieval-ablation/build_texts.py": "b9a18877c26d3581a061d5e3f7c4d5aea8fda9631e5fd9a8c5df890e4ce9ef2f",
+    "experiments/code-retrieval-ablation/config.example.json": "c8af7d08cf426118171a32fa6f7e5ac0e39bbfbc63e755b297cb958af649ffd6",
+    "experiments/code-retrieval-ablation/freeze.json": "57b1ae45ca7b9edcd584c6caff296c0bca44db202f1b7c03e61636561fd7ff74",
+    "experiments/code-retrieval-ablation/index-estimate.initial.json": "8e2ec09b18c7fed1d430e3411bfca4b81ddfce1b3b7c04e7e6d947d90553d1b4",
+    "experiments/code-retrieval-ablation/index-estimate.json": "6c52c0aa9add4ca91838330b41b3a93c644d71f923a422608cd76aef78e2363c",
+    "experiments/code-retrieval-ablation/prepare.py": "7c9487686b6dec07a7440d3ee77c38f082dd56b2392f547e7eeda96207ae219d",
+    "experiments/code-retrieval-ablation/probe-estimate.json": "a70291b2681e81fc20fdc886ecdee8c713c688b4b61f875fdf0f58f612e1d9c9",
+    "experiments/code-retrieval-ablation/probe-result.json": "b12c9afbf09ab6ee2d66c6b2a39705e2bb51e6bc8780453dad56258a5a326d82",
+    "experiments/code-retrieval-ablation/protocol-lock.json": "3bf3869307f65a42428500e8239fcf12b33f870fbe956303b27fd7102f60971d",
+    "experiments/code-retrieval-ablation/provenance.json": "5c0f099d262b4f404a75b051e3b20f222e4cd8718fd0f7d217818b337e34eee2",
+    "experiments/code-retrieval-ablation/questions.json": "6d136e03d8483e38759aaef36eaaa18add9f5d50064ebf208c86231665ef71b7",
+    "experiments/code-retrieval-ablation/reading-manifest.json": "be7e0cea1605ff6037746c13e76a12b287f653abe029c2572dd9850950503722",
+    "experiments/code-retrieval-ablation/report.py": "0cee4f4e44015e525456f54aabaafad5a248a9c34bfcf4fe2e99ea12c55cf21d",
+    "experiments/code-retrieval-ablation/requirements.txt": "7bd6b8946940b79948c548c8048e545684b91c8edc9444d8dfc0c8f76a97c0a7",
+    "experiments/code-retrieval-ablation/results/aggregate.json": "c535dbcd3e2dd211afc590c487111ef807d8f72fbaf87a74c6cef9cc0eb4560e",
+    "experiments/code-retrieval-ablation/results/audit.json": "3295451e18a2c3e66897df491ab1f6dd1a028700394037ab0c9b75580c063fc4",
+    "experiments/code-retrieval-ablation/results/overlap-summary.json": "56d4eb8ba756643efc321fbe41208752ed70f1f48bb69697684d0b9f67664401",
+    "experiments/code-retrieval-ablation/results/per-question.json": "b330938d1f95091264093f0fff046b32e3963a9c6f3c124351a0b63b2d5739d2",
+    "experiments/code-retrieval-ablation/results/questions.md": "c238d60f3b7bb2913cd3a5ab1f6c2b4710263fdc34859faafc98ca045b5a1175",
+    "experiments/code-retrieval-ablation/results/rescue-summary.json": "274c380d8f30ce2fbf59b409e80941ce64d8da4c93234a3da43e73c1f1591aa2",
+    "experiments/code-retrieval-ablation/results/run.json": "4e5733d69854e7d5230fe272cfa594cd4a28e1a210c410f502a34bfd4db1d3a8",
+    "experiments/code-retrieval-ablation/results/summary.md": "646d699569ea5d75d37682b56e3165fdd2478249cd1e33f01473b274a4c86147",
+    "experiments/code-retrieval-ablation/results/text-unique.json": "de0eb2ac41eba9f48c75fddde4d692245910c4ebce19f78154a57147a3e6b337",
+    "experiments/code-retrieval-ablation/results/usage-breakdown.json": "603ace8bc5ac263a0275bb539878a7242566153b4a3a0f2d3d0d0aa8cbb1bc6a",
+    "experiments/code-retrieval-ablation/retrieval.py": "03db343608cd23d1c592d299499eac29080749969b3fee2cf962137f8ffb60ab",
+    "experiments/code-retrieval-ablation/source-manifest.json": "e0f0fb072efb32316ef7f2f76fa00f2e831c672630fa452b0aa1bb6bd52c17b3",
+    "experiments/code-retrieval-ablation/summaries.json": "8b480f91bc44e484ae818ae9f6956ba7c414047dd6d1833749d7ccce84308751",
+    "experiments/code-retrieval-ablation/summary-cost.json": "34845386850d7d51a085d874083c54ef9b3c31ef20513240dec7eac614925da4",
+    "experiments/code-retrieval-ablation/summary-semantics.json": "7722a0725fd0bd7a8285c6d2e40b2cc3a2eab09c45df9add52911b050541766e",
+    "experiments/code-retrieval-ablation/test_experiment.py": "ccff79fd2b41303e15163a01dfea3dd466f8fc51b3d64a9a0359ceba3e21c09a",
+    "experiments/code-retrieval-ablation/validation.json": "60e4c4047f047102341796d4ae3a2cac989ca74f7d535093543fe4602da1e5e3"
+  },
+  "embedding": {
+    "model": "voyage-code-4",
+    "dimension": 1024,
+    "dtype": "float"
+  },
+  "input_types": [
+    "document",
+    "query"
+  ],
+  "truncation": false,
+  "text_construction": "Original build_texts.py T0/T1 and retrieval.combine; exact strings, no newline normalization",
+  "cache_identity_limit": "Model/input_type metadata are bound in original cache key and historical config; response files alone do not independently attest input_type. Provider's immutable model revision is not recorded in round one.",
+  "cache_vectors": 4266,
+  "cache_by_input_type": {
+    "document": 4206,
+    "query": 60
+  },
+  "text_vector_manifest_sha256": "237590a3b348d051a137cbcd5c00f2211f67e6104902f5f8451eb2288ed561b0",
+  "cache_key_content_root": "2f5ddab11cd6d20393b901b072530087495f0d1df7e98b2de48dec5d3d09c895",
+  "replayed_rankings": 300,
+  "replay_all_match": true,
+  "protocol_sha256": "50ceabb400487edd4862e6500c24eb440d34a52c3c2557bfa52e7e714dc0fb6f",
+  "config_sha256": "fe3f6a28555483cfb863cd0f38f3ef32a217751cdc91caf5a0563f9389a58969",
+  "reranker_check": {
+    "experiment_configuration": "Embedding endpoint only; no reranker configuration",
+    "available_tool": "No reranker connector",
+    "relevant_environment_names": [
+      "VOYAGE_API_KEY"
+    ],
+    "conclusion": "No explicitly authorized reranker with known cost found; no probe sent"
+  },
+  "new_api_requests": 0,
+  "new_api_input_tokens": 0,
+  "new_api_seconds": 0,
+  "new_api_cost_usd": 0
+}

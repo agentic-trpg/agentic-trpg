@@ -1,0 +1,1537 @@
+[
+  {
+    "condition": "zh",
+    "split": "development",
+    "unique": {
+      "A": {
+        "n": 20,
+        "correct_pairs": 6,
+        "benefited_questions": 5,
+        "benefited_fraction": 0.25,
+        "mean_vector_recall50": 0.8333333333333334,
+        "mean_union_recall": 0.9291666666666666,
+        "micro_union_recall": 0.9354838709677419,
+        "union_correct_pairs": 58,
+        "related_pairs": 62,
+        "mean_overlap_over_50": 0.24,
+        "mean_overlap_over_min_length": 0.24,
+        "mean_jaccard": 0.13761129557813037,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 82,
+          "max": 92,
+          "mean": 88.0,
+          "empty": 0
+        },
+        "topics": {
+          "嵌套容器": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q03",
+              "Q04"
+            ]
+          },
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q10"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 20,
+        "correct_pairs": 4,
+        "benefited_questions": 3,
+        "benefited_fraction": 0.15,
+        "mean_vector_recall50": 0.8791666666666667,
+        "mean_union_recall": 0.9458333333333334,
+        "micro_union_recall": 0.9516129032258065,
+        "union_correct_pairs": 59,
+        "related_pairs": 62,
+        "mean_overlap_over_50": 0.266,
+        "mean_overlap_over_min_length": 0.266,
+        "mean_jaccard": 0.15512608547748005,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 81,
+          "max": 92,
+          "mean": 86.7,
+          "empty": 0
+        },
+        "topics": {
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q10"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 20,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 2,
+        "net_correct_pairs": 0,
+        "benefited_questions": 2,
+        "harmed_questions": 2,
+        "unchanged_questions": 16,
+        "questions_with_additions": 2,
+        "questions_with_losses": 2,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 15,
+        "tail_truly_outside_baseline": 185,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.1,
+        "baseline": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.8791666666666667,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.8875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        }
+      },
+      "7+3": {
+        "n": 20,
+        "added_correct_pairs": 3,
+        "lost_correct_pairs": 6,
+        "net_correct_pairs": -3,
+        "benefited_questions": 3,
+        "harmed_questions": 5,
+        "unchanged_questions": 12,
+        "questions_with_additions": 3,
+        "questions_with_losses": 5,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 2,
+        "tail_truly_outside_baseline": 58,
+        "outside_correct_entered": 3,
+        "benefited_fraction": 0.15,
+        "harmed_fraction": 0.25,
+        "baseline": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.7166666666666666,
+          "EntryHit@pool": 0.95,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 45,
+          "micro_recall_pool": 0.7258064516129032
+        },
+        "mixed": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.675,
+          "Recall@pool": 0.675,
+          "EntryHit@pool": 0.95,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 42,
+          "micro_recall_pool": 0.6774193548387096
+        }
+      },
+      "45+5": {
+        "n": 20,
+        "added_correct_pairs": 1,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 0,
+        "benefited_questions": 1,
+        "harmed_questions": 1,
+        "unchanged_questions": 18,
+        "questions_with_additions": 1,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 3,
+        "tail_truly_outside_baseline": 97,
+        "outside_correct_entered": 1,
+        "benefited_fraction": 0.05,
+        "harmed_fraction": 0.05,
+        "baseline": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.8791666666666667,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.8833333333333334,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        }
+      },
+      "35+15": {
+        "n": 20,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 1,
+        "benefited_questions": 2,
+        "harmed_questions": 1,
+        "unchanged_questions": 17,
+        "questions_with_additions": 2,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 28,
+        "tail_truly_outside_baseline": 272,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.05,
+        "baseline": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.8791666666666667,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.6208333333333333,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7166666666666666,
+          "Recall@pool": 0.9,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 56,
+          "micro_recall_pool": 0.9032258064516129
+        }
+      }
+    }
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "unique": {
+      "A": {
+        "n": 10,
+        "correct_pairs": 3,
+        "benefited_questions": 2,
+        "benefited_fraction": 0.2,
+        "mean_vector_recall50": 0.8083333333333333,
+        "mean_union_recall": 0.8833333333333334,
+        "micro_union_recall": 0.8787878787878788,
+        "union_correct_pairs": 29,
+        "related_pairs": 33,
+        "mean_overlap_over_50": 0.306,
+        "mean_overlap_over_min_length": 0.306,
+        "mean_jaccard": 0.1844814315591571,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 77,
+          "max": 90,
+          "mean": 84.7,
+          "empty": 0
+        },
+        "topics": {
+          "机关索引": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q25"
+            ]
+          },
+          "恢复": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q30"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 10,
+        "correct_pairs": 1,
+        "benefited_questions": 1,
+        "benefited_fraction": 0.1,
+        "mean_vector_recall50": 0.8666666666666666,
+        "mean_union_recall": 0.8916666666666666,
+        "micro_union_recall": 0.8787878787878788,
+        "union_correct_pairs": 29,
+        "related_pairs": 33,
+        "mean_overlap_over_50": 0.32999999999999996,
+        "mean_overlap_over_min_length": 0.32999999999999996,
+        "mean_jaccard": 0.20263566240250402,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 76,
+          "max": 93,
+          "mean": 83.5,
+          "empty": 0
+        },
+        "topics": {
+          "恢复": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q30"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 10,
+        "added_correct_pairs": 0,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": -1,
+        "benefited_questions": 0,
+        "harmed_questions": 1,
+        "unchanged_questions": 9,
+        "questions_with_additions": 0,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 4,
+        "tail_truly_outside_baseline": 96,
+        "outside_correct_entered": 0,
+        "benefited_fraction": 0.0,
+        "harmed_fraction": 0.1,
+        "baseline": {
+          "MRR@10": 0.675,
+          "Hit@5": 1.0,
+          "Recall@5": 0.7166666666666667,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.8666666666666666,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 28,
+          "micro_recall_pool": 0.8484848484848485
+        },
+        "mixed": {
+          "MRR@10": 0.675,
+          "Hit@5": 1.0,
+          "Recall@5": 0.7166666666666667,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.8333333333333334,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 27,
+          "micro_recall_pool": 0.8181818181818182
+        }
+      },
+      "7+3": {
+        "n": 10,
+        "added_correct_pairs": 1,
+        "lost_correct_pairs": 0,
+        "net_correct_pairs": 1,
+        "benefited_questions": 1,
+        "harmed_questions": 0,
+        "unchanged_questions": 9,
+        "questions_with_additions": 1,
+        "questions_with_losses": 0,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 3,
+        "tail_truly_outside_baseline": 27,
+        "outside_correct_entered": 1,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.0,
+        "baseline": {
+          "MRR@10": 0.675,
+          "Hit@5": 1.0,
+          "Recall@5": 0.7166666666666667,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.7166666666666667,
+          "EntryHit@pool": 1.0,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 23,
+          "micro_recall_pool": 0.696969696969697
+        },
+        "mixed": {
+          "MRR@10": 0.675,
+          "Hit@5": 1.0,
+          "Recall@5": 0.7166666666666667,
+          "Hit@10": 1.0,
+          "Recall@10": 0.75,
+          "Recall@pool": 0.75,
+          "EntryHit@pool": 1.0,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 24,
+          "micro_recall_pool": 0.7272727272727273
+        }
+      }
+    }
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "unique": {
+      "A": {
+        "n": 30,
+        "correct_pairs": 9,
+        "benefited_questions": 7,
+        "benefited_fraction": 0.23333333333333334,
+        "mean_vector_recall50": 0.825,
+        "mean_union_recall": 0.913888888888889,
+        "micro_union_recall": 0.9157894736842105,
+        "union_correct_pairs": 87,
+        "related_pairs": 95,
+        "mean_overlap_over_50": 0.262,
+        "mean_overlap_over_min_length": 0.262,
+        "mean_jaccard": 0.15323467423847262,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 77,
+          "max": 92,
+          "mean": 86.9,
+          "empty": 0
+        },
+        "topics": {
+          "嵌套容器": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q03",
+              "Q04"
+            ]
+          },
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 3,
+            "questions": [
+              "Q10",
+              "Q25"
+            ]
+          },
+          "恢复": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q30"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 30,
+        "correct_pairs": 5,
+        "benefited_questions": 4,
+        "benefited_fraction": 0.13333333333333333,
+        "mean_vector_recall50": 0.875,
+        "mean_union_recall": 0.9277777777777777,
+        "micro_union_recall": 0.9263157894736842,
+        "union_correct_pairs": 88,
+        "related_pairs": 95,
+        "mean_overlap_over_50": 0.28733333333333333,
+        "mean_overlap_over_min_length": 0.28733333333333333,
+        "mean_jaccard": 0.17096261111915473,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 76,
+          "max": 93,
+          "mean": 85.63333333333334,
+          "empty": 0
+        },
+        "topics": {
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q10"
+            ]
+          },
+          "恢复": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q30"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 30,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 3,
+        "net_correct_pairs": -1,
+        "benefited_questions": 2,
+        "harmed_questions": 3,
+        "unchanged_questions": 25,
+        "questions_with_additions": 2,
+        "questions_with_losses": 3,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 19,
+        "tail_truly_outside_baseline": 281,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.06666666666666667,
+        "harmed_fraction": 0.1,
+        "baseline": {
+          "MRR@10": 0.638888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6444444444444444,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 83,
+          "micro_recall_pool": 0.8736842105263158
+        },
+        "mixed": {
+          "MRR@10": 0.638888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6444444444444444,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.8694444444444444,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 82,
+          "micro_recall_pool": 0.8631578947368421
+        }
+      },
+      "7+3": {
+        "n": 30,
+        "added_correct_pairs": 4,
+        "lost_correct_pairs": 6,
+        "net_correct_pairs": -2,
+        "benefited_questions": 4,
+        "harmed_questions": 5,
+        "unchanged_questions": 21,
+        "questions_with_additions": 4,
+        "questions_with_losses": 5,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 5,
+        "tail_truly_outside_baseline": 85,
+        "outside_correct_entered": 4,
+        "benefited_fraction": 0.13333333333333333,
+        "harmed_fraction": 0.16666666666666666,
+        "baseline": {
+          "MRR@10": 0.638888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6444444444444444,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7166666666666667,
+          "Recall@pool": 0.7166666666666667,
+          "EntryHit@pool": 0.9666666666666667,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 68,
+          "micro_recall_pool": 0.7157894736842105
+        },
+        "mixed": {
+          "MRR@10": 0.638888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6444444444444444,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7,
+          "Recall@pool": 0.7,
+          "EntryHit@pool": 0.9666666666666667,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 66,
+          "micro_recall_pool": 0.6947368421052632
+        }
+      }
+    }
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "unique": {
+      "A": {
+        "n": 20,
+        "correct_pairs": 5,
+        "benefited_questions": 4,
+        "benefited_fraction": 0.2,
+        "mean_vector_recall50": 0.8666666666666666,
+        "mean_union_recall": 0.9458333333333334,
+        "micro_union_recall": 0.9516129032258065,
+        "union_correct_pairs": 59,
+        "related_pairs": 62,
+        "mean_overlap_over_50": 0.29,
+        "mean_overlap_over_min_length": 0.29,
+        "mean_jaccard": 0.1717533110738849,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 80,
+          "max": 92,
+          "mean": 85.5,
+          "empty": 0
+        },
+        "topics": {
+          "嵌套容器": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q03"
+            ]
+          },
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q10"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 20,
+        "correct_pairs": 4,
+        "benefited_questions": 3,
+        "benefited_fraction": 0.15,
+        "mean_vector_recall50": 0.875,
+        "mean_union_recall": 0.9416666666666667,
+        "micro_union_recall": 0.9516129032258065,
+        "union_correct_pairs": 59,
+        "related_pairs": 62,
+        "mean_overlap_over_50": 0.322,
+        "mean_overlap_over_min_length": 0.322,
+        "mean_jaccard": 0.19528577573316963,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 75,
+          "max": 92,
+          "mean": 83.9,
+          "empty": 0
+        },
+        "topics": {
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q10"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 20,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 1,
+        "benefited_questions": 2,
+        "harmed_questions": 1,
+        "unchanged_questions": 17,
+        "questions_with_additions": 2,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 12,
+        "tail_truly_outside_baseline": 188,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.05,
+        "baseline": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.8958333333333334,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 56,
+          "micro_recall_pool": 0.9032258064516129
+        }
+      },
+      "7+3": {
+        "n": 20,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 3,
+        "net_correct_pairs": -1,
+        "benefited_questions": 2,
+        "harmed_questions": 3,
+        "unchanged_questions": 15,
+        "questions_with_additions": 2,
+        "questions_with_losses": 3,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 4,
+        "tail_truly_outside_baseline": 56,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.15,
+        "baseline": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.7291666666666666,
+          "EntryHit@pool": 0.95,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 46,
+          "micro_recall_pool": 0.7419354838709677
+        },
+        "mixed": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.725,
+          "Recall@pool": 0.725,
+          "EntryHit@pool": 0.95,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 45,
+          "micro_recall_pool": 0.7258064516129032
+        }
+      },
+      "45+5": {
+        "n": 20,
+        "added_correct_pairs": 1,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 0,
+        "benefited_questions": 1,
+        "harmed_questions": 1,
+        "unchanged_questions": 18,
+        "questions_with_additions": 1,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 5,
+        "tail_truly_outside_baseline": 95,
+        "outside_correct_entered": 1,
+        "benefited_fraction": 0.05,
+        "harmed_fraction": 0.05,
+        "baseline": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.8791666666666667,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        }
+      },
+      "35+15": {
+        "n": 20,
+        "added_correct_pairs": 2,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 1,
+        "benefited_questions": 2,
+        "harmed_questions": 1,
+        "unchanged_questions": 17,
+        "questions_with_additions": 2,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 27,
+        "tail_truly_outside_baseline": 273,
+        "outside_correct_entered": 2,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.05,
+        "baseline": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 55,
+          "micro_recall_pool": 0.8870967741935484
+        },
+        "mixed": {
+          "MRR@10": 0.71,
+          "Hit@5": 0.95,
+          "Recall@5": 0.6083333333333333,
+          "Hit@10": 0.95,
+          "Recall@10": 0.7291666666666666,
+          "Recall@pool": 0.8958333333333334,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 56,
+          "micro_recall_pool": 0.9032258064516129
+        }
+      }
+    }
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "unique": {
+      "A": {
+        "n": 10,
+        "correct_pairs": 2,
+        "benefited_questions": 1,
+        "benefited_fraction": 0.1,
+        "mean_vector_recall50": 0.8083333333333333,
+        "mean_union_recall": 0.8583333333333334,
+        "micro_union_recall": 0.8484848484848485,
+        "union_correct_pairs": 28,
+        "related_pairs": 33,
+        "mean_overlap_over_50": 0.332,
+        "mean_overlap_over_min_length": 0.332,
+        "mean_jaccard": 0.20175531849650383,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 78,
+          "max": 90,
+          "mean": 83.4,
+          "empty": 0
+        },
+        "topics": {
+          "机关索引": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q25"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 10,
+        "correct_pairs": 1,
+        "benefited_questions": 1,
+        "benefited_fraction": 0.1,
+        "mean_vector_recall50": 0.8083333333333333,
+        "mean_union_recall": 0.8333333333333334,
+        "micro_union_recall": 0.8181818181818182,
+        "union_correct_pairs": 27,
+        "related_pairs": 33,
+        "mean_overlap_over_50": 0.356,
+        "mean_overlap_over_min_length": 0.356,
+        "mean_jaccard": 0.2214643935051776,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 74,
+          "max": 89,
+          "mean": 82.2,
+          "empty": 0
+        },
+        "topics": {
+          "机关索引": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q25"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 10,
+        "added_correct_pairs": 1,
+        "lost_correct_pairs": 0,
+        "net_correct_pairs": 1,
+        "benefited_questions": 1,
+        "harmed_questions": 0,
+        "unchanged_questions": 9,
+        "questions_with_additions": 1,
+        "questions_with_losses": 0,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 8,
+        "tail_truly_outside_baseline": 92,
+        "outside_correct_entered": 1,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.0,
+        "baseline": {
+          "MRR@10": 0.7666666666666667,
+          "Hit@5": 1.0,
+          "Recall@5": 0.6833333333333333,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7833333333333333,
+          "Recall@pool": 0.8083333333333333,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 26,
+          "micro_recall_pool": 0.7878787878787878
+        },
+        "mixed": {
+          "MRR@10": 0.7666666666666667,
+          "Hit@5": 1.0,
+          "Recall@5": 0.6833333333333333,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7833333333333333,
+          "Recall@pool": 0.8333333333333334,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 27,
+          "micro_recall_pool": 0.8181818181818182
+        }
+      },
+      "7+3": {
+        "n": 10,
+        "added_correct_pairs": 1,
+        "lost_correct_pairs": 0,
+        "net_correct_pairs": 1,
+        "benefited_questions": 1,
+        "harmed_questions": 0,
+        "unchanged_questions": 9,
+        "questions_with_additions": 1,
+        "questions_with_losses": 0,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 4,
+        "tail_truly_outside_baseline": 26,
+        "outside_correct_entered": 1,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.0,
+        "baseline": {
+          "MRR@10": 0.7666666666666667,
+          "Hit@5": 1.0,
+          "Recall@5": 0.6833333333333333,
+          "Hit@10": 1.0,
+          "Recall@10": 0.7833333333333333,
+          "Recall@pool": 0.7833333333333333,
+          "EntryHit@pool": 1.0,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 25,
+          "micro_recall_pool": 0.7575757575757576
+        },
+        "mixed": {
+          "MRR@10": 0.7666666666666667,
+          "Hit@5": 1.0,
+          "Recall@5": 0.6833333333333333,
+          "Hit@10": 1.0,
+          "Recall@10": 0.8083333333333333,
+          "Recall@pool": 0.8083333333333333,
+          "EntryHit@pool": 1.0,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 26,
+          "micro_recall_pool": 0.7878787878787878
+        }
+      }
+    }
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "unique": {
+      "A": {
+        "n": 30,
+        "correct_pairs": 7,
+        "benefited_questions": 5,
+        "benefited_fraction": 0.16666666666666666,
+        "mean_vector_recall50": 0.8472222222222222,
+        "mean_union_recall": 0.9166666666666666,
+        "micro_union_recall": 0.9157894736842105,
+        "union_correct_pairs": 87,
+        "related_pairs": 95,
+        "mean_overlap_over_50": 0.30400000000000005,
+        "mean_overlap_over_min_length": 0.30400000000000005,
+        "mean_jaccard": 0.18175398021475786,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 78,
+          "max": 92,
+          "mean": 84.8,
+          "empty": 0
+        },
+        "topics": {
+          "嵌套容器": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q03"
+            ]
+          },
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 3,
+            "questions": [
+              "Q10",
+              "Q25"
+            ]
+          }
+        }
+      },
+      "C": {
+        "n": 30,
+        "correct_pairs": 5,
+        "benefited_questions": 4,
+        "benefited_fraction": 0.13333333333333333,
+        "mean_vector_recall50": 0.8527777777777777,
+        "mean_union_recall": 0.9055555555555556,
+        "micro_union_recall": 0.9052631578947369,
+        "union_correct_pairs": 86,
+        "related_pairs": 95,
+        "mean_overlap_over_50": 0.3333333333333333,
+        "mean_overlap_over_min_length": 0.3333333333333333,
+        "mean_jaccard": 0.2040119816571723,
+        "vector_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "bm25_length": {
+          "min": 50,
+          "max": 50,
+          "mean": 50.0,
+          "empty": 0
+        },
+        "union_length": {
+          "min": 74,
+          "max": 92,
+          "mean": 83.33333333333333,
+          "empty": 0
+        },
+        "topics": {
+          "环境快照": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q05"
+            ]
+          },
+          "光照": {
+            "correct_pairs": 1,
+            "questions": [
+              "Q08"
+            ]
+          },
+          "机关索引": {
+            "correct_pairs": 2,
+            "questions": [
+              "Q10",
+              "Q25"
+            ]
+          }
+        }
+      }
+    },
+    "quotas": {
+      "40+10": {
+        "n": 30,
+        "added_correct_pairs": 3,
+        "lost_correct_pairs": 1,
+        "net_correct_pairs": 2,
+        "benefited_questions": 3,
+        "harmed_questions": 1,
+        "unchanged_questions": 26,
+        "questions_with_additions": 3,
+        "questions_with_losses": 1,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 20,
+        "tail_truly_outside_baseline": 280,
+        "outside_correct_entered": 3,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.03333333333333333,
+        "baseline": {
+          "MRR@10": 0.7288888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6333333333333333,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7472222222222222,
+          "Recall@pool": 0.8527777777777777,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 81,
+          "micro_recall_pool": 0.8526315789473684
+        },
+        "mixed": {
+          "MRR@10": 0.7288888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6333333333333333,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7472222222222222,
+          "Recall@pool": 0.875,
+          "EntryHit@pool": 1.0,
+          "length": 50.0,
+          "length_distribution": {
+            "min": 50,
+            "max": 50,
+            "mean": 50.0,
+            "empty": 0
+          },
+          "correct_pairs": 83,
+          "micro_recall_pool": 0.8736842105263158
+        }
+      },
+      "7+3": {
+        "n": 30,
+        "added_correct_pairs": 3,
+        "lost_correct_pairs": 3,
+        "net_correct_pairs": 0,
+        "benefited_questions": 3,
+        "harmed_questions": 3,
+        "unchanged_questions": 24,
+        "questions_with_additions": 3,
+        "questions_with_losses": 3,
+        "questions_with_entry_gains": 0,
+        "questions_with_entry_losses": 0,
+        "tail_already_in_baseline": 8,
+        "tail_truly_outside_baseline": 82,
+        "outside_correct_entered": 3,
+        "benefited_fraction": 0.1,
+        "harmed_fraction": 0.1,
+        "baseline": {
+          "MRR@10": 0.7288888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6333333333333333,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7472222222222222,
+          "Recall@pool": 0.7472222222222222,
+          "EntryHit@pool": 0.9666666666666667,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 71,
+          "micro_recall_pool": 0.7473684210526316
+        },
+        "mixed": {
+          "MRR@10": 0.7288888888888889,
+          "Hit@5": 0.9666666666666667,
+          "Recall@5": 0.6333333333333333,
+          "Hit@10": 0.9666666666666667,
+          "Recall@10": 0.7527777777777778,
+          "Recall@pool": 0.7527777777777778,
+          "EntryHit@pool": 0.9666666666666667,
+          "length": 10.0,
+          "length_distribution": {
+            "min": 10,
+            "max": 10,
+            "mean": 10.0,
+            "empty": 0
+          },
+          "correct_pairs": 71,
+          "micro_recall_pool": 0.7473684210526316
+        }
+      }
+    }
+  }
+]

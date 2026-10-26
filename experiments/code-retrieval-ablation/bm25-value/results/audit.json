@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "question_conditions": 60,
+  "quota_comparisons": 200,
+  "aggregate_groups": 6,
+  "original_files_unchanged": 37,
+  "report_exactly_recomputed": true,
+  "local_markdown_links": 9,
+  "secret_scan_passed": true,
+  "reranker_status": "not_run",
+  "new_api_requests": 0
+}

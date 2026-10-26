@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "scope": "Offline retrieval reanalysis only; no production game or dependency changes",
+  "workspace": "D:/Projects/agentic-trpg/trpg-state-machine/.worktrees/code-retrieval-ablation/agentic-trpg",
+  "branch": "experiment/code-retrieval-ablation",
+  "starting_head": "35e79ce8d2ac81d0b62902cff429b52fdda05562",
+  "starting_remote_branch": "35e79ce8d2ac81d0b62902cff429b52fdda05562",
+  "recorded_origin_main": "88bb8dd47e006b511e2b61a4d228d19e1702bb60",
+  "remote": "https://github.com/agentic-trpg/agentic-trpg.git",
+  "starting_status": "clean",
+  "source_commit": "b9ae704abe4e5d049fa4664873662d7cf991ac39",
+  "python": "C:/Users/lenovo/.cache/codex-runtimes/codex-primary-runtime/dependencies/python/python.exe",
+  "ruff": "D:/Projects/agentic-trpg/trpg-state-machine/.venv/Scripts/ruff.exe",
+  "commands": [
+    {
+      "command": "python bm25-value/analyze.py --sm-git D:/Projects/agentic-trpg/trpg-state-machine/.git",
+      "exit": 0,
+      "result": "83 fixed-commit files, 1059 complete nodes, 4266 vectors verified; 300 rankings replayed exactly; no new API calls"
+    },
+    {
+      "command": "python bm25-value/render_report.py",
+      "exit": 0,
+      "result": "Tables rendered from per-question and aggregate JSON"
+    },
+    {
+      "command": "python -m unittest discover -s bm25-value -p test_analysis.py -v",
+      "exit": 0,
+      "result": "7 tests passed; committed artifacts suffice without vector caches"
+    },
+    {
+      "command": "python -m unittest -v test_experiment.py",
+      "exit": 0,
+      "result": "8 original experiment tests passed; no production game imports"
+    },
+    {
+      "command": "python retrieval.py selftest",
+      "exit": 0,
+      "result": "10 original deterministic assertions passed"
+    },
+    {
+      "command": "ruff check bm25-value",
+      "exit": 0,
+      "result": "All checks passed"
+    },
+    {
+      "command": "ruff format --check bm25-value",
+      "exit": 0,
+      "result": "All selected files already formatted"
+    },
+    {
+      "command": "python bm25-value/rerank.py prepare",
+      "exit": 0,
+      "result": "120 local paired templates, 17678290 potential document UTF-8 bytes; actual API requests=0"
+    },
+    {
+      "command": "python bm25-value/verify_results.py",
+      "exit": 0,
+      "result": "60 question-conditions, 200 quota comparisons, 6 aggregate groups; report exactly recomputed; 37 historical files unchanged; links/fences/table columns and actual-env-secret scan passed"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0,
+      "result": "No whitespace errors"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit": 0,
+      "result": "Named 14-file experiment-only staged diff has no whitespace errors"
+    }
+  ],
+  "not_run": [
+    "reranker model requests or paired performance comparison",
+    "new embedding or generation API calls",
+    "supplemental posthoc labelling",
+    "independent new-question confirmation",
+    "SM/RE game test suites",
+    "GitHub Actions"
+  ],
+  "initial_failures": [
+    "Sandbox git ls-remote failed with DNS resolution; authorized network escalation returned the exact reviewed SHA",
+    "Initial lint found long lines; formatting and explicit wrapping fixed code, Markdown generator documents its single-line output exemption",
+    "Initial audit imported the same-named historical report module and regenerated two Markdown files with CRLF; only those two accidentally rewritten files were restored byte-for-byte from the reviewed commit. Module path priority was fixed and new renderer/auditor renamed to avoid collisions. All 37 historical files were checked again.",
+    "Table-column audit caught one generated separator mismatch; fixed before final verification",
+    "Sandbox git add could not create worktree index.lock in documentation Git directory; authorized escalation staged only the named experiment files"
+  ]
+}
