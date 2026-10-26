@@ -1,5 +1,19 @@
 # Agentic TRPG — Module Contracts（目标架构与 MVP）
 
+## 2026-10-27 当前源码与说明维护入口
+
+本批基线为文档 `88bb8dd`、SM `b9ae704`、RE `7bb02b9`（均已 fetch 核对）。
+SM 当前 main 已包含 Session RAM、持久提交后发布、运行实例字段及通路反向索引的
+受限实现；容器重量／机关索引跨命令复用已有生产接线。当前依据是源码和既有
+[实例归属证据](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)，不再把下方 10 月 21 日的
+NOT IMPLEMENTED 或“仅配套分支”当作当前 main 的状态。完整恢复／未来多人等原有
+限制不因本批说明补充关闭；本批没有重新运行历史游戏验收。
+
+新增强制开发规范见 [源码说明维护](CODE_DOCUMENTATION.md)，覆盖持续维护、仓库级
+Skills 和固定检索实验／未来索引输入；本批证据见
+[核对报告](reviews/CODE_DOCUMENTATION_AND_SKILLS.md)。历史段落保留日期和原语境。
+
+
 **2026-10-22 运行实例字段归属补充：** §2.3a 的实例字段、关联／索引与局部准入为
 Architecture Decision Status **[DECIDED]**。本分支从 `origin/main@5619e7a` 创建；
 下述 10 月 21 日及更早的 `[NOT IMPLEMENTED]`、源码和验收数字保留其原日期，
