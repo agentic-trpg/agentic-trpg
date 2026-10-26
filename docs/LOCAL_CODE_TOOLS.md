@@ -18,7 +18,7 @@
 $py = Join-Path $env:LCT_ROOT '.venv/Scripts/python.exe'
 $entry = Join-Path $env:LCT_ROOT 'local_code_tools.py'
 & $py $entry status --refresh
-& $py $entry search-code '容器当前总重量' --repo trpg-state-machine --level function --mode rrf
+& $py $entry search-code 'ContainerService' --repo trpg-state-machine --level class --mode bm25
 & $py $entry search-docs '实例字段 局部准入' --category contract
 ```
 
@@ -89,6 +89,8 @@ acceptance 等）和 `experiment`。分类是路径规则，不代表每句话�
 默认 scope 排除了实验目录，所以 experiment 分类在默认语料中可能为空。
 
 ## 搜索与分页
+
+以下 dense／RRF 示例要求 `index_status` 中 `dense_ready=true`；未建向量时使用 BM25。
 
 ```powershell
 & $py $entry search-code 'SessionMemory publish 回滚' --level module --mode dense
