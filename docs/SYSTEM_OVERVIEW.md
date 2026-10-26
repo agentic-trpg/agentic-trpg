@@ -36,6 +36,7 @@ Bridge/Demo 的存在不能代替这些目标组件。范围由 MVP Scope 决定
 | 实现库领域文档与 Progress | 具体实现切片、限制、日期和原始验证 | 与实际源码、依赖 pin、测试共同构成能力证据 |
 | `docs/reviews/` | 有范围和版本的审阅／验收记录 | 保留历史，不覆盖现行契约；见[实例归属核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md) |
 | [源码说明规范](CODE_DOCUMENTATION.md) | docstring、审阅、索引输入和持续维护规范 | 源码说明描述当前行为；本页解释仓库结构 |
+| [本地检索工具](LOCAL_CODE_TOOLS.md) | 可选的源码／DOC 检索与静态图导航 | 工具及索引在仓库外；使用前核对版本和最近检查，不代替当前源码或契约 |
 | `AGENTS.md`、`.agents/skills/` | 强制工作要求和任务型流程 | Skills 引用权威文档，不另立架构规则 |
 
 冲突处理：先区分“目标决定”和“当前行为”是否只是不同轴上的描述。
