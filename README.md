@@ -1,5 +1,8 @@
 # Agentic TRPG
 
+Start with the [system and interface overview](docs/SYSTEM_OVERVIEW.md) for repository
+responsibilities, current public paths, state ownership and task-based source navigation.
+
 ## 2026-10-27 当前源码与说明维护入口
 
 本批基线为文档 `88bb8dd`、SM `b9ae704`、RE `7bb02b9`（均已 fetch 核对）。
@@ -166,13 +169,14 @@ Other components are described in the architecture but are not represented here 
 
 ## Documentation
 
-The design documents are currently written primarily in Chinese. Start with MVP Scope for product boundaries and Module Contracts for the authoritative target architecture and interfaces.
+The design documents are primarily in Chinese. Start with [the system overview](docs/SYSTEM_OVERVIEW.md) to locate the relevant repository and documents, then consult MVP Scope for product boundaries and Module Contracts for authoritative architecture and interfaces.
 
 | Document | Purpose |
 | --- | --- |
 | [MVP Scope](docs/MVP_SCOPE.md) | Product goals, first playable milestone, acceptance boundaries, and deferred features. |
 | [Module Contracts](docs/MODULE_CONTRACTS.md) | Highest cross-module target interface specification: final stateless architecture, state ownership, requests/results, atomic commits, and migration completion criteria. Detailed ABI proposals remain subject to review. |
 | [Game Core Evolution Plan](docs/GAME_CORE_EVOLUTION_PLAN.md) | SM + RE evolution, mechanism/component research, composable world consequences, early interleaved Agentic validation, and optional Evennia evaluation. Subordinate to Module Contracts. |
+| [System overview](docs/SYSTEM_OVERVIEW.md) | Codex entry to repository relationships, document authority and implementation navigation. |
 | [State Machine Architecture](docs/STATE_MACHINE_ARCHITECTURE.md) | Current SM foundation and target domain modules, stateful Combat Handler, shared commits, perception and cognition boundaries. File name retained. |
 | [World Subsystem Design](docs/WORLD_SUBSYSTEM_DESIGN.md) | Optional world capabilities, candidate fields and data ownership, exploration/combat interaction reuse, and verified versus unresolved rules. Subordinate to Module Contracts. |
 | [Agent Architecture](docs/AGENT_ARCHITECTURE.md) | DM Planner/Narrator separation, NPC Sub-agents, Host responsibilities, and evaluation modes. |

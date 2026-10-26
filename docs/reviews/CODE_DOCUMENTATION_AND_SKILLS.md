@@ -103,3 +103,41 @@ fetch 后 `origin/experiment/code-retrieval-ablation` 仍为
 Git 固定树中未发现 `.local`、向量或原始响应被跟踪；本批不复制这些本地文件。
 新索引读取当前源码说明和自动提取背景，新说明不沿用旧语料／向量版本或旧 A/B/C
 比较结论。正式图谱、向量数据库、自动索引与新融合算法均不在本批范围。
+
+## 2026-10-27 续批：两处说明纠正与系统总览
+
+实际起始 HEAD 为 `6bba7abbe89e88811fea8e110fd846237db6dfa5`，沿用
+`docs/code-documentation-and-skills` 和原平行 worktree。fetch 后远程任务分支相同，
+没有后续提交；origin/main 仍为 `88bb8dd`。三个任务 worktree 开始均干净，
+不新建分支、不合并 main／其他分支、不修改实验分支或 Pages。
+
+本库 README 有目标框架和文档表，SM README 以长期历史记录为主，RE 有分领域设计；
+均未找到可直接承担本次简短、源码导向导航的总览。因此分别新增单一入口，旧文档
+保留详细职责，新增的总览相互导航而不另立契约：
+
+| 仓库 | 统一入口 | 覆盖范围／篇幅 |
+| --- | --- | --- |
+| 文档 | `docs/SYSTEM_OVERVIEW.md` | 三库关系、权威层级、开发流、状态责任、接口查找；118 行 |
+| SM | sibling `trpg-state-machine/docs/SYSTEM_OVERVIEW.md` | 服务／命令／生命周期、领域协作、RAM／UoW／SQL、RE 采用、事件与 NPC；150 行 |
+| RE | sibling `trpg-rules-engine/docs/SYSTEM_OVERVIEW.md` | 固定请求与求值、素材冻结、规则子模块、候选结果及 Legacy／Bridge／Demo；143 行 |
+
+三份总览都按当前源码区分已实现与计划：完整 Agent Host／玩家 UI、完整 Stateless
+迁移、通用采用、活跃战斗精确恢复、未来多人和完整跨库闭环，不能据本批标为验收。
+易变 Schema／evaluator 数字通过当前定义和合同查找，不作为总览中的永久约束。
+
+本库变更文件：AGENTS.md、README.md、docs/SYSTEM_OVERVIEW.md、
+docs/CODE_DOCUMENTATION.md、.agents/skills/trpg-contract-sync/SKILL.md、本文。
+AGENTS 和 Skills 只为结构／接口变更补充总览同步，不要求每次局部函数改动重读全部架构。
+SM／RE 的通用源码说明 Skill 保持相同，函数、模块和仓库总览的说明职责分开。
+
+SM 同时纠正两个旧说明：automatic 的去重只对一个来源事件，prepared 在该路径未使用；
+WallIndex 查询只返回包围盒重叠候选。详细源码证据在 SM 同批验收追加段。
+前面初批的覆盖率、128 项测试和 718 份 Schema 比对保留原口径，不算本续批新执行。
+
+本续批检查：107 处源码文件／符号引用存在性通过；20 份变更 Markdown 的本地路径、
+锚点、表格和代码块检查通过；六份 Skill 元数据验证通过，共享流程逐字相同；
+SM 全生产源码去除真实 docstring 后 AST 无差异，lint／格式通过；RE 严格 MkDocs
+构建通过。工作／暂存差异检查均以 `git diff --check` 为提交门禁，退出 0。
+总览未使用 Mermaid 或图片，因而无图语法／渲染验证需求。
+未运行完整游戏套件、新故障／性能验收、付费模型 API、自动 Skill 触发或远程 CI 验证。
+未借发现的说明错误修改业务逻辑；总览仍须随真实结构变化维护，不是形式化调用图证明。

@@ -26,3 +26,8 @@ Validate changed Markdown and applicable strict docs builds. For source explanat
 use the code-documentation workflow installed in each implementation workspace; do not
 assume sibling skills are automatically discovered. Deliver baselines/branches, findings,
 exact checks and evidence limits, scoped commits/pushes only when authorized by the task.
+
+For structural, ownership or cross-repository interface changes, start from each
+affected repository's `docs/SYSTEM_OVERVIEW.md`, then the relevant contracts/source.
+Include the corresponding overviews and their navigation in synchronization checks;
+keep them concise navigation, not a second authority or a complete call graph.
