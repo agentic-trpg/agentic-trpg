@@ -1,0 +1,7 @@
+{
+  "phase": "minimal-probe",
+  "texts": 1,
+  "token_byte_bound": 96,
+  "list_cost_upper_usd": 1.152e-05,
+  "truncation": false
+}

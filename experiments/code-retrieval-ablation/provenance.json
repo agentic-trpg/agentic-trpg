@@ -1,0 +1,55 @@
+{
+  "experiment": "SM code retrieval pilot; not a three-repository acceptance",
+  "date": "2026-10-27",
+  "timezone": "Asia/Shanghai",
+  "repositories": [
+    {
+      "name": "docs-original",
+      "root": "D:/Projects/agentic-trpg/agentic-trpg",
+      "branch": "main",
+      "head": "88bb8dd47e006b511e2b61a4d228d19e1702bb60",
+      "origin_main": "88bb8dd47e006b511e2b61a4d228d19e1702bb60",
+      "remote": "https://github.com/agentic-trpg/agentic-trpg.git",
+      "status": [
+        "?? .worktrees/",
+        "?? docs/FIRST_BLUSH_MVP_REQUIREMENTS.md"
+      ],
+      "main_fetched": true
+    },
+    {
+      "name": "SM",
+      "root": "D:/Projects/agentic-trpg/trpg-state-machine",
+      "branch": "main",
+      "head": "b9ae704abe4e5d049fa4664873662d7cf991ac39",
+      "origin_main": "b9ae704abe4e5d049fa4664873662d7cf991ac39",
+      "remote": "https://github.com/agentic-trpg/trpg-state-machine.git",
+      "status": [
+        "?? .worktrees/",
+        "?? 新建 文本文档.txt"
+      ],
+      "mode": "read-only source; experiment docs worktree placed under preexisting .worktrees; no source, branch or tracked file changes"
+    },
+    {
+      "name": "RE",
+      "root": "D:/Projects/agentic-trpg/trpg-rules-engine",
+      "branch": "main",
+      "head": "7bb02b955609f68fc78ff57dac2d51a0c2333366",
+      "origin_main": "7bb02b955609f68fc78ff57dac2d51a0c2333366",
+      "remote": "https://github.com/agentic-trpg/trpg-rules-engine.git",
+      "status": [
+        "?? .evaluation-worktree/"
+      ],
+      "mode": "read-only"
+    },
+    {
+      "name": "docs-experiment",
+      "root": "D:/Projects/agentic-trpg/trpg-state-machine/.worktrees/code-retrieval-ablation/agentic-trpg",
+      "branch": "experiment/code-retrieval-ablation",
+      "starting_head": "88bb8dd47e006b511e2b61a4d228d19e1702bb60",
+      "base": "origin/main",
+      "initial_status": [],
+      "reason": "Original documentation checkout dirty; isolated worktree preserves it."
+    }
+  ],
+  "content_identity": "source-manifest.json hashes actual bytes of every src/**/*.py. HEAD alone is not treated as corpus identity. No untracked user documents, archives, databases or test artifacts indexed."
+}

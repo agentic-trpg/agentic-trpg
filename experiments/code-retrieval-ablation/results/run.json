@@ -1,0 +1,131 @@
+{
+  "model": "voyage-code-4",
+  "dimension": 1024,
+  "dtype": "float",
+  "candidate_count": 1059,
+  "matrices": 4,
+  "logical_float32_vector_bytes": 17350656,
+  "cpu_float64_matrix_bytes": 34701312,
+  "cache_json_bytes": 74635872,
+  "bm25_build_ms": 76.72610005829483,
+  "api": {
+    "attempts": 98,
+    "reserved_tokens": 5764173,
+    "usage_tokens": 951449,
+    "successes": 85,
+    "errors": [
+      {
+        "transport_error": true,
+        "outcome_unknown": true
+      },
+      {
+        "http_status": 429,
+        "fatal": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "http_status": 429,
+        "fatal": false,
+        "billing_exhausted": false,
+        "rate_limit_hint": true,
+        "numeric_limits": [
+          "3"
+        ],
+        "payment_method_hint": true
+      },
+      {
+        "transport_error": true,
+        "outcome_unknown": true
+      },
+      {
+        "transport_error": true,
+        "outcome_unknown": true
+      }
+    ],
+    "api_seconds": 170.1210707994178,
+    "last_attempt_epoch": 1793033243.558254
+  },
+  "list_price_equivalent_usd": 0.11417387999999999,
+  "actual_billed_usd": null,
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "numpy": "2.3.5"
+}

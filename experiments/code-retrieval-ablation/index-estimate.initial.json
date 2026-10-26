@@ -1,0 +1,15 @@
+{
+  "unique_texts": 4266,
+  "uncached_texts": 4266,
+  "conservative_token_byte_bound": 4739350,
+  "heuristic_tokens_bytes_div_4": 1116581.5,
+  "estimated_list_cost_upper_usd": 0.568722,
+  "heuristic_list_cost_usd": 0.1421805,
+  "max_text_byte_bound": 27453,
+  "ceilings": {
+    "max_requests": 400,
+    "max_estimated_tokens": 15000000,
+    "max_cost_usd": 2
+  },
+  "billing": "Provider usage priced at published list rate; actual account invoice/free tier unavailable."
+}

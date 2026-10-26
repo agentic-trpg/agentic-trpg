@@ -1,0 +1,13 @@
+{
+  "semantic_authoring_started_at": "2026-10-26T16:25:53.230Z",
+  "semantic_authoring_finished_at": "2026-10-26T16:33:32.986Z",
+  "materialize_seconds": 4.945633600000292,
+  "records": 1059,
+  "summary_utf8_bytes": 55886,
+  "summary_characters": 20054,
+  "additional_generation_api_calls": 0,
+  "additional_generation_api_cost_usd": 0,
+  "codex_token_usage": null,
+  "codex_cost_usd": null,
+  "note": "Authoring wall-clock interval includes code review and runner implementation; not isolated human labor or token billing. Current Codex used literal source and structural facts; no questions, labels, rankings were passed to this materializer. Same agent authored labels: not an independently blinded study."
+}

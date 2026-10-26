@@ -1,0 +1,1204 @@
+{
+  "version": "source-review-v1",
+  "warning": "当前 Codex 人工式源码审阅标注；允许多个入口，相关集合并非完整或无误的调用图。入口计入相关集合。",
+  "items": [
+    {
+      "id": "Q01",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainerService.current_weight@149"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.current_weight@149",
+          "reason": "递归读取直接内容物，加上自身重量；未知重量沿聚合传播。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 149,
+            "end": 166,
+            "source_sha256": "0acd21c5035d3b1d97f72da803e0ca9e8614680c1356c62485b74ad4fb4f8fe4"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.own_weight@136",
+          "reason": "递归读取直接内容物，加上自身重量；未知重量沿聚合传播。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 136,
+            "end": 146,
+            "source_sha256": "d93ebf60214382d1922562cdafd8e018a0bace5fbc3ef2329e1f0a50a279dbe7"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::WorldFacts.contents@1120",
+          "reason": "递归读取直接内容物，加上自身重量；未知重量沿聚合传播。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 1120,
+            "end": 1124,
+            "source_sha256": "73a0b96789c4d6b6e6c32078ec3bef22cd4efd6fc1e5b5d7cc476ebf437cb4fd"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q02",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::SessionMemory._weight_changes@786"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory._weight_changes@786",
+          "reason": "变更捕获维护对象和祖先的重量 stamp，读取按维护版复用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 786,
+            "end": 817,
+            "source_sha256": "0765a5b87109cd22a10430fed1c5dbcfec8fb83e3afc4538e2e60de51fbf9b6b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.changed@1158",
+          "reason": "变更捕获维护对象和祖先的重量 stamp，读取按维护版复用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1158,
+            "end": 1230,
+            "source_sha256": "9c62ac8d005c75657afd66558b12c760e9070f7df799a2cabb364d9b0fc06247"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.current_weight@149",
+          "reason": "变更捕获维护对象和祖先的重量 stamp，读取按维护版复用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 149,
+            "end": 166,
+            "source_sha256": "0acd21c5035d3b1d97f72da803e0ca9e8614680c1356c62485b74ad4fb4f8fe4"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q03",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainerService.validate@341"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.validate@341",
+          "reason": "移动子树和旧新祖先组成 affected，候选重定位后执行容量与两层检查。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 341,
+            "end": 370,
+            "source_sha256": "2b2bd0fa42631da6979b871e64fe7636c1355d88cae53f54ddff9883babe9c8b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.audit@224",
+          "reason": "移动子树和旧新祖先组成 affected，候选重定位后执行容量与两层检查。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 224,
+            "end": 290,
+            "source_sha256": "3eda787e872631f2a6190450e209756cd16428de0672c723667dc0f2713a130b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainmentState.relocate@44",
+          "reason": "移动子树和旧新祖先组成 affected，候选重定位后执行容量与两层检查。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 44,
+            "end": 63,
+            "source_sha256": "08cbf1f368cc818bfe8ff4deed2c665d5b62753faf2be44a6639251c5159932e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.subtree@213",
+          "reason": "移动子树和旧新祖先组成 affected，候选重定位后执行容量与两层检查。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 213,
+            "end": 222,
+            "source_sha256": "15a00446a06deb08c6bada5157ee28659eb9e0cfd37ac6967b0a3a0396bb199b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q04",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainerService.reachable@76",
+        "src/trpg_state_machine/domain_facts.py::WorldFacts.item_accessible@1108"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.reachable@76",
+          "reason": "可达性沿祖先访问状态核对，并要求目标容器允许内容物访问。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 76,
+            "end": 94,
+            "source_sha256": "dcbab89a79d54ba6254ca9115bca3ff2c3c08191027b87619afca7d2c91f2eeb"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::WorldFacts.item_accessible@1108",
+          "reason": "可达性沿祖先访问状态核对，并要求目标容器允许内容物访问。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 1108,
+            "end": 1117,
+            "source_sha256": "60a2a8bc0c1373ef787fd4e562064c4c6728501263044d33972ba58b8c810a53"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.require_contents_access@100",
+          "reason": "可达性沿祖先访问状态核对，并要求目标容器允许内容物访问。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 100,
+            "end": 108,
+            "source_sha256": "67bc82486fcbd21ec4ae844c0f5fe003b97937b6a9913e9700a83b36dfbcd67d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q05",
+      "entries": [
+        "src/trpg_state_machine/environment.py::EnvironmentService.query_area@729"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService.query_area@729",
+          "reason": "公开区域入口核对角色当前场景、边界和每格可见性，再合成公开结果。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 729,
+            "end": 765,
+            "source_sha256": "8f0fc6f956d1018507f20967eb007b51e828d9e11e4fb138ca9e5eb1a78dd204"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService.query_cell@767",
+          "reason": "公开区域入口核对角色当前场景、边界和每格可见性，再合成公开结果。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 767,
+            "end": 776,
+            "source_sha256": "fd562b40bb403a3060e7606b0b4003c7a93b5428f440cbfc2cc8f9d5816d9e4e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._cell@543",
+          "reason": "公开区域入口核对角色当前场景、边界和每格可见性，再合成公开结果。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 543,
+            "end": 561,
+            "source_sha256": "cb4af1ac9c9d42bf66f5058c259cf107b0a8e3d38609b99d67343732c8f3c53c"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q06",
+      "entries": [
+        "src/trpg_state_machine/environment.py::EnvironmentService._query_cache@169"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._query_cache@169",
+          "reason": "缓存身份含绑定和提供方，双版本与登记提供方协议决定可复用范围。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 169,
+            "end": 188,
+            "source_sha256": "9bb1f3ee5b0b174d0cc606661d9a028de08691a2b744a09bdddbda63e40ee267"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment_versions.py::EnvironmentVersions.cacheable@208",
+          "reason": "缓存身份含绑定和提供方，双版本与登记提供方协议决定可复用范围。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment_versions.py",
+            "line": 208,
+            "end": 225,
+            "source_sha256": "bc81b0af7638d64ab08458fc3f169c01b3a9208b00b99b96bfc0230819b3d728"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment_versions.py::EnvironmentVersions.current@158",
+          "reason": "缓存身份含绑定和提供方，双版本与登记提供方协议决定可复用范围。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment_versions.py",
+            "line": 158,
+            "end": 164,
+            "source_sha256": "0c1648e6577bb051abab0c64ecc613e079889039eec2b64251c104fe2017f5e2"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._environment_inputs@198",
+          "reason": "缓存身份含绑定和提供方，双版本与登记提供方协议决定可复用范围。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 198,
+            "end": 218,
+            "source_sha256": "8812d81cd94c125f2128ab46a2cc7ec66ea1caa3454df5b0acd4a76ff7d55609"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q07",
+      "entries": [
+        "src/trpg_state_machine/service.py::StateMachine.get_illumination@481",
+        "src/trpg_state_machine/world_lights.py::LightService.query_illumination@261"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/service.py::StateMachine.get_illumination@481",
+          "reason": "外观入口委托光照服务，保留视线、范围和贡献光源披露。",
+          "evidence": {
+            "path": "src/trpg_state_machine/service.py",
+            "line": 481,
+            "end": 484,
+            "source_sha256": "8deba6ebc028730827049e02dc2781dabb1df1a681b99844784e8983223e7f61"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService.query_illumination@261",
+          "reason": "外观入口委托光照服务，保留视线、范围和贡献光源披露。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 261,
+            "end": 290,
+            "source_sha256": "cba111ed1db243b7b32092a4d4d70572256df7ad06c09b406e6ef863c3a98bae"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService.current_cell@89",
+          "reason": "外观入口委托光照服务，保留视线、范围和贡献光源披露。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 89,
+            "end": 99,
+            "source_sha256": "f27000848a1f55e3b170b591532dbc21156a361308dca16d369469fd351557ee"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q08",
+      "entries": [
+        "src/trpg_state_machine/world_lights.py::LightService.sources@35"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService.sources@35",
+          "reason": "光源发现读取实际位置与祖先透光配置；相关修改维护光照有效版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 35,
+            "end": 72,
+            "source_sha256": "61df98e2900ca8ed58a24857c7713a8d697f045775fd78cc579cdd1f262ed34c"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::WorldFacts.placement@1080",
+          "reason": "光源发现读取实际位置与祖先透光配置；相关修改维护光照有效版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 1080,
+            "end": 1106,
+            "source_sha256": "5c8c6b18039aa16135d76fb9bb03fbc79307bf15d412bb03e97177115b25e822"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory._light_candidate_changes@645",
+          "reason": "光源发现读取实际位置与祖先透光配置；相关修改维护光照有效版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 645,
+            "end": 773,
+            "source_sha256": "c2e250ff3521db60006559ef0a23faeef34cf39418d3c8588e3225ea1f28a175"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q09",
+      "entries": [
+        "src/trpg_state_machine/world_mechanisms.py::MechanismService.automatic@554"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService.automatic@554",
+          "reason": "自动分派按事件种类与目标格查场景索引，之后检查 armed、资格并激活。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 554,
+            "end": 712,
+            "source_sha256": "388f8feedc6e44f87cbf82a9e2d3d9b935c4e82598c73d31bef74f806b2fe350"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService._scene_index@47",
+          "reason": "自动分派按事件种类与目标格查场景索引，之后检查 armed、资格并激活。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 47,
+            "end": 65,
+            "source_sha256": "134c15b67c68f0d7fcc1b8b23a7dce5493261be2f49a160aee7f23de3c10d6ac"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService._activate@219",
+          "reason": "自动分派按事件种类与目标格查场景索引，之后检查 armed、资格并激活。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 219,
+            "end": 344,
+            "source_sha256": "000eff923333d1531c6810e133d6c8a611d34400ed94c7832e4aa1da6b7370db"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q10",
+      "entries": [
+        "src/trpg_state_machine/world_mechanisms.py::MechanismService.component_destroyed@501"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService.component_destroyed@501",
+          "reason": "销毁消费者查 destroyed 反向桶，World 级索引来自实例机关配置。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 501,
+            "end": 526,
+            "source_sha256": "649b8441d344c2e0b5dd54c1ed443c0c72c2ffc37302d778786f9c9a67c544c2"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService._build_index@529",
+          "reason": "销毁消费者查 destroyed 反向桶，World 级索引来自实例机关配置。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 529,
+            "end": 545,
+            "source_sha256": "0d7640a61fd4a13c64dadd62b6563e43f868af10056c6484732ecd88c619675e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService._batch_index@547",
+          "reason": "销毁消费者查 destroyed 反向桶，World 级索引来自实例机关配置。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 547,
+            "end": 552,
+            "source_sha256": "2a8875e5c73d260b119354fb62488cd0e767f9ae1b644930eda01b5465c6371f"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q11",
+      "entries": [
+        "src/trpg_state_machine/grid.py::GridService.local_topology@503"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/grid.py::GridService.local_topology@503",
+          "reason": "局部拓扑包括斜向角落格，占用按格索引读取；未初始化目标有显式预测路径。",
+          "evidence": {
+            "path": "src/trpg_state_machine/grid.py",
+            "line": 503,
+            "end": 569,
+            "source_sha256": "7c0420ff2666ed0c9e0ebe0dbe0a5fab77e1bb50a305998bfd35427ebbf7a7b3"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/grid.py::GridReader.cell_occupants@400",
+          "reason": "局部拓扑包括斜向角落格，占用按格索引读取；未初始化目标有显式预测路径。",
+          "evidence": {
+            "path": "src/trpg_state_machine/grid.py",
+            "line": 400,
+            "end": 417,
+            "source_sha256": "7b8af6fccba528ae96ee33e4140f8619be1a355c65d7ee772808bb346a3142b2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q12",
+      "entries": [
+        "src/trpg_state_machine/grid.py::GridView.occupied@148"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/grid.py::GridView.occupied@148",
+          "reason": "固定视图构造时准备按格与按实体索引，读取直接选择对应桶。",
+          "evidence": {
+            "path": "src/trpg_state_machine/grid.py",
+            "line": 148,
+            "end": 152,
+            "source_sha256": "4f7c96468e1a6db6b7a1479539504e34c2796cc77cbd5e3310353e7fe63dc96b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/grid.py::GridView.__post_init__@86",
+          "reason": "固定视图构造时准备按格与按实体索引，读取直接选择对应桶。",
+          "evidence": {
+            "path": "src/trpg_state_machine/grid.py",
+            "line": 86,
+            "end": 120,
+            "source_sha256": "520c4c39bc8cae118470fab5b4caf4e515e274ce4467013ad8574510ee77505e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/grid.py::GridView.entity_cells@154",
+          "reason": "固定视图构造时准备按格与按实体索引，读取直接选择对应桶。",
+          "evidence": {
+            "path": "src/trpg_state_machine/grid.py",
+            "line": 154,
+            "end": 158,
+            "source_sha256": "cb6ff8830f35e475fff1b58277cf0dc0ad172d24b70f9c521fcd097e36aeeb43"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q13",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::SessionMemory._inventory_changes@414"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory._inventory_changes@414",
+          "reason": "库存失效比较相关 OLD/NEW 字段，角色 HP 与位置不属于 InventoryState；字段读取使用维护版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 414,
+            "end": 525,
+            "source_sha256": "90e530d473857835a6fe715390b845f15821a0efe7b628d0893108b5e8e8b679"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::CharacterFacts.inventory_model@425",
+          "reason": "库存失效比较相关 OLD/NEW 字段，角色 HP 与位置不属于 InventoryState；字段读取使用维护版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 425,
+            "end": 428,
+            "source_sha256": "9a861025a1cb6294304aecd41a8ec44428c45a13ce1701ec639b96a89bd908eb"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.maintained_dependency@377",
+          "reason": "库存失效比较相关 OLD/NEW 字段，角色 HP 与位置不属于 InventoryState；字段读取使用维护版。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 377,
+            "end": 396,
+            "source_sha256": "0a2e1891507eae697b678695b946b07e3881c5b270d7ee2788458163a9e2ee1d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q14",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainerService.operate@372",
+        "src/trpg_state_machine/domain_facts.py::CharacterFacts.project_item_transfer@449"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.operate@372",
+          "reason": "操作先验证旧子树，再改 World 关系，之后在同一外层事务同步旧新拥有者投影。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 372,
+            "end": 405,
+            "source_sha256": "165065de05b4273a988ff995d70e9c3760de5ec2de8ed0d9b52f5a5d82e864ec"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::CharacterFacts.project_item_transfer@449",
+          "reason": "操作先验证旧子树，再改 World 关系，之后在同一外层事务同步旧新拥有者投影。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 449,
+            "end": 466,
+            "source_sha256": "91c7b77c3f34ed3addfba8dd608407e93ca4a4dd048da971fe0956d291419ecf"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::WorldFacts.transfer_item@1329",
+          "reason": "操作先验证旧子树，再改 World 关系，之后在同一外层事务同步旧新拥有者投影。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 1329,
+            "end": 1345,
+            "source_sha256": "4fc6e10c9bfa0f3334a02f96c7e6b6ef4258d0d2ecbc1888faca951ad8f7e875"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::CharacterFacts.sync_inventory_change@468",
+          "reason": "操作先验证旧子树，再改 World 关系，之后在同一外层事务同步旧新拥有者投影。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 468,
+            "end": 525,
+            "source_sha256": "5d54889dbb562d4b1b73dc03c127cbfec059bc1476ffce7ba54b44bd62214958"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q15",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+        "src/trpg_state_machine/storage.py::UnitOfWork.check_usable@485"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+          "reason": "执行异常标 statement_failed；后续读写和外层提交检查 usable，不能靠捕获异常绕过。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1412,
+            "end": 1498,
+            "source_sha256": "d5a36aba707069470305f688c0ee4f6ffdd9e510a39d996f571ead4b5163d10f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::UnitOfWork.check_usable@485",
+          "reason": "执行异常标 statement_failed；后续读写和外层提交检查 usable，不能靠捕获异常绕过。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 485,
+            "end": 489,
+            "source_sha256": "054094ec16d5c680a9f05c896dd1be43cea091dae3aebaaeb3192332079afce1"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279",
+          "reason": "执行异常标 statement_failed；后续读写和外层提交检查 usable，不能靠捕获异常绕过。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 279,
+            "end": 381,
+            "source_sha256": "f6d41449d514f5bfe32c77303dbcff9a505135385162ad92de957ab730ccaea6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q16",
+      "entries": [
+        "src/trpg_state_machine/storage.py::SqliteStore.begin_persistence@387"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore.begin_persistence@387",
+          "reason": "首次写入切换到 BEGIN IMMEDIATE 并复验 data_version；变化导致暂停和拒绝混用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 387,
+            "end": 416,
+            "source_sha256": "69cf0bccbf83fccb116e6b899713db8c1d98be7cb5ee8a5b001c4c9b58c72597"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+          "reason": "首次写入切换到 BEGIN IMMEDIATE 并复验 data_version；变化导致暂停和拒绝混用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1412,
+            "end": 1498,
+            "source_sha256": "d5a36aba707069470305f688c0ee4f6ffdd9e510a39d996f571ead4b5163d10f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279",
+          "reason": "首次写入切换到 BEGIN IMMEDIATE 并复验 data_version；变化导致暂停和拒绝混用。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 279,
+            "end": 381,
+            "source_sha256": "f6d41449d514f5bfe32c77303dbcff9a505135385162ad92de957ab730ccaea6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q17",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+          "reason": "SAVEPOINT 保存 pending、版本根、changes 长度及 failed；ROLLBACK TO 同步恢复并清 memo。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1412,
+            "end": 1498,
+            "source_sha256": "d5a36aba707069470305f688c0ee4f6ffdd9e510a39d996f571ead4b5163d10f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::UnitOfWork.savepoint@516",
+          "reason": "SAVEPOINT 保存 pending、版本根、changes 长度及 failed；ROLLBACK TO 同步恢复并清 memo。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 516,
+            "end": 531,
+            "source_sha256": "cc769941b1c935acc0f37c04f69c9bcf19c2c9fdc375a5668ae2869e4667529f"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q18",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+          "reason": "回滚清 derived_pending 与 read_memo；派生缓存通过范围 pending 和 generation 发布。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1412,
+            "end": 1498,
+            "source_sha256": "d5a36aba707069470305f688c0ee4f6ffdd9e510a39d996f571ead4b5163d10f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/derived_cache.py::DerivedCache.resolve@31",
+          "reason": "回滚清 derived_pending 与 read_memo；派生缓存通过范围 pending 和 generation 发布。",
+          "evidence": {
+            "path": "src/trpg_state_machine/derived_cache.py",
+            "line": 31,
+            "end": 47,
+            "source_sha256": "ab977a1a03cd37a760e2d471287d73f8d259fc7c49d855c387d9552273e7abf8"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/derived_cache.py::DerivedCache.publish@49",
+          "reason": "回滚清 derived_pending 与 read_memo；派生缓存通过范围 pending 和 generation 发布。",
+          "evidence": {
+            "path": "src/trpg_state_machine/derived_cache.py",
+            "line": 49,
+            "end": 60,
+            "source_sha256": "912b69165fb044e881d463fe10ae7c8e8e644f96c24234346572f0ee50213a14"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q19",
+      "entries": [
+        "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279",
+          "reason": "committed 标记区分 COMMIT 后故障，返回 committed_publication_pending 并暂停当前读取。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 279,
+            "end": 381,
+            "source_sha256": "f6d41449d514f5bfe32c77303dbcff9a505135385162ad92de957ab730ccaea6"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.publish@1330",
+          "reason": "committed 标记区分 COMMIT 后故障，返回 committed_publication_pending 并暂停当前读取。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1330,
+            "end": 1360,
+            "source_sha256": "66dc1586b2f6d2a076eeb33d435b42d3fd484c4b10ebb81002b75528d34393a2"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.pause@308",
+          "reason": "committed 标记区分 COMMIT 后故障，返回 committed_publication_pending 并暂停当前读取。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 308,
+            "end": 318,
+            "source_sha256": "d1ce6b39fc37fb7af8f00dcf858cb29d83bf07bd950266a849da3175463f5efd"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.guard@284",
+          "reason": "committed 标记区分 COMMIT 后故障，返回 committed_publication_pending 并暂停当前读取。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 284,
+            "end": 291,
+            "source_sha256": "fb3c250e5e692a2c512ddd9d77d613dcdc460048248747e18d73935628d72330"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q20",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::SessionMemory.sync_recovery@320"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.sync_recovery@320",
+          "reason": "协调者恢复代次作为跨连接栅栏，每个连接在自身线程清理相关事实和地图。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 320,
+            "end": 341,
+            "source_sha256": "e2b72587abd9d2713ce4970e0ca0e1c321769ba243f1ea3b836cb9bca1960508"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore.reconciliation@419",
+          "reason": "协调者恢复代次作为跨连接栅栏，每个连接在自身线程清理相关事实和地图。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 419,
+            "end": 450,
+            "source_sha256": "d12193f9646932c90825af02c4ba8ab74224878f095518b0514c174ff048ace4"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279",
+          "reason": "协调者恢复代次作为跨连接栅栏，每个连接在自身线程清理相关事实和地图。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 279,
+            "end": 381,
+            "source_sha256": "f6d41449d514f5bfe32c77303dbcff9a505135385162ad92de957ab730ccaea6"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q21",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainerService.current_weight@149"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.current_weight@149",
+          "reason": "当前与隔离候选的聚合都将 None 传播；自身重量按数量计算。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 149,
+            "end": 166,
+            "source_sha256": "0acd21c5035d3b1d97f72da803e0ca9e8614680c1356c62485b74ad4fb4f8fe4"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService.own_weight@136",
+          "reason": "当前与隔离候选的聚合都将 None 传播；自身重量按数量计算。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 136,
+            "end": 146,
+            "source_sha256": "d93ebf60214382d1922562cdafd8e018a0bace5fbc3ef2329e1f0a50a279dbe7"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService._weight@176",
+          "reason": "当前与隔离候选的聚合都将 None 传播；自身重量按数量计算。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 176,
+            "end": 201,
+            "source_sha256": "d91bd20d006e86e8520f95a2ae681a6cbdea3f12584b7bb520544d88ebc1850b"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q22",
+      "entries": [
+        "src/trpg_state_machine/world_containers.py::ContainmentState.relocate@44"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainmentState.relocate@44",
+          "reason": "重定位记录旧新祖先 weight_dirty，清操作 memo，候选计算拒绝复用这些祖先。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 44,
+            "end": 63,
+            "source_sha256": "08cbf1f368cc818bfe8ff4deed2c665d5b62753faf2be44a6639251c5159932e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainerService._weight@176",
+          "reason": "重定位记录旧新祖先 weight_dirty，清操作 memo，候选计算拒绝复用这些祖先。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 176,
+            "end": 201,
+            "source_sha256": "d91bd20d006e86e8520f95a2ae681a6cbdea3f12584b7bb520544d88ebc1850b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_containers.py::ContainmentState.relocate.<locals>.ancestors@45",
+          "reason": "重定位记录旧新祖先 weight_dirty，清操作 memo，候选计算拒绝复用这些祖先。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_containers.py",
+            "line": 45,
+            "end": 50,
+            "source_sha256": "77e10d3644db260e9429c21a708cdb934f506dc2aa7926700043f6a788d91a21"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q23",
+      "entries": [
+        "src/trpg_state_machine/environment.py::EnvironmentService._disclosure_inputs@669",
+        "src/trpg_state_machine/environment.py::EnvironmentService._public@693"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._disclosure_inputs@669",
+          "reason": "先排除隐藏来源以构造公开分区，并将可能受影响字段及关联暴露量屏蔽为 unknown。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 669,
+            "end": 690,
+            "source_sha256": "ec142ce772762ac64447280c5e61519242d0954dc3cf7a843bdc9c694df66a32"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._public@693",
+          "reason": "先排除隐藏来源以构造公开分区，并将可能受影响字段及关联暴露量屏蔽为 unknown。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 693,
+            "end": 727,
+            "source_sha256": "6c627b8b49f2a5eac1a6462526619b03a2049b68ca4e70079e73c155f30a08f5"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/environment.py::EnvironmentService._environment_inputs@198",
+          "reason": "先排除隐藏来源以构造公开分区，并将可能受影响字段及关联暴露量屏蔽为 unknown。",
+          "evidence": {
+            "path": "src/trpg_state_machine/environment.py",
+            "line": 198,
+            "end": 218,
+            "source_sha256": "8812d81cd94c125f2128ab46a2cc7ec66ea1caa3454df5b0acd4a76ff7d55609"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q24",
+      "entries": [
+        "src/trpg_state_machine/world_lights.py::LightService._illuminate_cell@102"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService._illuminate_cell@102",
+          "reason": "比较确定与不确定几何 LOS，影响光照时设置 unknown；公开层返回未知状态。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 102,
+            "end": 134,
+            "source_sha256": "d9d14b62e580f7a1f54a0735f12cf2ad7e83613cf1933ce2bf014c1b511137f6"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService.current_cell@89",
+          "reason": "比较确定与不确定几何 LOS，影响光照时设置 unknown；公开层返回未知状态。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 89,
+            "end": 99,
+            "source_sha256": "f27000848a1f55e3b170b591532dbc21156a361308dca16d369469fd351557ee"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_lights.py::LightService.query_illumination@261",
+          "reason": "比较确定与不确定几何 LOS，影响光照时设置 unknown；公开层返回未知状态。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_lights.py",
+            "line": 261,
+            "end": 290,
+            "source_sha256": "cba111ed1db243b7b32092a4d4d70572256df7ad06c09b406e6ef863c3a98bae"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q25",
+      "entries": [
+        "src/trpg_state_machine/runtime_instances.py::TriggerIndex.__deepcopy__@99",
+        "src/trpg_state_machine/world_mechanisms.py::MechanismService._scene_index@47"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/runtime_instances.py::TriggerIndex.__deepcopy__@99",
+          "reason": "索引使用只读桶和不可变对象 deepcopy self；所属字段解析仍验证候选及依赖版本。",
+          "evidence": {
+            "path": "src/trpg_state_machine/runtime_instances.py",
+            "line": 99,
+            "end": 100,
+            "source_sha256": "68208486e87dc9c57ddec71e61ef9abb9a70afa39e6c8073975e8ffbf9ffffa5"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_mechanisms.py::MechanismService._scene_index@47",
+          "reason": "索引使用只读桶和不可变对象 deepcopy self；所属字段解析仍验证候选及依赖版本。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_mechanisms.py",
+            "line": 47,
+            "end": 65,
+            "source_sha256": "134c15b67c68f0d7fcc1b8b23a7dce5493261be2f49a160aee7f23de3c10d6ac"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/runtime_instances.py::TriggerIndex.__getitem__@90",
+          "reason": "索引使用只读桶和不可变对象 deepcopy self；所属字段解析仍验证候选及依赖版本。",
+          "evidence": {
+            "path": "src/trpg_state_machine/runtime_instances.py",
+            "line": 90,
+            "end": 91,
+            "source_sha256": "9367e0078bd30ebe45288e5e048922e4761bbfe3bf9205b445098c7ab07df2e1"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/runtime_instances.py::resolve_field@228",
+          "reason": "索引使用只读桶和不可变对象 deepcopy self；所属字段解析仍验证候选及依赖版本。",
+          "evidence": {
+            "path": "src/trpg_state_machine/runtime_instances.py",
+            "line": 228,
+            "end": 344,
+            "source_sha256": "cf1683d6b4bd4125675442d8c61d3164f818b1e13e1fc6ecde19eb0cdc6e926d"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q26",
+      "entries": [
+        "src/trpg_state_machine/world_spatial.py::ObjectSpatialService.check_candidate@491",
+        "src/trpg_state_machine/world_spatial.py::ObjectSpatialService.validate_placement@589"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/world_spatial.py::ObjectSpatialService.check_candidate@491",
+          "reason": "放置入口建立方向候选，检查形状边界及相关占格/墙段冲突，按局部依赖查触碰者。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_spatial.py",
+            "line": 491,
+            "end": 541,
+            "source_sha256": "5bdfccb2a9019e0391e4af3240d2538e8c972d0522555346ac0530e0512bdcd2"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_spatial.py::ObjectSpatialService.validate_placement@589",
+          "reason": "放置入口建立方向候选，检查形状边界及相关占格/墙段冲突，按局部依赖查触碰者。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_spatial.py",
+            "line": 589,
+            "end": 623,
+            "source_sha256": "9cfba8ede433f73aa202ce5440765f00130ab71bddcbebb72d34f1cb336b0f4a"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_spatial.py::ObjectSpatialService._touching@571",
+          "reason": "放置入口建立方向候选，检查形状边界及相关占格/墙段冲突，按局部依赖查触碰者。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_spatial.py",
+            "line": 571,
+            "end": 587,
+            "source_sha256": "4a2b6d3cdd202765132e218e80b3a5fa1ec9bbc1da93a8e76644c1b797fb0686"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/world_spatial.py::ObjectSpatialService._check_shape@543",
+          "reason": "放置入口建立方向候选，检查形状边界及相关占格/墙段冲突，按局部依赖查触碰者。",
+          "evidence": {
+            "path": "src/trpg_state_machine/world_spatial.py",
+            "line": 543,
+            "end": 569,
+            "source_sha256": "0b31333295a4c58f636e02638e2f2b8d1e5b3332d6179f8fac3e857aad65fdda"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q27",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::SessionMemory._inventory_changes@414"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory._inventory_changes@414",
+          "reason": "开合、barred、locked 与损毁边界沿祖先定位实际拥有者；投影更新验证旧子树。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 414,
+            "end": 525,
+            "source_sha256": "90e530d473857835a6fe715390b845f15821a0efe7b628d0893108b5e8e8b679"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::CharacterFacts.prepare_inventory_change@400",
+          "reason": "开合、barred、locked 与损毁边界沿祖先定位实际拥有者；投影更新验证旧子树。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 400,
+            "end": 422,
+            "source_sha256": "68828816d937335e5d043f34f8d8f92aa4a4683e3f1817882077d9ca22f17a9e"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/domain_facts.py::CharacterFacts.sync_inventory_change@468",
+          "reason": "开合、barred、locked 与损毁边界沿祖先定位实际拥有者；投影更新验证旧子树。",
+          "evidence": {
+            "path": "src/trpg_state_machine/domain_facts.py",
+            "line": 468,
+            "end": 525,
+            "source_sha256": "5d54889dbb562d4b1b73dc03c127cbfec059bc1476ffce7ba54b44bd62214958"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q28",
+      "entries": [
+        "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore._transaction_scope@279",
+          "reason": "无法确定 COMMIT 结果时返回 commit_outcome_unknown，暂停并按原稳定回执键对账。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 279,
+            "end": 381,
+            "source_sha256": "f6d41449d514f5bfe32c77303dbcff9a505135385162ad92de957ab730ccaea6"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_memory.py::SessionMemory.pause@308",
+          "reason": "无法确定 COMMIT 结果时返回 commit_outcome_unknown，暂停并按原稳定回执键对账。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 308,
+            "end": 318,
+            "source_sha256": "d1ce6b39fc37fb7af8f00dcf858cb29d83bf07bd950266a849da3175463f5efd"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/session_runtime.py::SessionRuntime.receipt@312",
+          "reason": "无法确定 COMMIT 结果时返回 commit_outcome_unknown，暂停并按原稳定回执键对账。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_runtime.py",
+            "line": 312,
+            "end": 319,
+            "source_sha256": "5190c6bc4a89e714170b1396b2351c02d13c2283ea6956890d352bcc99fd8406"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q29",
+      "entries": [
+        "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/session_memory.py::RuntimeConnection.execute@1412",
+          "reason": "保存点记录旧 failed 值，ROLLBACK TO 恢复它；RELEASE 单独不解除失败。",
+          "evidence": {
+            "path": "src/trpg_state_machine/session_memory.py",
+            "line": 1412,
+            "end": 1498,
+            "source_sha256": "d5a36aba707069470305f688c0ee4f6ffdd9e510a39d996f571ead4b5163d10f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::UnitOfWork.savepoint@516",
+          "reason": "保存点记录旧 failed 值，ROLLBACK TO 恢复它；RELEASE 单独不解除失败。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 516,
+            "end": 531,
+            "source_sha256": "cc769941b1c935acc0f37c04f69c9bcf19c2c9fdc375a5668ae2869e4667529f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::UnitOfWork.check_usable@485",
+          "reason": "保存点记录旧 failed 值，ROLLBACK TO 恢复它；RELEASE 单独不解除失败。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 485,
+            "end": 489,
+            "source_sha256": "054094ec16d5c680a9f05c896dd1be43cea091dae3aebaaeb3192332079afce1"
+          }
+        }
+      ]
+    },
+    {
+      "id": "Q30",
+      "entries": [
+        "src/trpg_state_machine/service.py::StateMachine.unload_session@381",
+        "src/trpg_state_machine/service.py::StateMachine.resume_session@414"
+      ],
+      "related": [
+        {
+          "id": "src/trpg_state_machine/service.py::StateMachine.unload_session@381",
+          "reason": "卸载仅释放可重建表示；resume 在 reconciliation 中校验持久非战斗实例并读取，不重新创建模板。",
+          "evidence": {
+            "path": "src/trpg_state_machine/service.py",
+            "line": 381,
+            "end": 389,
+            "source_sha256": "9ac2f89b3e14c6fd67c0dd3e64991eaefa312a7f33792aa3c2d8b57f1286c93b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/service.py::StateMachine.resume_session@414",
+          "reason": "卸载仅释放可重建表示；resume 在 reconciliation 中校验持久非战斗实例并读取，不重新创建模板。",
+          "evidence": {
+            "path": "src/trpg_state_machine/service.py",
+            "line": 414,
+            "end": 425,
+            "source_sha256": "2b4fce70e91fb0f02176007c6aac3c8592bce1635b4bc2d1423030f3f33a467f"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore.release_memory@452",
+          "reason": "卸载仅释放可重建表示；resume 在 reconciliation 中校验持久非战斗实例并读取，不重新创建模板。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 452,
+            "end": 464,
+            "source_sha256": "55a87640563d9b83bc1e0224b6c76dba033717dc008d356f76bd89d202679d0b"
+          }
+        },
+        {
+          "id": "src/trpg_state_machine/storage.py::SqliteStore.reconciliation@419",
+          "reason": "卸载仅释放可重建表示；resume 在 reconciliation 中校验持久非战斗实例并读取，不重新创建模板。",
+          "evidence": {
+            "path": "src/trpg_state_machine/storage.py",
+            "line": 419,
+            "end": 450,
+            "source_sha256": "d12193f9646932c90825af02c4ba8ab74224878f095518b0514c174ff048ace4"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "successful_response_usage_by_role": {
+    "probe_or_superseded": {
+      "batches": 1,
+      "tokens": 11,
+      "vectors": 1
+    },
+    "document": {
+      "batches": 24,
+      "tokens": 247718,
+      "vectors": 1096
+    },
+    "mixed_or_superseded": {
+      "batches": 59,
+      "tokens": 702104,
+      "vectors": 3289
+    },
+    "query": {
+      "batches": 1,
+      "tokens": 1616,
+      "vectors": 60
+    }
+  },
+  "per_group_byte_estimates": {
+    "A": {
+      "unique_texts": 1029,
+      "utf8_bytes": 1032103,
+      "byte_token_bound": 1097959
+    },
+    "B": {
+      "unique_texts": 1059,
+      "utf8_bytes": 1410643,
+      "byte_token_bound": 1478419
+    },
+    "C": {
+      "unique_texts": 1059,
+      "utf8_bytes": 1477298,
+      "byte_token_bound": 1545074
+    },
+    "T": {
+      "unique_texts": 1059,
+      "utf8_bytes": 519545,
+      "byte_token_bound": 587321
+    }
+  },
+  "note": "Includes superseded concatenation and probe; invoice unavailable. Unknown-response charges cannot be proved from response counters."
+}

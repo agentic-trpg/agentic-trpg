@@ -1,0 +1,14 @@
+{
+  "source_files": 83,
+  "candidates": 1059,
+  "question_conditions": 60,
+  "metric_routes_audited": 420,
+  "rrf_fraction_audits": 120,
+  "missing_embeddings": 0,
+  "local_markdown_links": 20,
+  "task_files_scanned_for_actual_env_secret": 37,
+  "env_secret_present": true,
+  "secret_leak_found": false,
+  "protocol_lock_matches": true,
+  "all_checks_passed": true
+}

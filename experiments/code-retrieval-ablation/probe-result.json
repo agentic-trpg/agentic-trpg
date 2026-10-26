@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "model": "voyage-code-4",
+  "dimension": 1024,
+  "dtype": "float",
+  "truncation": false
+}

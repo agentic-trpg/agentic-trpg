@@ -1,0 +1,7 @@
+{
+  "phase": "questions-and-labels-fixed-before-summaries",
+  "created_at": "2026-10-26T16:25:34.401Z",
+  "questions_sha256": "6d136e03d8483e38759aaef36eaaa18add9f5d50064ebf208c86231665ef71b7",
+  "annotations_sha256": "1f53156a378ec5a023c3e0e19743ecf353fec8c7572649a997d2f92a44c39087",
+  "rules": "No heldout tuning. Summary construction accepts only source nodes and source context; no questions, labels or rankings."
+}

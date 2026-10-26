@@ -1,0 +1,974 @@
+[
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.33999999999999997,
+    "mean_jaccard": 0.23511904761904762,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.32999999999999996,
+    "mean_jaccard": 0.2184195878081327,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.386,
+    "mean_jaccard": 0.2450420369714154,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.2,
+    "mean_jaccard": 0.11865079365079365,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.2,
+    "mean_jaccard": 0.11748796009631923,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.24,
+    "mean_jaccard": 0.13761129557813037,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.21000000000000002,
+    "mean_jaccard": 0.12976190476190477,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.225,
+    "mean_jaccard": 0.13291193670450635,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.252,
+    "mean_jaccard": 0.1469305501275819,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.42000000000000004,
+    "mean_jaccard": 0.32182539682539685,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.43,
+    "mean_jaccard": 0.28922825540472596,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.404,
+    "mean_jaccard": 0.25954385560020804,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.33999999999999997,
+    "mean_jaccard": 0.22976190476190475,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.29,
+    "mean_jaccard": 0.17555899552803578,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.306,
+    "mean_jaccard": 0.1844814315591571,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.32,
+    "mean_jaccard": 0.20515873015873015,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.31,
+    "mean_jaccard": 0.19206226350189198,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.31,
+    "mean_jaccard": 0.18850718164048938,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.36666666666666664,
+    "mean_jaccard": 0.264021164021164,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.36333333333333334,
+    "mean_jaccard": 0.2420224770069971,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.392,
+    "mean_jaccard": 0.24987597651434626,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.24666666666666667,
+    "mean_jaccard": 0.15568783068783068,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.23,
+    "mean_jaccard": 0.1368449719068914,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.262,
+    "mean_jaccard": 0.15323467423847262,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.24666666666666667,
+    "mean_jaccard": 0.1548941798941799,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.25333333333333335,
+    "mean_jaccard": 0.1526287123036349,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "zh",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.27133333333333337,
+    "mean_jaccard": 0.16078942729855106,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.37,
+    "mean_jaccard": 0.2628968253968254,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.37,
+    "mean_jaccard": 0.2496526950861316,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.39,
+    "mean_jaccard": 0.24737276218122975,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.28,
+    "mean_jaccard": 0.18888888888888888,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.28500000000000003,
+    "mean_jaccard": 0.18018698707553196,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.29,
+    "mean_jaccard": 0.1717533110738849,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 20,
+    "mean_overlap_over_k": 0.29,
+    "mean_jaccard": 0.2011904761904762,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 20,
+    "mean_overlap_over_k": 0.31,
+    "mean_jaccard": 0.19898397955673497,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "development",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 20,
+    "mean_overlap_over_k": 0.343,
+    "mean_jaccard": 0.21104289818003866,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.52,
+    "mean_jaccard": 0.3825396825396825,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.48,
+    "mean_jaccard": 0.32268368886015947,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.41400000000000003,
+    "mean_jaccard": 0.26426325659490013,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.38,
+    "mean_jaccard": 0.27341269841269844,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.41,
+    "mean_jaccard": 0.26029411764705884,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.332,
+    "mean_jaccard": 0.20175531849650383,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 10,
+    "mean_overlap_over_k": 0.45999999999999996,
+    "mean_jaccard": 0.3214285714285714,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 10,
+    "mean_overlap_over_k": 0.39,
+    "mean_jaccard": 0.24889060887512898,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "heldout",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 10,
+    "mean_overlap_over_k": 0.348,
+    "mean_jaccard": 0.21669855174435376,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.42,
+    "mean_jaccard": 0.3027777777777778,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.4066666666666666,
+    "mean_jaccard": 0.2739963596774742,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-T",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.39799999999999996,
+    "mean_jaccard": 0.2530029269857865,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.31333333333333335,
+    "mean_jaccard": 0.21706349206349207,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.3266666666666667,
+    "mean_jaccard": 0.20688936393270757,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "A-vs-BM25",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.30400000000000005,
+    "mean_jaccard": 0.18175398021475786,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 5,
+    "n": 30,
+    "mean_overlap_over_k": 0.3466666666666667,
+    "mean_jaccard": 0.24126984126984127,
+    "empty_both": 0,
+    "length_a_minmax": [
+      5,
+      5
+    ],
+    "length_b_minmax": [
+      5,
+      5
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 10,
+    "n": 30,
+    "mean_overlap_over_k": 0.33666666666666667,
+    "mean_jaccard": 0.2156195226628663,
+    "empty_both": 0,
+    "length_a_minmax": [
+      10,
+      10
+    ],
+    "length_b_minmax": [
+      10,
+      10
+    ]
+  },
+  {
+    "condition": "expanded",
+    "split": "all",
+    "pair": "T-vs-BM25",
+    "k": 50,
+    "n": 30,
+    "mean_overlap_over_k": 0.3446666666666667,
+    "mean_jaccard": 0.21292811603481035,
+    "empty_both": 0,
+    "length_a_minmax": [
+      50,
+      50
+    ],
+    "length_b_minmax": [
+      50,
+      50
+    ]
+  }
+]

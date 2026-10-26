@@ -1,0 +1,36 @@
+{
+  "version": "protocol-lock-v1",
+  "locked_before_first_evaluation_at": "2026-10-26T16:48:06.265Z",
+  "retrieval_rules": "Top50 per route; exact cosine; RRF k=60 equal weights ranks from 1; score desc then node ID; Chinese character unigram+bigram BM25 k1=1.2 b=0.75; no tuning",
+  "files": {
+    "questions.json": "6d136e03d8483e38759aaef36eaaa18add9f5d50064ebf208c86231665ef71b7",
+    "annotations.json": "1f53156a378ec5a023c3e0e19743ecf353fec8c7572649a997d2f92a44c39087",
+    "freeze.json": "57b1ae45ca7b9edcd584c6caff296c0bca44db202f1b7c03e61636561fd7ff74",
+    "source-manifest.json": "e0f0fb072efb32316ef7f2f76fa00f2e831c672630fa452b0aa1bb6bd52c17b3",
+    "summary-semantics.json": "7722a0725fd0bd7a8285c6d2e40b2cc3a2eab09c45df9add52911b050541766e",
+    "summaries.json": "8b480f91bc44e484ae818ae9f6956ba7c414047dd6d1833749d7ccce84308751",
+    "config.example.json": "c8af7d08cf426118171a32fa6f7e5ac0e39bbfbc63e755b297cb958af649ffd6",
+    "prepare.py": "7c9487686b6dec07a7440d3ee77c38f082dd56b2392f547e7eeda96207ae219d",
+    "build_texts.py": "b9a18877c26d3581a061d5e3f7c4d5aea8fda9631e5fd9a8c5df890e4ce9ef2f",
+    "retrieval.py": "03db343608cd23d1c592d299499eac29080749969b3fee2cf962137f8ffb60ab"
+  },
+  "original_files": {
+    "questions.json": "6d136e03d8483e38759aaef36eaaa18add9f5d50064ebf208c86231665ef71b7",
+    "annotations.json": "1f53156a378ec5a023c3e0e19743ecf353fec8c7572649a997d2f92a44c39087",
+    "freeze.json": "57b1ae45ca7b9edcd584c6caff296c0bca44db202f1b7c03e61636561fd7ff74",
+    "source-manifest.json": "757f9eb60a81892b546c5c3377c8ab703ac8d711fbe27dada467dc42e984c62b",
+    "summary-semantics.json": "7722a0725fd0bd7a8285c6d2e40b2cc3a2eab09c45df9add52911b050541766e",
+    "summaries.json": "3d9b848a5f42be44eca00e6342775ba04b380710957f39cf7cba6d15ce785f8c",
+    "config.example.json": "c8af7d08cf426118171a32fa6f7e5ac0e39bbfbc63e755b297cb958af649ffd6",
+    "prepare.py": "3dce91185e9cc872c9b6bf2653cdfe24959e2dc514c917057632e8623e419ade",
+    "build_texts.py": "b9a18877c26d3581a061d5e3f7c4d5aea8fda9631e5fd9a8c5df890e4ce9ef2f",
+    "retrieval.py": "03db343608cd23d1c592d299499eac29080749969b3fee2cf962137f8ffb60ab"
+  },
+  "delivery_normalization_at": "2026-10-26T16:59:22.186Z",
+  "delivery_changes": "Physical CRLF-to-LF normalization for experiment files; prepare.dump now writes explicit LF by atomic temporary replacement. No source leaf hashes, JSON values, questions, labels, summaries or retrieval scoring changed.",
+  "delivery_changed_files": [
+    "source-manifest.json",
+    "summaries.json",
+    "prepare.py"
+  ]
+}

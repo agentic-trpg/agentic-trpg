@@ -1,0 +1,424 @@
+{
+  "version": "ast-source-v1",
+  "parser": "CPython 3.12.14 ast/tokenize",
+  "root": "D:\\Projects\\agentic-trpg\\trpg-state-machine",
+  "files": [
+    {
+      "path": "src/trpg_state_machine/__init__.py",
+      "sha256": "050febd07fc2e7a5ea0c78da2fd0e2a8490218bd51dbab83c9251fe3a61fdebe",
+      "bytes": 4129
+    },
+    {
+      "path": "src/trpg_state_machine/_execution.py",
+      "sha256": "44a4f23ebce8b94d0fb7a1ab37acf3a15aebd25d29980ef2d72ab5496efc750c",
+      "bytes": 1426
+    },
+    {
+      "path": "src/trpg_state_machine/_operations.py",
+      "sha256": "6a7e17d3e7244b31eee959aaebfd23fa39f35054d083629a7cc40009c79ffcee",
+      "bytes": 2840
+    },
+    {
+      "path": "src/trpg_state_machine/activity_handler.py",
+      "sha256": "4bdb0e7a928b0c4cb027897bba6e10cd29317dcbfe0e8c250be626c350947673",
+      "bytes": 10010
+    },
+    {
+      "path": "src/trpg_state_machine/activity_records.py",
+      "sha256": "c17f3dd830983956c6931ca351d87d099bba2b2d08a1d60840c929bc44108b54",
+      "bytes": 6863
+    },
+    {
+      "path": "src/trpg_state_machine/availability.py",
+      "sha256": "9082e8833edaf817aae4ada573f2dc02f04bb65ef4dee3b43f06a8a3206c2f36",
+      "bytes": 333
+    },
+    {
+      "path": "src/trpg_state_machine/combat.py",
+      "sha256": "a3f4d8dc8c9bc0a917f4b4761871606ca583f7c5acd23f09976902982b946538",
+      "bytes": 4109
+    },
+    {
+      "path": "src/trpg_state_machine/combat_handler.py",
+      "sha256": "46c409163f402c1f5c36c3f70eb5656e9230f7b41cad7e669909759949dd808b",
+      "bytes": 9515
+    },
+    {
+      "path": "src/trpg_state_machine/commands.py",
+      "sha256": "d8dfb29392ba41676c2fd0144a2372890744462d4bc49d9ce4319e60b4662235",
+      "bytes": 22613
+    },
+    {
+      "path": "src/trpg_state_machine/component_reads.py",
+      "sha256": "2823f1c652e40e0adfa5fc73cf1293a0b24ce907e170710dd33ed18b846ac4cd",
+      "bytes": 3701
+    },
+    {
+      "path": "src/trpg_state_machine/derived_cache.py",
+      "sha256": "22fc2c426b86522b9565c8a0d94c4db9cd3f7f6671b6f9a4b65c0651f335b468",
+      "bytes": 2101
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_checks.py",
+      "sha256": "13e05fb980c44c5f501bc961f0c962ce2977361c5c8877524ecf77515818549c",
+      "bytes": 3690
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_closure.py",
+      "sha256": "4869db0b66a59ddec45d487628227d8b204740bd6255992637275525bc67c471",
+      "bytes": 2407
+    },
+    {
+      "path": "src/trpg_state_machine/dnd_runtime.py",
+      "sha256": "a040df034d4cc116702526d749c06eefb860a5403acfa5bbb9acf8a95c50b8c0",
+      "bytes": 202
+    },
+    {
+      "path": "src/trpg_state_machine/domain_facts.py",
+      "sha256": "6a4a4e48b4af331160d3d96442e93348ce217218544706138ca9df3f83c83120",
+      "bytes": 66936
+    },
+    {
+      "path": "src/trpg_state_machine/environment.py",
+      "sha256": "ac151bee69952d8b2a3c20218cab47ce939c0afeb31b917d42751a005090414e",
+      "bytes": 34685
+    },
+    {
+      "path": "src/trpg_state_machine/environment_commands.py",
+      "sha256": "c7c0a0a09f28d8d752786e4d9fa6c994a6abf89f5850b0773decf1469b86b6ea",
+      "bytes": 8130
+    },
+    {
+      "path": "src/trpg_state_machine/environment_models.py",
+      "sha256": "859da6d89fe3523bd37f3c0d9803ab50b00463e2423c5eeef07c9bea7a3ec214",
+      "bytes": 10564
+    },
+    {
+      "path": "src/trpg_state_machine/environment_versions.py",
+      "sha256": "db3a89db62d2171eaed0fbc34af3231589dd09a2b14b3ea48b025f2fe239b74d",
+      "bytes": 17733
+    },
+    {
+      "path": "src/trpg_state_machine/errors.py",
+      "sha256": "d7b04eec50546dd5a0a5d45a0bb8351d8ce3a6fc04afc6935bfb647ef8afaa75",
+      "bytes": 564
+    },
+    {
+      "path": "src/trpg_state_machine/event_capture.py",
+      "sha256": "ee4e79b8c239638bb521e09ca646728e5b58a71050e5bdfd95d46269f1680ef4",
+      "bytes": 13306
+    },
+    {
+      "path": "src/trpg_state_machine/event_persistence.py",
+      "sha256": "057fddd5a75844cf9859cdb666499bfa603d600fd83cdf6c22dfad4b141ca005",
+      "bytes": 8994
+    },
+    {
+      "path": "src/trpg_state_machine/events.py",
+      "sha256": "1e619f98da55df054fb9da58b7ff674401b2b908a36284406949aab349411c93",
+      "bytes": 5645
+    },
+    {
+      "path": "src/trpg_state_machine/game_time.py",
+      "sha256": "f112c6e478c49fe02a980cf3f83167d583d54ae990977a79ec5cdc7ce8919df1",
+      "bytes": 6022
+    },
+    {
+      "path": "src/trpg_state_machine/grid.py",
+      "sha256": "7870981d635433ce563a0a141f8beaeeba5c32f8da11b42ee3e1af790b632a03",
+      "bytes": 25966
+    },
+    {
+      "path": "src/trpg_state_machine/grid_maps.py",
+      "sha256": "5b84c0e167a24d1903189430f0d51687f5c2d46c8c60277433eff66f161010cf",
+      "bytes": 12899
+    },
+    {
+      "path": "src/trpg_state_machine/instance_data.py",
+      "sha256": "0961ffdf45a57e5c7f52cbbdeb35f3a0418874b10cd06c0997937c3cc94c7210",
+      "bytes": 20572
+    },
+    {
+      "path": "src/trpg_state_machine/item_package.py",
+      "sha256": "bb7a0db38bb02b70f2fffafcb492a22a222e08538687b4f678560207787758e6",
+      "bytes": 3408
+    },
+    {
+      "path": "src/trpg_state_machine/item_units.py",
+      "sha256": "53d46f8d28771e69ea8312b80b7c715d87db93c14d6698b4ed4fca2cbe8da02e",
+      "bytes": 649
+    },
+    {
+      "path": "src/trpg_state_machine/lock_package.py",
+      "sha256": "ca9b781832f9c246a93484bdc0487626a5e5de23ad8f105e30f9a19449962d57",
+      "bytes": 2393
+    },
+    {
+      "path": "src/trpg_state_machine/mechanical_runtime.py",
+      "sha256": "256b32752b16c3f4377b216ee660efc2b886b00bcf5e80b4ced97888cafabe18",
+      "bytes": 13356
+    },
+    {
+      "path": "src/trpg_state_machine/mechanics.py",
+      "sha256": "5e3181a28ec54b3476a0022b5330a85924bd5611f7839b38e9cf5ef7f82f61bd",
+      "bytes": 5914
+    },
+    {
+      "path": "src/trpg_state_machine/mechanism_effects.py",
+      "sha256": "ef2b2e9d4fd789497092640cdca5cce8930db44c7e692f15b7153fa742cce5b9",
+      "bytes": 21660
+    },
+    {
+      "path": "src/trpg_state_machine/mechanism_models.py",
+      "sha256": "ae6d5cbcde34a43bb4da1507510526415b169241548c08fa8a2ba18a8b15adbb",
+      "bytes": 14395
+    },
+    {
+      "path": "src/trpg_state_machine/models.py",
+      "sha256": "94318aa8e18ba22f7f2bcb8e25bb2c3c8dc4781c7b15eae88b08bc226acc71fd",
+      "bytes": 3020
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_driver.py",
+      "sha256": "af5038994e621fadd4c25ad8f0c6987d422fc84ea147fdfdf865f484659c0bcf",
+      "bytes": 3085
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_models.py",
+      "sha256": "b5657ecbf40d7c6f78ebf3755d9941c80f6dfc04fe31f5c7c1299ece8c76842f",
+      "bytes": 1840
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_package.py",
+      "sha256": "045b1367d1d24bd2ccc1346d61015247dff9d7f38acb8257bebe59be52192652",
+      "bytes": 2960
+    },
+    {
+      "path": "src/trpg_state_machine/navigation_plan.py",
+      "sha256": "96cf2d2f3922e4a94048f37afd8ec047cec7c3a45af7cd8337261174987c194f",
+      "bytes": 4975
+    },
+    {
+      "path": "src/trpg_state_machine/npc_bootstrap.py",
+      "sha256": "8eeee60acc54e842103abc7c877f14e437eca19dc74fc00afaeea9a01026f1c7",
+      "bytes": 4014
+    },
+    {
+      "path": "src/trpg_state_machine/npc_evaluation.py",
+      "sha256": "892ce46785c7853ead63ff72e6dba9eab3f8206844627ef5e39d68fd517b56a9",
+      "bytes": 14153
+    },
+    {
+      "path": "src/trpg_state_machine/npc_modes.py",
+      "sha256": "6af2c9fd57ab587f44b11f5c2cb78d1e4e1f389c3fbdc84e3fa055cd07f5170e",
+      "bytes": 28053
+    },
+    {
+      "path": "src/trpg_state_machine/npc_outputs.py",
+      "sha256": "2d23b95cb37e291846112a744cd28c96542052a094b1f361305205591be90431",
+      "bytes": 13070
+    },
+    {
+      "path": "src/trpg_state_machine/npc_results.py",
+      "sha256": "88c7731131bf9dc7d25f3d93fd1ef10f4deef294dfc3576b91b7ea7c8f0e79a4",
+      "bytes": 24617
+    },
+    {
+      "path": "src/trpg_state_machine/npc_schema.py",
+      "sha256": "430626e11e538e07a61d570e60e083f3dd0c84808a20c4163cf9f0bccb9d205f",
+      "bytes": 10242
+    },
+    {
+      "path": "src/trpg_state_machine/npc_state.py",
+      "sha256": "4ba342bbd0b04ec78812298e8c997d2195831be8eb6a33173a8e4bd2d40ba055",
+      "bytes": 8995
+    },
+    {
+      "path": "src/trpg_state_machine/object_durability.py",
+      "sha256": "f192718d0fe03492444ffdf8b33cefcaafbd864fd4d2d8a46819759df707d42f",
+      "bytes": 5026
+    },
+    {
+      "path": "src/trpg_state_machine/object_protection.py",
+      "sha256": "9fd1c15dfadabee2df283102837d665dcafedfa3fb122e070af0609d86a81df9",
+      "bytes": 12469
+    },
+    {
+      "path": "src/trpg_state_machine/observation_lifecycle.py",
+      "sha256": "bad33d12dd8bc21c747f86e6d0b6af2b95c3cc4f2676624b47884007aa25df6a",
+      "bytes": 7321
+    },
+    {
+      "path": "src/trpg_state_machine/package.py",
+      "sha256": "3bc1497c3c0d06f4868dc5ef45d25172895aa005533cd076ae47de258a5252d4",
+      "bytes": 51793
+    },
+    {
+      "path": "src/trpg_state_machine/package_effects.py",
+      "sha256": "49ff2e85a6724742961f5ab03498947f631f02473c098d207ec261b972ec778b",
+      "bytes": 4461
+    },
+    {
+      "path": "src/trpg_state_machine/perception.py",
+      "sha256": "adb96ef1baeb4a0ea0326e02c677405218b86f78f0838f15ae2e0894066f8bd8",
+      "bytes": 33192
+    },
+    {
+      "path": "src/trpg_state_machine/perception_conditions.py",
+      "sha256": "43c39d6bdbd066d97ee9ae9e2123b66d93d0c3f384bd644faddbc051fd1d974b",
+      "bytes": 10808
+    },
+    {
+      "path": "src/trpg_state_machine/perception_queue.py",
+      "sha256": "8706d5c4f9f742156364edd1e83c8690201f949c141400f23ab6943e7c15b444",
+      "bytes": 4034
+    },
+    {
+      "path": "src/trpg_state_machine/rule_execution.py",
+      "sha256": "8191bf213fe4b56593c864844cb31c06cbc70402e123996c23180587b5518321",
+      "bytes": 18528
+    },
+    {
+      "path": "src/trpg_state_machine/rules_adapter.py",
+      "sha256": "ff5013a01e4e14bca76107e7b0f1149c65cfee2d0293abd75325fd01fcfbbf5f",
+      "bytes": 30450
+    },
+    {
+      "path": "src/trpg_state_machine/rules_migration.py",
+      "sha256": "9e961496020f478ed4887786a6994d871e2569dcd4f96d04c4cd5907817f5cac",
+      "bytes": 1973
+    },
+    {
+      "path": "src/trpg_state_machine/runtime_instances.py",
+      "sha256": "2605c05c664aefc18259fa25451333a4a8118a88fc27055f1f23e507a060daac",
+      "bytes": 14809
+    },
+    {
+      "path": "src/trpg_state_machine/runtime_integrity.py",
+      "sha256": "0ce781da14f77a39c3d7a652f1d584d1b57b17e4b5bb2af53463f475ccc34f71",
+      "bytes": 5132
+    },
+    {
+      "path": "src/trpg_state_machine/scene_lifecycle.py",
+      "sha256": "6b3779dfcff0e72537f247b14996d52fc80d25df724ef2f626ed892b1494f335",
+      "bytes": 11121
+    },
+    {
+      "path": "src/trpg_state_machine/scoped_reads.py",
+      "sha256": "eb22e68fd47e59f61a6a7ae39d464649e154fe74d8e1c951c201c3cb80f9418d",
+      "bytes": 4294
+    },
+    {
+      "path": "src/trpg_state_machine/service.py",
+      "sha256": "7f9c2e2d41827128b004cd4dfe9a910f7b2395ee81d97185d89acc509d29cc1f",
+      "bytes": 21889
+    },
+    {
+      "path": "src/trpg_state_machine/session_access.py",
+      "sha256": "83eb26c03cc423b3070a4995c2912977aa9f094d76be903118f0bebf529df743",
+      "bytes": 12863
+    },
+    {
+      "path": "src/trpg_state_machine/session_creation.py",
+      "sha256": "029a65d91a53d3ca27a054ee4d84ca12cfd906eb17a56f1cea32a5f549ee6468",
+      "bytes": 10451
+    },
+    {
+      "path": "src/trpg_state_machine/session_memory.py",
+      "sha256": "3536d5fb757c804f674c761c763a037ea49466536552c80f9053f7439e5fdfc0",
+      "bytes": 67514
+    },
+    {
+      "path": "src/trpg_state_machine/session_runtime.py",
+      "sha256": "736fe477aadd354a79389c7a2ca9a4f6ea0679a93488ffb500f83eda4a696bbe",
+      "bytes": 23149
+    },
+    {
+      "path": "src/trpg_state_machine/spatial.py",
+      "sha256": "3fe7a52746da5d036b7ecd8ed6f04f098c166629921d96e08eae3bed12ddf0fe",
+      "bytes": 49022
+    },
+    {
+      "path": "src/trpg_state_machine/storage.py",
+      "sha256": "2ec5143e1d5cc34891706aa067c6275a24c6a9769f1869e302f8a9642ea0f769",
+      "bytes": 24101
+    },
+    {
+      "path": "src/trpg_state_machine/storage_migrations.py",
+      "sha256": "0a0eabf3d5736b759861e1b1a4ac13c3bc7d383e25ef50894d9bafe60ab17d3b",
+      "bytes": 7522
+    },
+    {
+      "path": "src/trpg_state_machine/time_binding.py",
+      "sha256": "42d1a987d0f3b81e20d8eb04d5ca4d0c5f3c55f6a28bfc438049e11a90dd945d",
+      "bytes": 2806
+    },
+    {
+      "path": "src/trpg_state_machine/time_coordination.py",
+      "sha256": "6577f93b5b4fd72c4e0d7e3f6b7f8c1ebf5cca5bf443c220d4911eb0a57257e0",
+      "bytes": 17994
+    },
+    {
+      "path": "src/trpg_state_machine/time_driver.py",
+      "sha256": "b7f0d1dfa4ee41e6205007a56603982e695f678df4f440dd0464a36d0b6d5c3a",
+      "bytes": 9892
+    },
+    {
+      "path": "src/trpg_state_machine/time_waits.py",
+      "sha256": "cdc472eb18c13fe76c5e4a0162ec04aabd5ea792e2c6f66cb877d7f91374c3a7",
+      "bytes": 9599
+    },
+    {
+      "path": "src/trpg_state_machine/version_map.py",
+      "sha256": "e6f7ea19b024d43ea1bf4926954f2ffd7419edfecc03fc145248452baef88d0a",
+      "bytes": 4468
+    },
+    {
+      "path": "src/trpg_state_machine/world_commands.py",
+      "sha256": "44d2bae70526f2259cddabf59b6efc4b72b111ff9f192a3bcd26bf5913a0c5d3",
+      "bytes": 3584
+    },
+    {
+      "path": "src/trpg_state_machine/world_containers.py",
+      "sha256": "776587a544f2ee8ccb6a4f25ca1b764d4746acc9972c249c3318975565b3927e",
+      "bytes": 18648
+    },
+    {
+      "path": "src/trpg_state_machine/world_lights.py",
+      "sha256": "edd1cae76ef93a8538a3f4fd0786492c008c27b0059c487cdef0ee540eeb6291",
+      "bytes": 12835
+    },
+    {
+      "path": "src/trpg_state_machine/world_mechanisms.py",
+      "sha256": "3a3de6297c8ce7948956a4576f6c32e7918491a1252a78a2402bc4ddd7ce5b8c",
+      "bytes": 34173
+    },
+    {
+      "path": "src/trpg_state_machine/world_objects.py",
+      "sha256": "66df16eddc6886a1750dbcf17f06d7368d55643521eb8e53e696c07547357b1b",
+      "bytes": 11611
+    },
+    {
+      "path": "src/trpg_state_machine/world_openable.py",
+      "sha256": "bba10e9715934bdb2982c4f16a628ba7e0c183a77629cc295d3e9c0931fd638e",
+      "bytes": 25044
+    },
+    {
+      "path": "src/trpg_state_machine/world_package.py",
+      "sha256": "7417a6d190a50560a26f870c10807d8fc9f8c7c4819d1c48d2929233cbed8327",
+      "bytes": 30917
+    },
+    {
+      "path": "src/trpg_state_machine/world_spatial.py",
+      "sha256": "49f1d8af04a7b9d5a480aad6cce47481d09e497ea140391b91826d6116872773",
+      "bytes": 29724
+    },
+    {
+      "path": "src/trpg_state_machine/world_time.py",
+      "sha256": "49a955f47de7705eaad223f042b8b6d9b26a0474eb8be31abcb7c065b51ccec5",
+      "bytes": 8419
+    }
+  ],
+  "node_count": 1059,
+  "node_ids_sha256": "d18e2e012cbe8c7c376de09f749a7a9e2f63ce0b046626652b048efd5e20279f"
+}

@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-27",
+  "scope": "Experiment scripts and artifacts only; no game tests",
+  "commands": [
+    {
+      "command": "retrieval.py probe",
+      "exit": 0,
+      "result": "official HTTP response model/dimension/dtype verified"
+    },
+    {
+      "command": "retrieval.py index",
+      "exit": 0,
+      "result": "All required embeddings cached; two index resumptions after paid-phase transport failures and a pre-evaluation concatenation repair are included in ledger; initial failed sandbox probe retried separately"
+    },
+    {
+      "command": "retrieval.py evaluate",
+      "exit": 0,
+      "result": "seven routes x 30 questions x two conditions; first and only ranking evaluation"
+    },
+    {
+      "command": "report.py",
+      "exit": 0,
+      "result": "offline aggregates, overlaps, differences and representative rankings"
+    },
+    {
+      "command": "retrieval.py selftest",
+      "exit": 0,
+      "result": "10 deterministic assertions"
+    },
+    {
+      "command": "python -m unittest -v test_experiment.py",
+      "exit": 0,
+      "result": "8 tests passed, 0.082s; includes post-evaluation LF and atomic JSON cache delivery fix"
+    },
+    {
+      "command": "ruff check prepare.py build_texts.py retrieval.py test_experiment.py report.py",
+      "exit": 0,
+      "result": "All checks passed; formatting fixes followed initial failures"
+    },
+    {
+      "command": "ruff format --check prepare.py build_texts.py retrieval.py test_experiment.py report.py",
+      "exit": 0,
+      "result": "5 files already formatted"
+    },
+    {
+      "command": "prepare.py verify D:/Projects/agentic-trpg/trpg-state-machine",
+      "exit": 0,
+      "result": "1059 nodes; all source file hashes match"
+    },
+    {
+      "command": "git diff --check",
+      "exit": 0,
+      "result": "passed"
+    },
+    {
+      "command": "python audit.py",
+      "exit": 0,
+      "result": "83 file hashes, 1059 candidates, 420 metric routes and 120 exact Fraction RRF recomputations passed; no missing embeddings; protocol input lock matches; 20 local Markdown links; no actual environment secret found in task artifacts"
+    },
+    {
+      "command": "ruff check prepare.py build_texts.py retrieval.py test_experiment.py report.py audit.py",
+      "exit": 0,
+      "result": "All checks passed"
+    },
+    {
+      "command": "ruff format --check prepare.py build_texts.py retrieval.py test_experiment.py report.py audit.py",
+      "exit": 0,
+      "result": "6 files already formatted"
+    },
+    {
+      "command": "git diff --cached --check",
+      "exit": 0,
+      "result": "Final staged task diff clean after fixing two trailing Markdown blank lines"
+    }
+  ],
+  "not_run": [
+    "SM/RE game test suites",
+    "GitHub Actions",
+    "GPU/vector database/graph service",
+    "independent external annotation review"
+  ],
+  "known_initial_failures": [
+    "Sandbox Git working-tree access required explicit authorized escalation for documentation and RE status",
+    "First network probe failed in sandbox; minimal authorized escalation succeeded",
+    "Pre-payment 429; initial classifier overbroad, corrected using official rate-limit documentation",
+    "Two paid-phase transient transport failures; resumed missing content only",
+    "Initial experiment lint/fixture-format failures fixed before final checks",
+    "Initial offline audit reached documentation link check before validation.json existed; artifact subsequently created and audit rerun",
+    "First staged diff check found two generated Markdown trailing blank lines; generator and outputs fixed before commit",
+    "Delivery inspection caught CRLF normalization mismatch in metadata lock; original first-evaluation hashes retained and explicit delivery LF hashes recorded, with no scoring/input-value changes"
+  ]
+}

@@ -1,0 +1,138 @@
+[
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/docs/MODULE_CONTRACTS.md",
+    "sha256": "c84e4ab1324c246ddc95a5c2f6804af7628f73c4662a417c288223c735b64b92"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/docs/STATE_MACHINE_ARCHITECTURE.md",
+    "sha256": "56cc6140d067ed4d37c5a4393c06120d411a6f1d5bc1d3329258ed9680ab7516"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/docs/WORLD_SUBSYSTEM_DESIGN.md",
+    "sha256": "7fd3319239f07e77bdba6ed089c1e0f3bdec2dbb5a1cbaebf6d831603f530a28"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/docs/REFERENCES.md",
+    "sha256": "acf4bd32b7b096468ffcfd794d38241ff4fee67457e9f3f0ed8efa20e2a3364b"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/docs/MVP_SCOPE.md",
+    "sha256": "ec559d8150042453c530fd234f11837b12a6b220d1d2d9cd4b9a9228084c3ad4"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/CONTAINER_SERVICE_PROGRESS.md",
+    "sha256": "cff1fd6284089309dd5db3b7be6bc11946ff07e7484270f34dcfcb8f6f00fe88"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/ENVIRONMENT_SERVICE.md",
+    "sha256": "ad41a10afb8e9c8fdb1a8a7c36c1ac71ce386850d208f544487f7b4627af49f4"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/ENVIRONMENT_SERVICE_PROGRESS.md",
+    "sha256": "45cebf05723710d87af315f25012d1f167180d0675b31243d6871dfe817dd69a"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/MECHANISM_SERVICE.md",
+    "sha256": "993ad16ca5cae189667d708ed92e6fb93c6f58fd9454d673f053d32aa94ee8cf"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/MECHANISM_SERVICE_PROGRESS.md",
+    "sha256": "d63c8942db165d189f83e40bedc4b9f4d2629400b43db6384204f17b3ad71822"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/OBJECT_SPATIAL_SERVICE.md",
+    "sha256": "96e29a2702b96427e5fcbaf8ad48dc766f73ae954ea3b380ed15e2254fff1dc0"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/SESSION_MANAGEMENT.md",
+    "sha256": "d6d5fd7fe40c0b4d48bb7a4e3685533f52319359bf519654f078e2a355b693c2"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/SESSION_MANAGEMENT_PROGRESS.md",
+    "sha256": "624145424ced3e45dcaf23e9796c4bf57ad06144603b32fa46383e82e05914ce"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/docs/reviews/RUNTIME_INSTANCE_OWNERSHIP.md",
+    "sha256": "49505a0f82105b80e9ad20072223996adb74cadee786657931a003a5040c2d60"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/docs/dev/stateless-evaluation.md",
+    "sha256": "9b09acd484a9daa7fdbd1e2a41b203b71e91f80c5032ab33a1ad157d897c2f00"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/agentic-trpg/AGENTS.md",
+    "sha256": "83a16338fcc368de548d60230af2d19bfc92796817909fc89d9204108f08b239"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/AGENTS.md",
+    "sha256": "836bb165216efbb918553f61b56aafc19a646a4851c58fe4725606e4ec85fa1d"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/AGENTS.md",
+    "sha256": "14ace3a644e850b1999cd2a70693a7064a96723fc211e438575565f2d368ceeb"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/.worktrees/runtime-instance-ownership/agentic-trpg/docs/MODULE_CONTRACTS.md",
+    "sha256": "7d834c1af1d7278f74d8e8e50131de7f6ed6c82f05d92a91cfd6c7f567fcfe92"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/packages/dnd5e-engine/src/dnd5e_engine/evaluation.py",
+    "sha256": "6e2078101f8cdc18a8c97b3c7ed4d0b9979518954524aee3bee1eafce5a6dc06"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/docs/dev/stateless-migration-progress.md",
+    "sha256": "c390579d6cf41e6131e17144de2f9694ec5e06b135d5e9c892d31c5c2ba74fe4"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/README.md",
+    "sha256": "accb1154ac9f3745745e8fbdae61ebde470baa81e86f617d18a01d606c159c7d"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-rules-engine/pyproject.toml",
+    "sha256": "4df0667683d55a10e25e3e9465563ea1a3fd4797c7fe5285bba04ea7e754b9a2"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/README.md",
+    "sha256": "ba5012b25162ccf621dbe86af8e9da34d33b9bb43ddf35fade260bd37e46d00e"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/world_containers.py",
+    "sha256": "776587a544f2ee8ccb6a4f25ca1b764d4746acc9972c249c3318975565b3927e"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/storage.py",
+    "sha256": "2ec5143e1d5cc34891706aa067c6275a24c6a9769f1869e302f8a9642ea0f769"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/world_lights.py",
+    "sha256": "edd1cae76ef93a8538a3f4fd0786492c008c27b0059c487cdef0ee540eeb6291"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/world_mechanisms.py",
+    "sha256": "3a3de6297c8ce7948956a4576f6c32e7918491a1252a78a2402bc4ddd7ce5b8c"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/domain_facts.py",
+    "sha256": "6a4a4e48b4af331160d3d96442e93348ce217218544706138ca9df3f83c83120"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/session_memory.py",
+    "sha256": "3536d5fb757c804f674c761c763a037ea49466536552c80f9053f7439e5fdfc0"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/src/trpg_state_machine/grid.py",
+    "sha256": "7870981d635433ce563a0a141f8beaeeba5c32f8da11b42ee3e1af790b632a03"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/pyproject.toml",
+    "sha256": "146079ba4c4cae95a401702cf04958469b372d4f914c390ce9a41539619c2a21"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/tests/test_session_memory_runtime.py",
+    "sha256": "b7fe912ce4ff94bc3376f693597bb6954eebfa034d4722c32c3b63f86c94702f"
+  },
+  {
+    "path": "D:/Projects/agentic-trpg/trpg-state-machine/tests/test_scoped_runtime_validation.py",
+    "sha256": "5340f926e50885f727442d66d84d7a5f085eff47261ee5e5c0d88a413824238a"
+  }
+]
