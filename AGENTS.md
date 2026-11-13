@@ -47,3 +47,9 @@ then the relevant authoritative contracts and current source. Update the overvie
 those relationships change. Local function/docstring edits require the relevant source
 and necessary context; they do not require rereading all architecture documents or
 mechanically changing the overview.
+
+## Optional local graph and document search
+
+- For architecture or contract research, consider `lct_search.search_docs` when the local documentation index is available. Verify important results in the authoritative Markdown in the relevant checkout.
+- For source relationships, consider the code graph for the relevant sibling repository. Check the local workspace and index location, match the project's configured checkout to the revision under investigation, and confirm the project with `lct_graph.list_projects`. Use `resolve`, `definition`, `callers`, or `callees` for that project. Use local source when the matching index is unavailable.
+- Follow the `code-graph-research` skill for index maintenance. After code reaches a sibling repository's `main`, verify its checkout and incrementally refresh that repository's baseline graph if available. Keep candidate indexes separate from the baseline. Use document indexing for this documentation repository. First-time code indexing and full graph rebuilds require explicit human authorization.
