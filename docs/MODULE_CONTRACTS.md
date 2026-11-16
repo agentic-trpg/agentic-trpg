@@ -20,7 +20,7 @@ Architecture Decision Status **[DECIDED]**。本分支从 `origin/main@5619e7a` 
 不代表本次 SM 实现分支的状态。当前实现与验收证据单独见
 [运行实例核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)，不得仅据字段或类名认定迁移完成。
 
-**2026-10-21 Session 内存运行架构决定：** Architecture Decision Status **[DECIDED]**；完整内存运行层与持久提交后发布协议 Implementation Status **[NOT IMPLEMENTED]**；Acceptance Status **未执行运行验收**。本轮只修改三仓库文档。§0.3、§2.3–§2.4、§4、§6 已协调现行正文，替代“普通业务每次直接读 SQL 装配事实”的目标解释；历史 v0.4 Review、§1.1–§1.7 和原验收数字保留原日期。当前源码及主要差距见 [§1.8](#18-2026-10-21-session-内存运行层基线核对)，迁移沿用 §13 的 C-25／C-27、A2 和演进计划 DS 轨道。
+**2026-10-21 Session 内存运行架构决定与当时的实现记录：** Architecture Decision Status **[DECIDED]**；完整内存运行层与持久提交后发布协议 Implementation Status **[NOT IMPLEMENTED]**；Acceptance Status **未执行运行验收**。本轮只修改三仓库文档。§0.3、§2.3–§2.4、§4、§6 已协调现行正文，替代“普通业务每次直接读 SQL 装配事实”的目标解释；历史 v0.4 Review、§1.1–§1.7 和原验收数字保留原日期。当时的源码及差距见 [§1.8](#18-2026-10-21-session-内存运行层基线核对)，当前实现从 [§1.0](#10-当前实现入口2026-11-16) 查起。迁移沿用 §13 的 C-25／C-27、A2 和演进计划 DS 轨道。
 
 > **版本：** v0.18 / Draft for Review
 >
@@ -250,6 +250,23 @@ RE DTO 字段属于 CombatState 不决定 SM 事实归属。World／Character �
 | `outcome.py` / `results.py` | `CombatOutcome` 是战斗关闭时的结果投影，并非每一步的完整 Delta | 新契约不得用 `CombatOutcome` 替代逐命令 StateDelta |
 
 以上表格沿用 v0.1 的历史代码审阅基线；前批有限静态代码核对另列 §1.1，不是完整规则审计或运行测试。迁移应按受支持规则建立状态依赖闭包与读写映射；旧 `_LiveCombat` / sidecar 盘点用于发现遗漏、区分权威/派生/临时数据，不能成为目标 Schema 蓝本、永久执行依赖或要求所有规则重构先复制完整旧对象的门槛。
+
+### 1.0 当前实现入口（2026-11-16）
+
+本次按两个远端 main 基线静态核对：[SM `4d62c6e`](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/docs/SYSTEM_OVERVIEW.md)、
+[RE `d26b59d`](https://github.com/agentic-trpg/trpg-rules-engine/blob/d26b59d06a8e08191d70d64eb4750f697bdaecbb/docs/SYSTEM_OVERVIEW.md)。
+下方 §1.1–§1.8 保留各自日期的核对。架构决定见对应契约章节，支持范围看实际公开入口和其测试。
+
+| 要核对的能力 | 当前源码与验收入口 |
+| --- | --- |
+| 规则求值、采用、提交与发布 | [执行契约 §6.1](#61-执行时序-decided-partially-implemented)；[SM RuleExecution](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/rule_execution.py)；[真实 RE 检定与故障回执](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_session_memory_rng_failures.py) |
+| 持久提交后发布故障、暂停与对账 | [故障契约 §6.4](#64-原子性与故障-decided)；[SM Store](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/storage.py)；[实现验收](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/docs/reviews/SESSION_MEMORY_RUNTIME_IMPLEMENTATION.md) |
+| 保存与活跃战斗恢复边界 | [MVP §6.3](MVP_SCOPE.md#63-state--memory--knowledge)；[SM Session Management](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/docs/SESSION_MANAGEMENT.md)；[独立进程回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_dnd_hardening.py) |
+| 当前机械接口与采用范围 | [SM 依赖锁定](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/uv.lock)；[RE 当前接口](https://github.com/agentic-trpg/trpg-rules-engine/blob/d26b59d06a8e08191d70d64eb4750f697bdaecbb/docs/dev/stateless-evaluation.md)；[SM 治疗术集成回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_cure_wounds.py) |
+
+SM 依赖固定到上述 RE 提交。RE `engine-snapshot/20` 的对应求值为
+`engine-evaluation/27`，对应可用性查询为 `engine-availability/16`。具体可采用的操作和查询范围由 SM 的真实接线确认。
+本次核对读取了源码和测试，未重跑游戏运行验收。
 
 ### 1.1 2026-10-12 跨仓库核对（静态代码 / Review，未重跑运行测试）
 
@@ -701,7 +718,7 @@ SQL、候选事实／关联／字段版本和读取 memo：要么一起恢复，
 
 ### 2.4 Package 创建参照与完整实例化 `[DECIDED; PARTIALLY IMPLEMENTED]`
 
-架构决定为 `[DECIDED]`；整体实现为 `[PARTIALLY IMPLEMENTED]`。§1.6 核对的 Schema39 已完成现有实例配置读取闭包和显式旧库升级；动态 spawn、一般创建依赖及完整实例装备／效果生命周期尚未完成，不能把整体标成完全未实现或全面完成。Package 是静态定义和创建参照，不拥有 Session 中正在运行的游戏状态。创建世界、场景、角色、WorldObject、Item 或 Session 时可从 Package 取得初始属性、能力配置和初始状态；创建完成后，实例的完整有效属性与当前状态由 Session 内所属领域的数据记录持有。固定 Package 版本不能代替完整实例化。
+架构决定为 `[DECIDED]`；整体实现为 `[PARTIALLY IMPLEMENTED]`。当前 World 读取、装备实例与保留边界见 [World §1.1](WORLD_SUBSYSTEM_DESIGN.md#11-当前实现与目标的区别)。§1.6 保留 Schema39 的迁移记录。动态生成、一般创建依赖及完整实例装备／Effects 生命周期仍按各能力验证。Package 是静态定义和创建参照，不拥有 Session 中正在运行的游戏状态。创建世界、场景、角色、WorldObject、Item 或 Session 时可从 Package 取得初始属性、能力配置和初始状态；创建完成后，实例的完整有效属性与当前状态由 Session 内所属领域的数据记录持有。固定 Package 版本不能代替完整实例化。
 
 操作已经存在的实例，必须通过实例及所属组件的接口读取有效数据，不得反向查询 Package 初始化定义来补齐缺失的实例字段。完整性覆盖实例声明能力所需的配置、状态及必要关联，具体 World 能力示例见 [World §2.1a](./WORLD_SUBSYSTEM_DESIGN.md#21a-完整实例能力与统一读取-decided-partially-implemented)。实例可修改属性在实例层表达并保存；模板默认值不得覆盖创建后、修改后或恢复后的有效属性。已有实例缺少必要数据时应明确报告不完整／不支持，或走显式迁移，不能静默套模板掩盖缺口。
 
@@ -906,7 +923,7 @@ C03 的 CapabilityManifest 是可由现有允许列表派生的轻量逻辑查�
 
 ### 4.4 Action Availability Query `[DECIDED; PARTIALLY IMPLEMENTED]`
 
-当前基础战斗查询已实现 `engine-availability/13`，实际 Request／Result、SM 授权包装及限制见 §1.6。下列是 **Target Architecture Contract `[PROPOSED]`** 的逻辑形状，不能当成当前函数签名；通用操作联合、全部目标枚举和 CapabilityManifest 仍待实现／冻结。独立只读查询供 UI / Agent Planning 查看候选行动的当前可用性，复用明确 Snapshot / RulesetBinding 与按 operation_kind 类型化的 payload：
+基础战斗查询的 `engine-availability/13` 接线记录见 §1.6。当前 SM 由 [RulesAdapter](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/rules_adapter.py#L816) 按 Snapshot 版本选择请求格式，`engine-snapshot/20` 配对 `engine-availability/16`。下列是 **Target Architecture Contract `[PROPOSED]`** 的逻辑形状，不能当成当前函数签名；通用操作联合、全部目标枚举和 CapabilityManifest 仍待实现／冻结。独立只读查询供 UI / Agent Planning 查看候选行动的当前可用性，复用明确 Snapshot / RulesetBinding 与按 operation_kind 类型化的 payload：
 
 ```text
 query_action_availability(session_id, actor_id, operation_kind,
@@ -1016,7 +1033,9 @@ Engine 返回有序、类型化的候选机械事件，不分配权威 event_id 
 
 ### 6.1 执行时序 `[DECIDED; PARTIALLY IMPLEMENTED]`
 
-既有短事务、绑定／OCC／回执／RNG 为部分基础；新增统一候选与提交后 RAM 发布整体 **[NOT IMPLEMENTED]**，当前入口见 §1.8。以下为目标逻辑流程，不冻结 API。
+以下为已决定的目标逻辑流程。SM 已支持的入口包含候选隔离、持久提交后 RAM 发布和
+受限故障恢复；当前范围见[§1.0](#10-当前实现入口2026-11-16)及[§6.4](#64-原子性与故障-decided)。
+§1.8 保存 2026-10-21 的历史缺口。流程图不冻结 API。
 
 ```text
 Command / trusted system work -> authorization + original idempotency-key lookup
@@ -1093,7 +1112,15 @@ RuleEvaluationResult 与 CommandReceipt 的状态不共用枚举：规则 accept
 
 基础事实恢复与玩法继续分开验收。正常崩溃恢复先核对 Schema、Package／Ruleset、提交结果和可靠工作，再重建活跃 RAM 与必要索引；昂贵派生结果按需重算。定期／手动存档用于一致备份、命名检查点和受控回档，不是普通命令唯一的持久化入口；不能把复制正在写入的 SQLite 主文件等同完整存档。备份须覆盖一致 SQLite 状态，受控回档不能静默覆盖已提交副作用。活跃战斗、PendingChoice／Continuation 的精确续玩限制仍按 MVP／§8，不因事实可恢复而宣称任意阶段可执行。
 
-该完整故障协议 **[NOT IMPLEMENTED]**；现有事务／派生缓存机制不能代替发布失败验收。性能后续分别测量读取／Snapshot、规则求值、提交、发布、索引／缓存维护和内存，不凭本次文档声称收益。
+**实现状态 [PARTIALLY IMPLEMENTED]（2026-11-16，SM `4d62c6e`）**。当前 SM 的
+[Store](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/storage.py) 在 SQLite 已提交但 RAM 发布失败时
+暂停受影响的 Session，并返回 `committed_publication_pending`。现有
+[故障回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_session_memory_runtime.py) 覆盖当前态拒读、受支持的
+非战斗恢复及同键返回原持久回执。活跃战斗及任意中途选择的精确续玩仍按
+[§8.2](#82-必须明确不支持的场景-open) 和 MVP 限制处理。完整故障矩阵的验收按具体入口分别取证。
+
+**历史核对（2026-10-21）**：当时完整故障协议为 [NOT IMPLEMENTED]，见 §1.8。
+性能分别测量读取／Snapshot、规则求值、提交、发布、索引／缓存维护和内存。
 
 ### 6.5 规则、领域与提交校验分责 `[DECIDED]`
 
@@ -1351,7 +1378,11 @@ EventObservation 是过去事件的授权感知证据；CurrentPerceptualView �
 - SM 为待处理 Observation 批次建立稳定 `observation_work_id`、任务及幂等处理记录；重复投递不创建第二份逻辑工作。合并批次不能重复占用尚有任务的同一观察；具体索引/表结构未冻结。
 - Mode Routing、Gate 领域策略、证据保留和任务完成由 SM 管理；Host 按授权请求执行 Context 追加或模型调用。失败不随 Context 释放而丢失证据。
 
-### 7.4 Recent Observation、Processing 与 Retention `[DECIDED; NOT IMPLEMENTED]`
+<a id="74-recent-observationprocessing-与-retention-decided-not-implemented"></a>
+
+### 7.4 Recent Observation、Processing 与 Retention `[DECIDED; PARTIALLY IMPLEMENTED]`
+
+SM 已有 Recent 身份范围、处理义务和到期恢复的受限实现，运行入口见 [Agent §8.0](AGENT_ARCHITECTURE.md#80-当前-sm-接入)。完整宿主 Context 接入和本节的保留目标仍按各路径验证。
 
 NPC 维护**单一、有界的 Recent OB List**，按游戏时间窗口保存该 NPC 实际察觉的观察，顺序稳定。窗口的时长、截断规则和必要容量上限应在实现时固定；不要求另设 Pending／Historical OB List 或第三种 OB 处理状态。观察者感知投影水位仍按 C16 独立维护；读取列表、Host 添加 Context 均无处理副作用。
 
@@ -1443,6 +1474,8 @@ Turn 是一个角色的单回合，可以包含移动、多次动作及期间发
 **ABI `[OPEN]`：** Interrupt 如何映射 Result / Receipt、Continuation 字段与幂等身份、计算中已消耗 RNG 的保存/预留、哪些前缀机械效果可提交、信息窗口与其他命令的交错/版本政策、取消/到期和最小 MVP 支持范围，尚需真实路径审计。不能用 §8.1 的无消耗 needs_choice 假装完整中途暂停，也不预先新增正式接口/status。目标恢复语义不等于 MVP 承诺任意活跃战斗崩溃精确续玩；未支持路径须在执行前明确边界，不产生虚假的部分成功。
 
 ## 9. Agent Host / NPC Evaluation / Memory / DM（P1 接口边界）
+
+SM 已有授权任务、模式切换、Meta／回执和可靠输出的受限实现，见 [Agent §8.0](AGENT_ARCHITECTURE.md#80-当前-sm-接入)。以下接口和状态字段描述跨模块目标。现有 Python 调用、新 Host 接线和候选网络消息的实现状态分别核对。
 
 本节架构语义按各段 `[DECIDED]` 标记；新增消息、字段和存储协议仍为 **`[PROPOSED; NOT IMPLEMENTED]`**，具体类型、状态编码、版本与数据库结构仍需审阅；不要求新增服务或复杂公共 Receipt 子系统。
 
@@ -1838,9 +1871,9 @@ EventDefinition 是静态 Trigger / Condition / Effect 声明，CommittedWorldEv
 | C-22 | Context OB 失效通知与过期 Pending Work 的受限恢复输入？ | [PROPOSED / OPEN]；非 Recent 回注、来源权限及通知字段需设计；不修改在途请求/KV Cache、不自动 Compaction 或重做 EVA |
 | C-23 | Turn／Round Episode／EpisodeObservation 的共同协议？ | 本场参战者 Turn、外部 Round、Episode 合批、固定过滤依据与机械审计分流 [DECIDED]；scope／origin 聚合算法、参与切换边界、来源覆盖去重、旧消费迁移、关闭／发布恢复与 Schema [OPEN; NOT IMPLEMENTED]。不再采用整场单一 Episode 或战后才聚合的目标 |
 | C-24 | Mechanical Audit、StageFacts 与感知边界？ | 非战斗独立阶段证据、战斗 Episode 级过滤依据 [DECIDED]；完整机械依赖不裁剪，不逐机械 Event 发 Signal，不要求逐动作感知取证。真实来源映射、审计保留／重放、固定 RE／Adapter 与迁移仍 [OPEN; NOT IMPLEMENTED] |
-| C-25 | 游戏核心事实访问、Session 内存生命周期与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.3。Session RAM 统一读、隔离候选、SQLite 增量提交后发布及故障恢复已 [DECIDED]（§2.3／§6）；整体 [NOT IMPLEMENTED]。World 候选组件/字段分类见专项草案 §3；具体组织、容量、API／版本与替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
+| C-25 | 游戏核心事实访问、Session 内存生命周期与替换边界？ | SM＋RE 主线、领域状态责任与操作共享提交 [DECIDED]；已有受限实现见 §1.3。Session RAM 统一读、隔离候选、SQLite 增量提交后发布及故障恢复已 [DECIDED]（§2.3／§6）；受限实现见 [§1.0](#10-当前实现入口2026-11-16) 和 [World §1.1](WORLD_SUBSYSTEM_DESIGN.md#11-当前实现与目标的区别)。World 候选组件/字段分类见专项草案 §3；具体组织、容量、API／版本与替换映射 [OPEN]，与 A1 / A2 一起验证，不新增平行待办；Evennia 仅可选评估 |
 | C-26 | 动态能力与 Session 扩展如何受控启用？ | 能力目标及固定冒险基线 [DECIDED]；Coding Agent 可选；来源/版本/权限/预算/启用、在途绑定、行为状态迁移、失败处理 [OPEN; NOT IMPLEMENTED]，版本回滚不撤销已提交事实 |
-| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.3。统一世界修改协调、全部写入口接入及发布故障恢复尚 [NOT IMPLEMENTED]；完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
+| C-27 | 有状态 Combat Handler 与按需读取接口？ | 职责与校验分责 [DECIDED]，见 §0.3–§0.4 / §6.5；已有受限 Handler / Records，见 §1.3。部分提交后发布故障的暂停与对账已有实现，见 [§1.0](#10-当前实现入口2026-11-16) 与 §6.4；全部写入口和故障矩阵仍待完整核对；完整推进/新增 API、调度预算、Continuation、读取依赖及锁/版本细化 [OPEN; NOT IMPLEMENTED]，不因类已存在扩大支持或删除校验 |
 | A1 | 探索与战斗的操作编排分离 | [DECIDED] §0.5；当前探索活动/共享位置/受限战斗编排为部分基础（§1.3）。后续验证战斗移动与 World 投影、共享开合/解锁/取放/破坏的规则资格/成本/反应、入口 guard 和原子失败语义；完整集成 [OPEN; NOT IMPLEMENTED] |
 | A2 | StateMachine 模块化与职责边界 | [DECIDED] §0.6；显式组合已有受限实现（§1.3）。逐步减少 Mixin，明确 Facts / Records 与支持组件依赖、库存投影单一权威、共用事务及回滚；不机械分层、不按物体设 Handler、不强制 ECS；剩余切片 [OPEN] |
 

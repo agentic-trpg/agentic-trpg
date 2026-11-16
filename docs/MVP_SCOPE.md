@@ -18,7 +18,7 @@
 
 **2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
 
-**2026-10-18 引用同步：** 上段为历史记录；当前远端与实现边界见 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。SM main 已由外部合并更新到 97c5af1／Schema33，ObjectSpatial 原分支现已合入；本轮仅同步现状引用与版本，不改产品范围、Host／认知契约或实施业务代码。
+**2026-10-18 引用同步：** 上段为历史记录；当时的远端与实现边界保留在 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。当时 SM main 由外部合并更新到 97c5af1／Schema33，ObjectSpatial 原分支现已合入；本轮仅同步现状引用与版本，不改产品范围、Host／认知契约或实施业务代码。
 
 
 **2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
@@ -85,7 +85,7 @@
 
 MVP 必须是**可反复运行的文字版 Vertical Slice**，不是若干模块各自拥有 API 的集合。关闭图片生成后仍应完整可玩；**不以 NPC 同伴系统替代 NPC Sub-agent 的独立性验证**。
 
-**2026-10-21 范围与运行架构 [DECIDED]：** 当前首版仍是一名玩家／一个 PC、无 AI 队友。未来同世界 **5–6 名玩家**和适量后台 NPC 是后续并发与合成负载目标，功能 Implementation Status [NOT IMPLEMENTED]，性能阈值由测量确定，不凭人数承诺吞吐量。Session 活跃事实 RAM 读取、SQLite 每次修改增量持久提交后发布是已决定的架构方向，完整运行层 [NOT IMPLEMENTED]；分阶段迁移沿既有 A2／C-25／C-27／DS 轨道，不将全部迁移或多人负载加入本次单人 MVP 验收门槛。非战斗安全恢复与正常战斗仍按既有范围，活跃战斗／PendingChoice／Continuation 精确续玩未扩大。统一契约见 [MC §2.3／§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
+**2026-10-21 范围决定与当日运行基线 [DECIDED]：** 当前首版仍是一名玩家／一个 PC、无 AI 队友。未来同世界 **5–6 名玩家**和适量后台 NPC 是后续并发与合成负载目标，功能 Implementation Status [NOT IMPLEMENTED]，性能阈值由测量确定，不凭人数承诺吞吐量。Session 活跃事实 RAM 读取、SQLite 每次修改增量持久提交后发布是已决定的架构方向，当日完整运行层 [NOT IMPLEMENTED]，当前证据见 [MC §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)；分阶段迁移沿既有 A2／C-25／C-27／DS 轨道，不将全部迁移或多人负载加入本次单人 MVP 验收门槛。非战斗安全恢复与正常战斗仍按既有范围，活跃战斗／PendingChoice／Continuation 精确续玩未扩大。统一契约见 [MC §2.3／§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
 
 ### 1.3 首版产品基线（已确认与候选项分列）
 
@@ -387,7 +387,7 @@ DM Planner 负责情境语义/GM 裁决（优先规则/Package，未规定时掷
 
 2026-10-09 历史审阅基准（当时 `main`：`64dd920`）包含 `PlayerIntent`、`CombatEvent`、`LiveCombatView`、`CombatOutcome`、HTTP Bridge 等；这不是本轮对最新实现的审计或最终接口定义。可以复用正确的规则算法、Resolver、声明式数据与独立回归用例，但须改造状态依赖与执行架构，旧 View / Handle / Stateful API 只属 Transitional / Legacy。
 
-**[必须优先验证的集成缺口]** 该历史基线的玩家入口与内置怪物策略不足以证明当前跨模块闭环。历史有限核对保留于 MC §1.1；当前远端实现与固定依赖以 MC §1.3（2026-10-18）为准，§1.2 保留 10 月 15 日历史 checkout，不把历史锁定版本当作当前。已有受限组合/导航/门锁/物品与战斗基础，完整战斗 World 集成、Episode / Continuation 等仍待落实；本批未运行集成测试。MVP 仍需受 SM 授权的 NPC Typed Intent → Stateless Evaluation → 原子提交路径，Intent 可由 Combat Policy 产生；独立验收敌方 Agent 宏观决定的真实影响，不要求每次战术来自 LLM，不绕过到私有 Engine 或冒充 PC。
+**[必须优先验证的集成缺口]** 该历史基线的玩家入口与内置怪物策略不足以证明当前跨模块闭环。历史有限核对保留于 MC §1.1–§1.3；当前远端实现与固定依赖见 [MC §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)。已有受限组合/导航/门锁/物品与战斗基础，完整战斗 World 集成、Episode / Continuation 等仍待落实；本批未运行集成测试。MVP 仍需受 SM 授权的 NPC Typed Intent → Stateless Evaluation → 原子提交路径，Intent 可由 Combat Policy 产生；独立验收敌方 Agent 宏观决定的真实影响，不要求每次战术来自 LLM，不绕过到私有 Engine 或冒充 PC。
 
 ### 6.5 NPC EVA / Action Execution / DM 分离（目标协议摘要）
 

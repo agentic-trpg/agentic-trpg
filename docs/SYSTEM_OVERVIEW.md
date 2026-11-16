@@ -1,6 +1,6 @@
 # 系统与接口总览：架构、契约与开发协调
 
-2026-10-27 源码核对起点：文档 `6bba7ab`、SM `a7b0804`、RE `f1a3235`。
+当前实现、依赖与验证范围见 [Module Contracts §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)。
 这是面向首次进入仓库的 Codex 的导航页，不是另一份架构权威或可执行接口规范。
 这里保存架构决定、目标契约、开发规范和核对证据，不运行游戏 Session。
 
@@ -13,9 +13,9 @@
 | `trpg-rules-engine`（RE） | 明确输入下的规则求值、类型化素材和现存兼容宿主 | `packages/dnd5e-engine/src/dnd5e_engine/evaluation.py` 的 `evaluate` | Stateless 求值不提交 SM 世界事实；Legacy/Bridge 确有本地状态 |
 
 通常三个 checkout 在同一逻辑父目录；独立 worktree 也按三库平行定位。
-实现细节先读 [SM 总览](https://github.com/agentic-trpg/trpg-state-machine/blob/docs/source-docstrings-and-skills/docs/SYSTEM_OVERVIEW.md)
-或 [RE 总览](https://github.com/agentic-trpg/trpg-rules-engine/blob/docs/source-docstrings-and-skills/docs/SYSTEM_OVERVIEW.md)。
-链接指向本批分支，不表示已经合入 main；本地优先读取对应 sibling 的同名文件。
+开发时，先读任务所用 sibling 检出的同名总览；浏览 GitHub 时从
+[SM main 总览](https://github.com/agentic-trpg/trpg-state-machine/blob/main/docs/SYSTEM_OVERVIEW.md) 或
+[RE main 总览](https://github.com/agentic-trpg/trpg-rules-engine/blob/main/docs/SYSTEM_OVERVIEW.md) 进入。
 
 已有 SM 运行组件、受限 Stateless 求值、Bridge HTTP 和 Demo 不能等同于完整产品。
 完整 Agent Host／玩家 UI、目标中的 Agent 调度与叙事闭环仍需各自实现和验收；
@@ -101,10 +101,14 @@ SM 安装的 RE 由它的 `pyproject.toml`／`uv.lock` 固定，不自动等于�
 
 | 任务 | 先读规范 | 再读实现／流程 |
 | --- | --- | --- |
-| 容器重量、实例字段或索引 | MC §2.3／§2.3a、World；SM 总览 | SM `world_containers.py`、`runtime_instances.py`、`session_memory.py`；runtime-change |
-| 事务、发布或恢复 | MC §6、SM Architecture、Session Management | SM `storage.py`、`session_runtime.py`；atomicity-review |
+| 容器重量、实例字段或索引 | [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)、[World 入口](WORLD_SUBSYSTEM_DESIGN.md#从这里开始) | SM `world_containers.py`、`runtime_instances.py`、`session_memory.py`；runtime-change |
+| 门变更影响哪些场景的光照 | [World 门与通路的光照依赖](WORLD_SUBSYSTEM_DESIGN.md#20d-门与通路的光照依赖) | [局部查询与整场景输出](WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) |
+| RE 返回结果后谁负责采用和提交 | [MC §6.1 执行时序](MODULE_CONTRACTS.md#61-执行时序-decided-partially-implemented) | [SM 规则采用](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/rule_execution.py)；[真实检定与回执回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_session_memory_rng_failures.py) |
+| SQLite 已提交但 RAM 发布失败 | [MC §6.4 原子性与故障](MODULE_CONTRACTS.md#64-原子性与故障-decided) | [Store](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/storage.py)；[发布故障回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_session_memory_runtime.py) |
+| 活跃战斗进程退出后能否继续 | [MC §8.2](MODULE_CONTRACTS.md#82-必须明确不支持的场景-open)、[MVP §6.3](MVP_SCOPE.md#63-state--memory--knowledge) | [SM 恢复入口](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/service.py)；[独立进程回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_dnd_hardening.py) |
 | 新增规则求值能力 | MC §4、References、RE Stateless 合同 | RE admission／计算／Delta；SM 适配、pin 与采用范围另验 |
-| NPC 任务、认知或输出 | MC §7／§9、Agent Architecture | SM 三个 NPC 接口模块；未来 Host 实现单独跟踪 |
+| NPC 任务、认知或输出 | [SM 现有 NPC 调用](AGENT_ARCHITECTURE.md#80-当前-sm-接入)、[MC §9 目标契约](MODULE_CONTRACTS.md#9-agent-host--npc-evaluation--memory--dmp1-接口边界) | 按问题读 SM 任务、结果和输出接口；Host 目标见 Agent §2.1 |
+| 加载冒险包并创建 Session | [可运行示例](ADVENTURE_PACKAGE_SCHEMA.md#81-可运行示例)、[当前 Loader 字段](ADVENTURE_PACKAGE_SCHEMA.md#44-目标内容格式与当前-sm-loader-的区别) | [SM Loader](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/package.py)、[输入校验回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_package.py) |
 | 跨仓库结构／接口同步 | 本页、相关 MC 和当前源码 | 本库 `trpg-contract-sync`；核对两边总览、DOC、Progress 和 pin |
 | 局部说明修正 | CODE_DOCUMENTATION 和当前函数／调用方 | 实现库 `trpg-code-documentation`；无需机械改动系统总览 |
 

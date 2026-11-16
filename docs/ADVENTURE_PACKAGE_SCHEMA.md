@@ -1,5 +1,11 @@
 # Agentic TRPG — Adventure Package Schema（MVP）
 
+## 从这里开始
+
+- 想实际加载冒险包并创建一个临时 Session，从 [§8.1 可运行示例](#81-可运行示例) 开始。
+- 想增加字段或排查 `unsupported_field`，先核对 [§4.4 当前 Loader 字段与版本](#44-目标内容格式与当前-sm-loader-的区别)，再读 [§9.1 加载结果](#91-统一-package-loading--validationap-0104)。
+- 想讨论未来的多文件内容组织，读 [§3](#3-文件组织格式与版本) 和 [§8.2 目标示例](#82-目标示例)；创建和实例责任以 [MC §2.4](MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented) 为准。
+
 > **状态**：Draft v0.14（固定内容身份与运行时复用；新增字段保持候选）
 >
 > **日期**：2026-10-19
@@ -11,15 +17,6 @@
 > **相关文档**：[`MODULE_CONTRACTS.md`](./MODULE_CONTRACTS.md) v0.18（跨模块最高规范）；[`MVP_SCOPE.md`](./MVP_SCOPE.md) v0.20；[`GAME_CORE_EVOLUTION_PLAN.md`](./GAME_CORE_EVOLUTION_PLAN.md) v0.7；[`WORLD_SUBSYSTEM_DESIGN.md`](./WORLD_SUBSYSTEM_DESIGN.md) v0.4；私有工作资料 `FIRST_BLUSH_MVP_REQUIREMENTS.md`
 >
 > **范围**：只定义**人工整理的静态冒险包**及其初始化/验证边界；不开发 World Creation Agent、视觉引擎或完整通用剧情编译器。
-
-**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
-
-**2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
-
-**2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
-
-
-**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
 
 ## 1. 目的与非目标
 
@@ -82,7 +79,7 @@
 
 ## 3. 文件组织、格式与版本
 
-MVP 建议使用 **UTF-8 YAML** 表示人工录入数据，外加 JSON Schema/Pydantic 验证器（具体工具未定）。通用运行时不得通过加载 YAML 标签实例化任意类；解析必须限制在普通标量、列表和字典。
+以下是目标内容组织。当前 Loader 用 Python 验证一份 UTF-8 YAML，字段清单和示例见 [§4.4](#44-目标内容格式与当前-sm-loader-的区别)、[§8.1](#81-可运行示例)。目标中的文件布局、字段表及示例用于说明内容关系，候选扩展工具仍待确定。通用运行时不得通过加载 YAML 标签实例化任意类；解析必须限制在普通标量、列表和字典。
 
 建议单个本地包目录为：
 
@@ -103,9 +100,11 @@ adventure-pack/
 
 ### 3.1 Manifest 必需字段
 
+下表描述目标 Manifest。要编辑当前单文件 Manifest，以 [§4.4](#44-目标内容格式与当前-sm-loader-的区别) 的验证器和现有样例为准。
+
 | 字段 | 类型 | 用途/验证 |
 | --- | --- | --- |
-| `schema_version` | string | 例如 `0.1.0`；解析器拒绝未支持的重大版本 |
+| `schema_version` | string | 目标示例的编号为 `0.1.0`；当前 Loader 接受明确列出的 `state-machine-foundation` 版本 |
 | `adventure_id` | string | 全局稳定、命名空间化，如 `example.harbor_watch` |
 | `package_version` | string | 内容的不可变版本标识，不等于游戏存档版本 |
 | `title` | string | 面向作者/用户的标题；公开示例为原创标题 |
@@ -167,21 +166,17 @@ adventure-pack/
 
 ### 4.4 目标内容格式与当前 SM Loader 的区别
 
-本文多文件 YAML 组织、字段表和合成示例是项目目标内容格式，不等于当前 Loader 已逐字段接受。下表保留 MC §1.3 的 10 月 18 日 Loader 沿革；当前分支实现依据 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)（已另有 Mechanism `/10`，不在本轮重定义 Schema）。安全解析与闭合字段验证保留，不因候选字段出现就忽略 unknown field。
+SM `4d62c6e` 的 [load_adventure_package](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/package.py) 接收一份本地 UTF-8 YAML。当前接受 `state-machine-foundation/1`–`/8` 与 `/10`，`/9` 不在允许列表。验证器按版本关闭字段集合，原文和 [校验回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_package.py) 是当前字段依据。旧版本的历史扩展记录见 [MC §1.3](MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)。
 
-| 层次 | 本轮核对状态 | 适用边界 |
-|---|---|---|
-| 项目目标 Adventure Package | [DECIDED / PROPOSED]；具体新增字段 [OPEN] | 本文文件组织／字段表表达内容需求，不是当前可直接加载的完整机器 Schema |
-| SM main Loader（10 月 18 日快照） | [当时已实现] `state-machine-foundation/1`～`/8`；开始时为 `/1`～`/7` | 统一 package mapping 的受限字段；Scene 包含 grid（适用版本）、initial_state.local_flags、objects／exits 等；当前服务存在不使候选 environment／terrain 字段自动合法 |
-| ObjectSpatial Loader 沿革 | [已合入 main] 原分支 `0c2c4c7` 带入 `/8`，并兼容 `/1`～`/7`；当前 main `97c5af1` | 新朝向、允许朝向及 open／closed／destroyed 整格空间性质；不代表 Terrain／Environment 或综合感知／战斗已接通 |
-| 固定时间绑定 | [main 已实现] 可选顶层 `time_binding` | 完整字段为 schema_version、day_length、start_day、start_day_tick、cycle、day_start、night_start；schema_version 为 world-time/1。CreateSessionRequest.time_binding 强类型整体覆盖，否则取 Package 默认，均无则 legacy game-clock/1 |
-| 环境／地形 Package 初值与区域 | [DECIDED] 目标内容；候选字段／覆盖编码 [PROPOSED / OPEN] | 当前环境服务已有受控导入及查询，不能据此把候选 Package 字段伪装成 Validator 可接受内容；本轮不升级 Loader Schema、SQL 或依赖 |
+| 要修改的内容 | 当前文件里怎么写 |
+| --- | --- |
+| 顶层与 Manifest | 基础键为 `manifest`、`world`、`scenes`、`actors`、`pc_templates`、`events`、`rule_bindings`。Manifest 有内容身份、入口、三字段规则绑定、单玩家设置、来源和兼容元数据；当前字段和非空约束以 Loader 和 [§8.1](#81-可运行示例) 为准。 |
+| 场景、通路与物体 | 相应版本增加 `passages`、`navigation`、`item_transfers`、`lockable_doors`、`world_objects`。场景 `initial_state` 接受 `local_flags`，网格和姿态字段受版本及能力约束。`/8` 增加对象空间配置，`/10` 加入相应机关配置。[能力验证器](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/world_package.py) |
+| NPC、PC 与地点 | NPC 的 `initial_scene_id` 须对应列出该 Actor 的场景。可用 `senses` 和 `npc_state` 受各自封闭校验。PC 用 `pc_templates[].character` 提供 HP、资源和库存；机械绑定另按所用基础配置验证。[NPC 初始字段校验](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/npc_schema.py) |
+| 固定时间 | 顶层可选 `time_binding`。强类型创建覆盖优先，其次是包默认，两者均空则沿用 legacy 时钟。使用秒制时，现有已配置的 NPC Runtime 消费者会被 `unsupported_time_consumer` 拒绝。[优先级和秒制限制回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_world_time_service.py) |
+| 环境、Encounter 和事件 | 已有环境命令和查询由 World 持有，加载器的当前顶层与 Scene 字段不包括目标的通用地形、环境初值或独立 `encounters`。事件的受限字段见 [§7.3](#73-世界效果允许列表与事务边界ap-12)，D&D 遭遇数据查 Loader 的 `rule_bindings` 受限格式。 |
 
-固定 world-time/1 的 1 tick = 1 游戏秒，legacy 保留抽象 tick；绑定保存后不可变。当前已有数学换算、TimeDriver 显式倍率／暂停恢复、有界 Pending Time Work 与真实 Round 接线；没有默认实时倍率。Activity／Effects／秒制 NPC／OB／Gate 等生产消费者未全面接通，秒制 Session 的 unsupported_time_consumer 保护保留。Package 仍只能提供受支持的强类型时间配置，不能从本草案推断新的消费者配置字段，见 MC §1.6／§6.6。
-
-环境目标由 Package 提供初值，运行变化保存到 Session World；可对一批场景设天气，不引入世界→地区→场景继承。首次进入前修改保留，初始化不得用模板覆盖，重访也不重置。EnvironmentService 按需组合位置／区域环境，不写回 Cell 形成逐格最终态权威；基础地形和对象动态贡献分责，共用 Grid。当前已有场景生命周期切片、GridService／EnvironmentService；完整职责与实际接入状态见 MC §0.3a／§1.4。
-
-挡雨／挡风与视觉／移动阻挡独立；当前环境分支已有显式防护及提供方版本契约，生产 WO／Effects 适配仍有边界。Effects 保有法术来源、范围与生命周期，Environment 只消费有效贡献。双版本及风向失效见 [World §2.0c](./WORLD_SUBSYSTEM_DESIGN.md#20c-environment-双版本与按需派生-decided)。角色暴露进度归属 [OPEN]，不新增 MVP 必需能力。
+已存在场景的环境改动跟随 Session 实例，初始化和重访的边界见 [World §1.1](WORLD_SUBSYSTEM_DESIGN.md#11-当前实现与目标的区别) 与 [MC §2.4](MODULE_CONTRACTS.md#24-package-创建参照与完整实例化-decided-partially-implemented)。候选的环境初值、区域字段和更完整地形格式仍待决定。
 
 ---
 
@@ -196,7 +191,7 @@ adventure-pack/
 
 ### 5.1a 内置 PC Templates（AP-05）
 
-**[DECIDED]** 每个模板为只读静态定义，具有稳定 pc_template_id、展示信息及完整初始机械角色数据（构建、属性、特性、装备/库存、HP/资源初值等），并符合固定规则绑定与冒险起始约束。模板类型及具体字段为 **[PROPOSED; NOT IMPLEMENTED]**，须复用/映射共享 CharacterState 等基础结构并验证规则合法性，不能只有一段角色文案或不可解析的外部引用。
+**[DECIDED]** 每个模板为只读静态定义，使用稳定 `pc_template_id`，为选定角色提供规则绑定下的初始数据。**已有受限实现。** Loader 读取 `pc_template_id`、`name`、`character` 及适用版本的 `initial_cell`。创建时由 `PlayerSelection` 选一个包内模板。完整角色构建与通用字段仍属目标。[模板选择和创建回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_sessions.py)
 
 一个 Package 可以提供多个完整模板，但 Create Session 的 players[] 在当前 MVP 中仅有一项、选择一个 pc_template_id。角色成长、当前 HP、已消耗资源等在 SM 中持续演化，不回写模板。独立角色构建服务或外部 pc_build_ref 不是 MVP 前提；未来可扩展外部导入，协议/校验仍 [OPEN]，本轮不实现。
 
@@ -221,6 +216,8 @@ adventure-pack/
 `actors.yaml` 可以包含 `default_schedule` / `initial_activity` / `schedule_conditions`，表达 NPC 在游戏内时间下的预设工作、用餐、休息和初始位置。内容只规定**候选日程与初始条件**；实际 `current_activity`、日程取消/中断、下一游戏时刻、活动完成回执是 State Machine 持久化的 Runtime State。具体时间格式及触发 AST 待 `MODULE_CONTRACTS.md` 验证。不得从日程文本直接执行未授权动作、瞬间传送或越过 Rule Engine 求值。
 
 ### 5.3 NPC 知识隔离
+
+以下为目标信息组织。当前可写入包的起始状态由 [SM 的 `npc_state` 验证](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/npc_schema.py) 和对应回归确定。加载后的授权输入走 [Agent §8.0](AGENT_ARCHITECTURE.md#80-当前-sm-接入)，宿主从 SM 取 NPC 自己可见的范围。
 
 将同一 NPC 的资料分为：
 
@@ -307,6 +304,8 @@ MVP 候选 `trigger.type`：
 
 ### 7.3 世界效果允许列表与事务边界（AP-12）
 
+**当前可填进 `events` 的子集。** Loader 校验 `once: per_session`、有场景范围的已支持触发器、布尔 `flag_equals`，以及 `set_scene_flag` 或 `set_object_state` 的受限效果。还会校验信号和场景事件成员引用。运行由 SM 从已提交阶段取证，触发条件与目标能力受现有校验约束。下文的完整允许列表仍是目标。[闭合事件字段](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/package.py)、[事件回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_events.py)
+
 **[DECIDED]** SM 加载声明式定义、按 Session / Scene 等作用域判断触发条件并保存触发历史。允许的世界效果沿用 set_flag、set_object_state、move_world_actor、grant_or_transfer_world_item、reveal_fact_to_actor、update_relationship、advance_challenge、start_encounter_request、transition_scene_request；具体 AST / Payload 编码仍 **[PROPOSED; NOT IMPLEMENTED]**。涉及机械资源/库存规则或 HP/豁免/Condition 等计算的部分必须交 Rule Engine，不能用世界字段直接宣称已生效。
 
 区分两条提交路径：
@@ -319,6 +318,38 @@ MVP 候选 `trigger.type`：
 ---
 
 ## 8. 示例：完全原创的最小冒险片段
+
+### 8.1 可运行示例
+
+从 SM 仓库根目录开始。需要一个能加载的完整包时，复制现有 [Lantern Station 单文件 fixture](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/fixtures/lantern_station.yaml) 再改；它走 `state-machine-foundation/1` 的合成规则路径。要查看通路、容器、灯光和机关的版本化字段，从 [Prism Relay 的 World fixture](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/examples/fixtures/world_station.yaml) 与 [该示例的规则绑定和调用](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/examples/world_station.py) 拓展。
+
+将下面 Python 保存为脚本，用该仓库的 `uv run --locked python <脚本路径>` 执行，工作目录仍为 SM 根目录。脚本对完整 fixture 调用公开 Loader，在临时 SQLite 创建 Session，然后核对同键同内容重试返回同一结果。预期打印 `valid example.lantern_station session.…`。脚本退出时清除临时数据库。需要之后重新打开 Session 时，把数据库路径改为你保留的文件。示例的 `TrustedContext` 由本地脚本构造，真实集成的权限来自可信认证层。
+
+```python
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from trpg_state_machine import (
+    CreateSessionRequest, PlayerSelection, StateMachine, TrustedContext,
+    load_adventure_package,
+)
+
+result = load_adventure_package(Path('tests/fixtures/lantern_station.yaml'))
+assert result.status == 'valid' and result.package is not None, result.errors
+package = result.package
+context = TrustedContext('authenticated:doc-example', 'player.example')
+request = CreateSessionRequest(
+    'cmd.create.example', package.adventure_id, package.package_version,
+    package.package_digest, (PlayerSelection(context.player_id, 'pc_template.observer'),),
+)
+with TemporaryDirectory(dir=Path.cwd()) as temporary:
+    with StateMachine(Path(temporary) / 'game.sqlite3') as sm:
+        created = sm.create_session(request, package, context=context)
+        assert sm.create_session(request, package, context=context) == created
+        print(result.status, package.adventure_id, created.session_id)
+```
+
+### 8.2 目标示例
 
 以下片段是 **字段关系与行为语义提案**，不是已冻结的机器 Schema 或可直接批准的完整 Package。未展开 §5.1a 的完整 PC Templates（创建示例引用 pc_template.harbor.scout），规则版本也是占位；真实加载必须补齐并验证，不得将此片段当作 valid Package。用于公开测试时请继续使用本类合成内容，**不要复制 First Blush 的场景事实**。
 
@@ -452,17 +483,9 @@ RE 普通求值目标使用领域提供的完整必要当前机械事实；使�
 
 **[DECIDED]** 对外只有一个逻辑加载入口，内部由 SM 完成安全解析、Schema、引用、规则绑定、声明式操作及必要元数据验证。没有独立加载/验证服务，不暴露可供创建 Session 使用的半验证状态。
 
-候选接口与数据类型均 **[PROPOSED; NOT IMPLEMENTED]**：
+**当前 Python 接口已实现。** `load_adventure_package(path)` 返回 `PackageLoadResult`。成功时 `status == "valid"` 且 `package` 可用于后续创建，带有 `adventure_id`、`package_version`、`package_digest` 和三字段规则绑定。非法文件的 `status == "invalid"`，`package` 为空，并通过 `errors` 返回首个结构化错误。类型预留 `warnings`，当前校验以实际接受或拒绝为准。[结果类型与加载入口](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/package.py)、[拒绝和错误回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_package.py)
 
-```text
-load_adventure_package(package_source)
-  -> PackageLoadResult(status=valid | invalid, errors, warnings,
-                       approved_package_metadata when valid)
-```
-
-errors / warnings 是带 code、位置/引用及原因的结构化问题，字段编码仍待设计。Schema 错误、非法引用、无法匹配的规则绑定或必要机制不支持均返回 invalid，不能批准后等到运行时假装可执行。不阻塞核心路径的可选内容限制可以明确 warnings，并保持该内容不可执行/受限；不能把它当已支持规则。valid 时 errors 为空，可有上述明确 warnings。
-
-通过后固定 adventure_id、package_version、package_digest 和**生效 RulesetBinding**（ruleset_id / data_revision / evaluator_version，含适用 Homebrew）；SM 创建与恢复 Session 均核验这些固定值，不能按同名目录静默换内容。具体摘要/绑定编码沿用 MODULE_CONTRACTS.md 的 [OPEN] 项。
+加载校验内容形状、引用和绑定格式。实际 Rule Engine 与素材身份还须经创建和恢复入口核验，能解析的历史绑定不因此获得当前运行资格。后续网络信封和未接入可选机制的告警策略保留为候选。
 
 固定内容加载后的只读复用遵循 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)，Ruleset 身份验证、素材加载复用与可变加载器的临时降级契约统一见 MC §4.3。Package 发布版本／内容摘要与规则集／引擎身份各有用途；运行中 Session 不静默换基础内容或引擎，升级走显式迁移。模板默认值用于初始化，不能覆盖物品实例属性、角色状态等当前有效事实。
 
@@ -472,7 +495,9 @@ errors / warnings 是带 code、位置/引用及原因的结构化问题，字�
 
 **[DECIDED]** SM 接收已批准 Package 的固定身份/摘要与玩家选择，生成并返回 session_id。PC 来自 §5.1a 的内置完整只读模板；HP、成长与资源在初始化后属于 SM 运行状态，不写回模板。不要求独立角色构建服务或外部角色引用。
 
-CreateSessionRequest 的受限 dataclass、创建幂等／授权已有实现（MC §1.6，整体 `[PARTIALLY IMPLEMENTED]`）。下列是 **Target Architecture Contract `[PROPOSED]`** 的原创 JSON 关系示例，不是已冻结的网络信封；模板完整机械数据在此不展开：
+当前 `StateMachine.create_session(request, package, *, context)` 要求通过校验的 `AdventurePackage`、真实 `CreateSessionRequest` 和可信调用上下文。`players` 必须为只含一个 `PlayerSelection` 的 tuple，`time_binding` 可选。身份与摘要不符、未知模板或运行绑定不一致会被拒绝。见 [§8.1](#81-可运行示例)、[创建校验](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/session_creation.py) 和 [绑定与恢复制约](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_session_management.py)。
+
+下列 JSON 展示候选网络信封的字段关系，实际 Python 类型以公开入口为准。
 
 ```json
 {
@@ -497,7 +522,7 @@ CreateSessionRequest 的受限 dataclass、创建幂等／授权已有实现（M
 
 返回 Session ID、创建结果及有限的 Package/版本等元数据；不返回全量 WorldState、GM Secret、隐藏 NPC 或未发现事件。后续视图按可信权限读取。创建其他独立 Session 使用新的创建 command_id；多个模板选择不意味着支持多玩家或 AI 队友。
 
-**创建与运行加载（2026-10-21）[DECIDED]：** 新实例仍以批准 Package 完整实例化并在短事务保存，COMMIT 后才发布活跃 RAM。已经存在的实例首次／冷加载及恢复只读取持久化的有效配置、当前状态和关系；不把 Package 默认值作为缺字段回退。加载 RAM、首次实例化、实际玩家进入分别管理，不因加载重发入场／访问／奖励。冷加载必须与读取范围同版本，按需加载不要求所有场景常驻。完整 Session RAM 层 [NOT IMPLEMENTED]，本次不改 Loader／Schema；统一协议见 [MC §2.3–§2.4](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
+**创建与运行加载（2026-10-21）[DECIDED]：** 新实例仍以批准 Package 完整实例化并在短事务保存，COMMIT 后才发布活跃 RAM。已经存在的实例首次／冷加载及恢复只读取持久化的有效配置、当前状态和关系；不把 Package 默认值作为缺字段回退。加载 RAM、首次实例化、实际玩家进入分别管理，不因加载重发入场／访问／奖励。冷加载必须与读取范围同版本，按需加载不要求所有场景常驻。当前已有受限 Session RAM 接入，保存及恢复限制以 [现状核对](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16) 为准。统一协议见 [MC §2.3–§2.4](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided)。
 
 ### 9.2 一次交互
 
@@ -605,6 +630,18 @@ Player intent / NPC decision proposal
 5. 冻结 `MODULE_CONTRACTS.md` 中的 Session Commands、RuleEvaluationResult + State Machine CommandReceipt、World Events 和 State Version 边界，避免两套权威状态。
 
 **实施顺序建议**：按演进计划 §8 的能力轨道，以最小审阅 Fixture / 初始化支持对象动作、真实 RE、NPC 私有视图与早期 Agentic 验证，随实际依赖交错推进；不等完整 Host 或整体框架迁移。包须验证后按需一次初始化，不因复用模板而重访重置。整体 Evennia 与 EB 验证仅为计划 §9 可选评估；本批不改整个 Package Schema 或实施系统。
+
+### 历史基线与文档同步
+
+**2026-10-19 运行时复用同步：** Package 完整实例化以 MC §2.4 为准；共同复用约定以 [MC §2.3](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 为准；Grid／Environment 细化见 World §2.0b–§2.0c，RE 加载身份见 MC §4.3。当前实现专项核对见 [MC §1.4](./MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据)，下述较早日期摘要及待办保留原时点，不作为最新完成状态。本轮仅文档，未新增待办或运行验收。
+
+**2026-10-17 v0.4 评审同步：** [Module Contracts](./MODULE_CONTRACTS.md) 继续是跨模块最终权威；[v0.4](./reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) 仅保留审查记录。旧修订摘要中的整场 CombatEpisode／旧 OB 术语仅记录历史，现行目标为 Turn／Round Episode、单一有界 Recent OB List 和 `pending`／`processed`。每条新 OB 必经 Gate 决策（模型可选）；EVA 冻结完整授权近期窗口，processed 可影响 Meta，提交只完成固定 pending 覆盖。代码证据保持原日期／SHA，本次不刷新实现状态或冻结新增 ABI。
+
+**2026-10-18 定向同步：** 上段为 10 月 17 日历史记录。本轮当前代码依据更新至 [MC §1.3](./MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查)，区分 main 当前实现、ObjectSpatial 分支沿革与未实现目标；Scene 结构与环境边界遵循 MC §0.3a。保留 Turn／Round Episode、Recent OB／Gate／EVA、CombatPolicy 及版本／幂等／RNG／事务契约，不扩大 MVP，不冻结新 ABI。
+
+
+**2026-10-20 三仓库对齐基线：** 当前实现和接口以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 的固定 main、源码／测试及 Progress 为准；§1.1–§1.5 与带日期 Review 保留历史适用范围。Schema39 实例配置、冻结规则复用、TimeDriver／Round 及受限 Availability 已有实现，完整动态实例／时间消费者／通用 API 仍有缺口。Full Audit、局部准入、查询及共享 Finalize 的共同规范只维护于 MC §2.3、§6.5–§6.6；本批只改 Markdown，不运行或宣称通过业务／性能测试。
+
 
 ### v0.14 修订摘要（2026-10-19）
 

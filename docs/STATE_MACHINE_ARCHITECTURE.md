@@ -77,9 +77,10 @@ Service 经现有 SessionMemory／UnitOfWork 读取目标实例和必要关联�
 失效标记共享既有候选／保存点／增量持久化／RAM 发布边界；跨连接恢复协议保持。
 具体入口、实测及冷准备／完整输出限制见 [后续核对](reviews/RUNTIME_INSTANCE_OWNERSHIP.md#2026-10-22-follow-up-field-validity-and-local-associations)。
 
-**2026-10-21 当前目标：** 活跃事实统一由 Session RAM 提供一致读取，SQLite 每次修改短事务增量持久化，COMMIT 成功后发布 RAM，再正常返回成功及对应投影。Architecture Decision Status **[DECIDED]**；完整运行层 Implementation Status **[NOT IMPLEMENTED]**；运行 Acceptance Status **未执行**。现行协议由 [MC §0.3、§2.3、§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 维护；本文件细化数据模型、协调和恢复。较早日期的源码判断保留原时点，当前基线见 MC §1.8。
+**2026-10-21 架构决定与当日实现基线：** 活跃事实统一由 Session RAM 提供一致读取，SQLite 每次修改短事务增量持久化，COMMIT 成功后发布 RAM，再正常返回成功及对应投影。Architecture Decision Status **[DECIDED]**；完整运行层 Implementation Status **[NOT IMPLEMENTED]**；运行 Acceptance Status **未执行**。现行协议由 [MC §0.3、§2.3、§6](./MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided) 维护；本文件细化数据模型、协调和恢复。当日基线见 MC §1.8；后续已支持路径和证据见 [MC §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)。
 
-> **状态**：Draft v0.20 + 2026-10-21 Session RAM 架构决定（文档补充；完整运行层未实施）
+> **设计基线**：Draft v0.20 + 2026-10-21 Session RAM 架构决定。该日的实现状态是历史证据。
+> 当前路径与验收入口见 [Module Contracts §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)。
 >
 > **日期**：2026-10-21
 >

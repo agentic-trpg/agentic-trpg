@@ -3,7 +3,20 @@
 Start with the [system and interface overview](docs/SYSTEM_OVERVIEW.md) for repository
 responsibilities, current public paths, state ownership and task-based source navigation.
 
-## 2026-10-27 当前源码与说明维护入口
+## 从这里开始
+
+| 读者要解决的问题 | 入口 |
+| --- | --- |
+| 项目由哪些仓库组成，运行请求怎么走？ | [系统与接口总览](docs/SYSTEM_OVERVIEW.md) |
+| 谁持有状态、谁求值、谁提交，失败时怎么办？ | [Module Contracts](docs/MODULE_CONTRACTS.md) 的责任与执行章节 |
+| MVP 包含什么，哪些玩法明确后置？ | [MVP Scope](docs/MVP_SCOPE.md) |
+| 当前代码到哪一步，怎么核实？ | [当前实现入口](docs/MODULE_CONTRACTS.md#10-当前实现入口2026-11-16) |
+| 要改跨仓接口、领域规则或项目文档？ | [按任务导航](docs/SYSTEM_OVERVIEW.md#6-按任务导航) |
+
+下文带日期的核对保留当时的分支、实现和验收结论。判断当前支持范围时，
+沿上表进入现行源码和验收记录。
+
+## 2026-10-27 源码与说明维护记录
 
 本批基线为文档 `88bb8dd`、SM `b9ae704`、RE `7bb02b9`（均已 fetch 核对）。
 SM 当前 main 已包含 Session RAM、持久提交后发布、运行实例字段及通路反向索引的
@@ -37,7 +50,7 @@ Open-ended player actions, persistent world consequences, and NPC private cognit
 
 **[DECIDED] Domain state ownership, supplemented 2026-10-15 and 2026-10-21:** Each fact has one responsible domain. StateMachine remains the unified API and composition entry; explicit dependencies and shared SQLite transactions connect the subsystems. Facts / Records provide unified fact access and controlled changes. The decided target keeps loaded active facts in Session RAM, incrementally persists every successful mutation in SQLite, then publishes that committed RAM version before returning success and current projections. Host/LLM output remains a proposal. The [responsibility table in Module Contracts §0.3](docs/MODULE_CONTRACTS.md#03-按领域管理状态按事实确定权威按操作组织事务-decided) governs ownership; [§1.4](docs/MODULE_CONTRACTS.md#14-2026-10-19-运行时复用专项核对当前分支静态证据) records the current reuse implementation check; §1.2–§1.3 retain historical working-tree and remote evidence.
 
-**Session memory runtime decision (2026-10-21): [DECIDED], complete runtime layer [NOT IMPLEMENTED], runtime acceptance not executed.** Queries, operation checks, RE request assembly, actor views, Snapshots and derived calculations use the same consistent RAM scope for loaded valid facts; candidates and previously supplied fixed inputs remain isolated. SQLite also serves loading, cold data, recovery, receipts and reliable work. The unified protocol and failure boundaries are in [Module Contracts §2.3 / §6](docs/MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided), source evidence in [the dated review](docs/reviews/SESSION_MEMORY_RUNTIME_SOURCE_REVIEW.md), and migration in [the existing evolution tracks](docs/GAME_CORE_EVOLUTION_PLAN.md#81a-session-内存运行层的依赖阶段2026-10-21). Future 5–6 player load is separate from the single-player MVP; no runtime, Schema or ABI changes are delivered by these docs.
+**Historical baseline (2026-10-21): Session memory runtime design [DECIDED].** At that baseline the complete runtime layer was [NOT IMPLEMENTED] and runtime acceptance had not been run. See the [current implementation entry](docs/MODULE_CONTRACTS.md#10-当前实现入口2026-11-16) for today's source and evidence. Queries, operation checks, RE request assembly, actor views, Snapshots and derived calculations use the same consistent RAM scope for loaded valid facts; candidates and previously supplied fixed inputs remain isolated. SQLite also serves loading, cold data, recovery, receipts and reliable work. The unified protocol and failure boundaries are in [Module Contracts §2.3 / §6](docs/MODULE_CONTRACTS.md#23-运行时数据复用派生-snapshot-与版本有效性-decided), source evidence in [the dated review](docs/reviews/SESSION_MEMORY_RUNTIME_SOURCE_REVIEW.md), and migration in [the existing evolution tracks](docs/GAME_CORE_EVOLUTION_PLAN.md#81a-session-内存运行层的依赖阶段2026-10-21). Future 5–6 player load is separate from the single-player MVP; no runtime, Schema or ABI changes are delivered by these docs.
 
 ## System architecture
 
@@ -109,7 +122,7 @@ Snapshots have two versioned contexts, CombatSnapshot and NonCombatSnapshot, com
 
 Immediate Mechanical Response is organized by Combat Handler / responsible domain handlers through trusted mechanisms, Combat Policy, and RE. Tactics, reactions, automatic effects, and combat triggers do not depend on cognitive LLM calls. Required mechanical perception must have trusted evidence; unknown does not mean perceived. Handler advances from committed state with bounded retries and a no-progress exit; one attack does not automatically end a turn. NPC Cognition manages versioned private Meta while Host runs models. EVA completion, later actions, and perception processing retain separate transaction lifecycles.
 
-Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Full log removal still requires reader/dependency auditing and validation across supported paths; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查) records the current remote source baseline separately from historical evidence; this docs-only batch ran no runtime tests.
+Normal rule evaluation targets complete necessary current facts: usage markers, effect clocks, and key times belong to mechanical state, without a duplicate compact history log. Full log removal still requires reader/dependency auditing and validation across supported paths; existing logs and necessary ordered candidate events remain. In-process typed calls, on-demand reads, immutable values, and rebuildable caches may reduce copying, subject to correctness verification; no performance gain is claimed. Interrupt / Continuation and new read APIs remain open. [Module Contracts §1.3](docs/MODULE_CONTRACTS.md#13-2026-10-18-远端实现核对定向静态调查) records the 2026-10-18 remote baseline. See [§1.0](docs/MODULE_CONTRACTS.md#10-当前实现入口2026-11-16) for current source evidence.
 
 **A1 — Separate exploration and combat orchestration:** The target assigns exploration movement to Navigation / Activity + WorldHandler and combat movement to CombatHandler + RE, using one actual actor position. Combat space projects world space with explicit mapping boundaries. Opening, unlocking, moving items, and breaking obstacles are to reuse object facts and capability operations; combat additionally coordinates eligibility, costs, timing, triggers, and reactions through RE. Current foundations are partial; existing noncombat entry restrictions remain effective until a supported combat integration replaces them.
 
@@ -216,4 +229,4 @@ This meta-repository currently has no repository-level `LICENSE` file; do not as
 [Module Contracts](docs/MODULE_CONTRACTS.md) remains authoritative; the [v0.4 review](docs/reviews/agentic-trpg-architecture-contracts-2026-10-17-v0.4.md) is a preserved snapshot. Each NPC has one bounded Recent OB List sliding by game time, with only `pending` and `processed` cognition states. Every new OB gets a Gate decision; no-EVA decisions mark it processed. Each EVA freezes the complete authorized recent list, including processed context, and completes only its fixed pending coverage. This 2026-10-17 synchronization changes documents only.
 
 
-Documentation maintenance starts at [AGENTS.md](AGENTS.md). Current interfaces and remaining migration gaps are recorded in [Module Contracts §1.6](docs/MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐); generic audit/query/finalize rules live only in §2.3 and §6.5–§6.6. Dated reviews remain historical evidence.
+Documentation maintenance starts at [AGENTS.md](AGENTS.md). Current interface evidence and implementation limits start at [Module Contracts §1.0](docs/MODULE_CONTRACTS.md#10-当前实现入口2026-11-16); generic audit/query/finalize rules live only in §2.3 and §6.5–§6.6. Dated reviews remain historical evidence.

@@ -1,5 +1,7 @@
 # Agentic TRPG — Game Core Evolution Plan
 
+本页用于查演进方向、候选方案和验收思路。查已经支持的行为与依赖版本，从 [Module Contracts §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16) 开始；需要确定本批产品范围时读 [MVP Scope](MVP_SCOPE.md)。
+
 > **版本**：v0.7 / Draft；**日期**：2026-10-19
 >
 > **当前方向 [DECIDED]**：以 `trpg-state-machine`＋`trpg-rules-engine` 为开发主线，借鉴成熟游戏系统，补强承接开放式行动与自主 NPC 的程序化游戏核心；允许实质性重构和替换不合适的子系统。
@@ -55,7 +57,7 @@
 
 RE 无隐藏跨请求权威与 Handler 持久流程兼容，调用内候选状态/缓冲区允许存在。运行时只读输入复用与按需派生遵循 MC §2.3，具体读取接口仍待落实；不能用默认值漏依赖或直接删 Snapshot/Delta 校验，当前公开支持范围不变。RE `/17` history-free Snapshot／求值已移除审计日志依赖；SM 保留审计，不能删历史表或全部 proposed_events。新增规则仍须核对使用标记／效果时钟／关键时间点等完整当前状态，不另建精简历史日志（MC §1.6）。本次有序候选结果和必要审计/Episode 证据仍保留，不宣称性能收益。
 
-当前运行时复用依据以 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 为准：main 已有 GridMaps 静态只读复用、Environment 双版本缓存、Schema39 实例配置及 SM／RE 固定素材复用。该时点局部 SQL、全局审查替换仍有缺口；2026-10-21 的 MC §1.8 已确认 main 包含 Schema40 局部化成果，完整生产提供方／Effects 与统一 RAM 接入仍待完成；不得从头重复已完成切片。§1.2–§1.5 是历史快照，本轮不重跑业务／性能测试。
+运行时复用的历史证据见 [MC §1.6](./MODULE_CONTRACTS.md#16-2026-10-20-三仓库-main-对齐) 和 §1.8，记录 GridMaps、Environment、固定素材与 Schema39／40 的演进。当前受限 Session RAM 和提交后发布接入见 [MC §1.0](MODULE_CONTRACTS.md#10-当前实现入口2026-11-16)，开展替换前再核对相关公开路径和尚未覆盖的能力。
 
 **A1 / A2 `[DECIDED]`：** 探索移动由 Navigation / Activity + WorldHandler 编排，战斗移动由 CombatHandler + RE 编排，共享唯一实际角色位置和对象事实。StateMachine 为统一 API / 装配入口，子系统按需组合 Handler / Service、Facts / Records、Supporting Components，通过显式依赖与共享 SQLite 协作并逐步减少 Mixin；不机械分层、不按每种对象设 Handler、不强制 ECS。战斗投影映射、互动资格/资源/时序/反应和合法失败成本以 MC §0.5–§0.6 为准；World 候选字段按专项草案核对，后续工作仍在 MC §13 现有表登记。
 
