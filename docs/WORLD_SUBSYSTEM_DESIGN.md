@@ -3,6 +3,7 @@
 ## 从这里开始
 
 - 确认 World、Scene、对象和状态读写由谁负责，读 [§2](#2-职责与依赖-decided) 和 [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)。
+- 配置对象能力或复用公开操作，读 [§3 可选能力组合](#3-可选能力组合-decided-proposed) 和 [§3.1 锁具公开路径](#31-锁具公开路径)。
 - 改容器重量或缓存，读 [§2.1b](#21b-容器重量派生与跨操作复用) 及 [实例归属与验收记录](reviews/RUNTIME_INSTANCE_OWNERSHIP.md)。
 - 查一扇门变更会影响哪些场景的光照，读 [门与通路的光照依赖](#20d-门与通路的光照依赖)。查单格和整场景的读取边界，读 [§2.0b](#20b-grid-运行时输入复用-decided)。
 - 核对其他已实现的 World 能力，从 [§1.1 能力表](#11-当前实现与目标的区别) 开始。历史分支和原验收记录见 [§6](#6-后续落实与修订关系)。
@@ -202,6 +203,14 @@ MC §1.5 核对版本已具事务双版本及正式 SQLite owner 提供方的版
 | 持续魔法区域：空间与效果协作 | 候选形状/锚定/传播政策与具体法术规则引用 | World 仅保存必要空间锚定变化；持续效果状态/进度由 Effects 持有 | effect_id、source/target、scene/anchor、集中来源 | 当前覆盖与进入/离开候选；RE 计算触发/结算，不能另存一份效果时钟 |
 
 **字段演进顺序：** 先为一个已选场景核对定义/实例/关联/查询消费者，再提出最小字段与操作；优先复用现有 objects、passages、door_locks、door_credentials、portable_items、机械组件与活动结构。WorldTime / Position 等是逻辑称呼，不要求建同名表。不得因 `location` / `position`、`item_id` / `instance_id` 命名差异重复建设；具体 SQL、约束、迁移、版本和跨模块协议必须在实现切片另行评审。
+
+### 3.1 锁具公开路径
+
+锁具展示了 [MC §0.6](MODULE_CONTRACTS.md#06-a2statemachine-模块化与职责边界-decided) 的实例配置和操作复用原则。创建两扇门时，Package 为各门提供能力配置和初始值。即使两扇门接受同一把钥匙，它们的锁定状态也分别归各自实例。现有单锁通路夹具让两个目标走同一个 `world.unlock_door`（Python 类型 `UnlockDoor`）。锁上第二扇门后，第一扇门仍保持打开、未锁。[两扇门的公开路径回归](https://github.com/agentic-trpg/trpg-state-machine/blob/9f1d89d07abeaef962462c1bb717860b95e9d210/tests/test_lockable_passages.py#L162-L208)
+
+给当前支持的 `world_objects` 对象声明可单独操作的锁时，在对应 `object_id` 的 `capabilities` 中配置 `kind: locks`，在 `locks` 列表为每把锁声明 `lock_id`、初始锁定状态、凭据实例、可操作侧和策略。命令使用这里声明的 `lock_id`。单锁通路示例使用 `lockable_doors`，多锁夹具改用对象能力并移除同一对象原有的通路锁定义。所用 Package 版本与 Loader 的范围见 [Package Schema §4.4](ADVENTURE_PACKAGE_SCHEMA.md#44-目标内容格式与当前-sm-loader-的区别)。[单锁配置](https://github.com/agentic-trpg/trpg-state-machine/blob/9f1d89d07abeaef962462c1bb717860b95e9d210/tests/lock_support.py#L94-L102) · [多锁配置](https://github.com/agentic-trpg/trpg-state-machine/blob/9f1d89d07abeaef962462c1bb717860b95e9d210/tests/test_world_locks.py#L9-L28)
+
+当前非战斗对象锁具也有 `world.unlock_object` / `world.lock_object`。命令以 `object_id` 和 `lock_id` 选中具体对象的某一把锁，并提供凭据的 `credential_instance_id`。`OpenableService` 验证对象可达、锁属于该对象、角色当前持有可用且被该锁接受的凭据，然后经 WorldFacts 更新选中锁的状态。对有多把锁的通路对象调用 `world.unlock_door` 会得到 `ambiguous_lock`，应通过 `world.unlock_object` 明确指定。成功解开一把锁后，另一把仍可能挡住开门。对象锁具操作已覆盖有通路关联和无通路关联的目标。[执行源码](https://github.com/agentic-trpg/trpg-state-machine/blob/9f1d89d07abeaef962462c1bb717860b95e9d210/src/trpg_state_machine/world_openable.py#L75-L159) · [多锁公开路径回归](https://github.com/agentic-trpg/trpg-state-machine/blob/9f1d89d07abeaef962462c1bb717860b95e9d210/tests/test_world_locks.py#L31-L87)
 
 ## 4. 探索、战斗与底层互动 `[DECIDED]`
 

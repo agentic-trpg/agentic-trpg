@@ -102,6 +102,7 @@ SM 安装的 RE 由它的 `pyproject.toml`／`uv.lock` 固定，不自动等于�
 | 任务 | 先读规范 | 再读实现／流程 |
 | --- | --- | --- |
 | 容器重量、实例字段或索引 | [MC §2.3a](MODULE_CONTRACTS.md#23a-实例字段关联与局部准入-decided)、[World 入口](WORLD_SUBSYSTEM_DESIGN.md#从这里开始) | SM `world_containers.py`、`runtime_instances.py`、`session_memory.py`；runtime-change |
+| 给对象配置能力、为多个实例复用操作 | [MC §0.6](MODULE_CONTRACTS.md#06-a2statemachine-模块化与职责边界-decided)、[World §3.1 锁具公开路径](WORLD_SUBSYSTEM_DESIGN.md#31-锁具公开路径) | 对照 Package 初值、实例状态归属和类型化命令的目标身份 |
 | 门变更影响哪些场景的光照 | [World 门与通路的光照依赖](WORLD_SUBSYSTEM_DESIGN.md#20d-门与通路的光照依赖) | [局部查询与整场景输出](WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) |
 | RE 返回结果后谁负责采用和提交 | [MC §6.1 执行时序](MODULE_CONTRACTS.md#61-执行时序-decided-partially-implemented) | [SM 规则采用](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/rule_execution.py)；[真实检定与回执回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_session_memory_rng_failures.py) |
 | SQLite 已提交但 RAM 发布失败 | [MC §6.4 原子性与故障](MODULE_CONTRACTS.md#64-原子性与故障-decided) | [Store](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/storage.py)；[发布故障回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_session_memory_runtime.py) |
