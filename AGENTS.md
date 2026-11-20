@@ -6,6 +6,8 @@ logical parallel workspace. -->
 
 # Documentation maintenance
 
+- 查看、认领或更新待办时，读 [Linear 项目与 Issue 流程](docs/LINEAR_WORKFLOW.md)。
+
 - Runtime owner fields and local-query/admission rules are authoritative in MC §2.3a. Read that section before changing caches, snapshots, indices or domain consumers. Follow instance associations and existing indices from the target; do not replace local checks with Session/Scene scans. Distinguish actual consumer migration from added fields. Preserve per-mutation SQLite persistence, candidate/savepoint isolation, fixed inputs and all-context recovery invalidation; retain cold loading and bounded retention. Current branch evidence is in `docs/reviews/RUNTIME_INSTANCE_OWNERSHIP.md`.
 
 - `docs/MODULE_CONTRACTS.md` is the highest cross-module architecture, ownership and target-contract authority. `docs/MVP_SCOPE.md` owns product scope; domain documents refine those boundaries.
