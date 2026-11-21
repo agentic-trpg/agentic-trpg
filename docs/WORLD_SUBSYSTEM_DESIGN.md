@@ -125,6 +125,12 @@ MC §1.5 核对版本已具事务双版本及正式 SQLite owner 提供方的版
 
 普通门状态变更按门的 `object_id` 查询 `PassageIndex.door_scenes`，得到它关联的所有实际通路端点场景，结果按场景去重。未关联通路时该桶为空。物体本身的局部几何影响仍按其空间关系维护。读取某个场景的光照几何时，按场景取得相关通路。完整场景输出与局部准入的选择见 [§2.0b](#20b-grid-运行时输入复用-decided)。[门到场景的反向查找](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/session_memory.py#L720)、[关联索引](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/src/trpg_state_machine/runtime_instances.py#L141)、[同一扇门涉及三个场景的回归](https://github.com/agentic-trpg/trpg-state-machine/blob/4d62c6ec23e06f8d13056414aee12d57e917c435/tests/test_runtime_passage_index.py#L194)
 
+### 2.0e 探索角色视图与光照失效
+
+**2026-11-21 联调候选 [PARTIALLY IMPLEMENTED]。** 细网格探索场景的对象详情、场景对象列表、空间视图和环境区域查询共用逐观察者的可见性判断。先按受支持的几何遮挡筛选目标，再为剩余目标及所需视线路径查询光照。角色当前基础感官和生效中的 Effects 共同决定其有效感官范围。场景视图按观察者保留已过滤的披露结果，读取时仍检查当前授权。旧读取和回滚候选保持隔离。授权约束见 [MC §3.5](MODULE_CONTRACTS.md#35-授权视图反馈与叙事-decided)。
+
+**本批保留场景级光照失效。** 场景远处的灯光变化可能让角色下次读取时重新计算该次查询需要的视野，后续依赖未变化的读取仍可复用结果。只失效实际受影响的视野属于后续性能优化。战斗动态光照和 NPC 缓存自动激活沿各自待办推进。[RUO-6 角色视野](https://linear.app/agentictrpg/issue/RUO-6) · [RUO-10 感官和照明效果](https://linear.app/agentictrpg/issue/RUO-10) · [RUO-29 战斗动态光照](https://linear.app/agentictrpg/issue/RUO-29) · [RUO-30 NPC 激活策略](https://linear.app/agentictrpg/issue/RUO-30)
+
 ### 2.1 身份、位置关系与库存
 
 沿用现有 `session_id`、`scene_id`、`actor_id`、`object_id`，便携 `instance_id` 与 `objects.object_id` 是同一实例身份；不按名字另建 WorldEntity / InventoryItem 目录。模板绑定沿用 Package / 数据修订，新增关系键须先核对已有字段，本文字段拼写仅作候选。

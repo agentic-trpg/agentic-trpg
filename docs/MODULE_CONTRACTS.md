@@ -1477,6 +1477,10 @@ Turn 是一个角色的单回合，可以包含移动、多次动作及期间发
 
 `PendingOperation` 至少包含 `pending_operation_id`、`source_command_id`、`actor_id`、`authorized_responder`、`choice_kind`、`allowed_options`、`input_world_version`、`status`、`creation_time`、`expiration_policy`、`ruleset_binding` 和唯一幂等字段。`choice.respond` 不能任意覆盖原始 Intent。
 
+**2026-11-21 RUO-31 探索施法切片 [PARTIALLY IMPLEMENTED]。** SM 与 RE /56 的联调候选已验证探索模式中需要自愿目标的单目标施法。黑暗视觉术向另一名 NPC 施放时，RE 可返回 `spell.target_willingness`。SM 保存待答复操作和原命令回执，等待期间法术位、RNG 和效果保持原值。自施以及无需目标答复的普通施法继续直接求值。
+
+`choice.respond` 的操作字段为原待答复编号及 `accept` 或 `decline`。SM 核对指定目标的当前控制授权、绑定及版本。接受后按当前 Snapshot 重验原施法的距离、资源和条件，答复回执、正式事件及适用的机械效果一并提交，原回执保留。拒绝不扣法术位。当前窗口为 **60 秒游戏时间**，系统在处理迟到答复时识别并记录过期。重开、重试、回滚以及黑暗视觉术只刷新获得效果的观察者已有定向验证。战斗中途的 Reaction 与 Continuation 继续沿用 §8.2–§8.3 的边界。[RUO-31 验收记录](https://linear.app/agentictrpg/issue/RUO-31)
+
 ### 8.2 必须明确不支持的场景 `[OPEN]`
 
 某些 Reaction 在掷骰、命中或部分效果发生后才能决定是否响应。上述**求值前选择**方案无法普遍正确表达这类中途暂停机制。对这种规则路径：
