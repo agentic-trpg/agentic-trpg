@@ -131,6 +131,8 @@ MC §1.5 核对版本已具事务双版本及正式 SQLite owner 提供方的版
 
 **本批保留场景级光照失效。** 场景远处的灯光变化可能让角色下次读取时重新计算该次查询需要的视野，后续依赖未变化的读取仍可复用结果。只失效实际受影响的视野属于后续性能优化。战斗动态光照和 NPC 缓存自动激活沿各自待办推进。[RUO-6 角色视野](https://linear.app/agentictrpg/issue/RUO-6) · [RUO-10 感官和照明效果](https://linear.app/agentictrpg/issue/RUO-10) · [RUO-29 战斗动态光照](https://linear.app/agentictrpg/issue/RUO-29) · [RUO-30 NPC 激活策略](https://linear.app/agentictrpg/issue/RUO-30)
 
+**持续区域的首批公开消费 [DECIDED; NOT IMPLEMENTED]。** 雾云术由真实公开施法建立有来源身份的区域效果；角色视野按观察者的实际位置、感官和相关区域读取有效来源，再决定可见目标及披露。区域到期仅结束该确切来源，不清除重叠的其他来源；回滚与旧读取仍遵守 MC §2.3 的候选隔离和版本边界。强风驱散、沉默术及尖刺丛生分别需要规则事实与公开路径验收，不能从雾云术的视野消费推定已支持。[RUO-43](https://linear.app/agentictrpg/issue/RUO-43)
+
 ### 2.1 身份、位置关系与库存
 
 沿用现有 `session_id`、`scene_id`、`actor_id`、`object_id`，便携 `instance_id` 与 `objects.object_id` 是同一实例身份；不按名字另建 WorldEntity / InventoryItem 目录。模板绑定沿用 Package / 数据修订，新增关系键须先核对已有字段，本文字段拼写仅作候选。
