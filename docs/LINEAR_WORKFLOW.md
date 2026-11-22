@@ -8,6 +8,8 @@ DOC、Rules Engine（RE）和 State Machine（SM）共用一个 Linear Project�
 2. 写清要解决的问题、涉及的仓库、已知依据和可观察的验收条件。记录负责人、状态和已知依赖。范围待讨论时，把待决定的问题留在 Issue 中。
 3. 开始前和负责人确认范围，再核对当前代码、测试及相关项目文档。架构和跨模块协议查 [Module Contracts](MODULE_CONTRACTS.md)，产品范围查 [MVP Scope](MVP_SCOPE.md)，当前行为以实际代码和验证证据为准。
 
+跨系统工单的标题以 `系统A-系统B-NN｜任务描述` 开头，例如 `EFFECT-SOUND-01｜Effects 与声音感知联通`。同一系统组合内顺序编号。工单链接和依赖继续使用 Linear 分配的正式编号，例如 `RUO-47`。
+
 ## 更新进度与关闭
 
 - 开始或阻塞时更新 Issue 状态。遇到依赖时写明阻塞项及继续条件。
