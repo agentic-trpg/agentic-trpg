@@ -1300,6 +1300,8 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 战斗内外共享世界时间：一整个 Round 约六个游戏秒，包含各 Actor 的 Turn；实际执行可能耗费几十秒或更久的墙钟时间。只有 TimeBinding 明确 `1 game_tick = 1 秒` 时，一轮才约为六个 tick。不能每个 Actor 的 Turn 都重复增加一整轮时长；同一生命周期边界只处理一次。Host 墙钟用于超时与性能，世界时间用于活动、燃料和观察生命周期。C15 的 Turn／Round 区分是认知交付粒度，不创建不同流速的世界时钟。
 
+**轮界到期与 TurnStart [DECIDED; NOT IMPLEMENTED]。** D&D 2024 的[法术 Duration](https://www.dndbeyond.com/sources/dnd/br-2024/spells)按实际经过的时间结束，[Round](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game)约六个游戏秒；[降至 0 HP 与死亡豁免](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game)按生物类型及实际回合开始处理，同一回合上同时发生的多个效果由该回合的玩家或 DM 依[同时效果规则](https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary)决定顺序。**项目钟的离散映射**为：到达下一轮界 T 时，先结算期限确已到且不依赖本回合开始的效果，采用真实到期后的角色／效果事实；随后 RE 基于更新事实选择下一 Turn，再处理实际 TurnStart。此时仍为 0 HP 且未稳定的 PC 才进入适用死亡豁免；怪物按既有适用生命规则处理，不统一套用 PC 豁免。若卡面规定持续伤害在回合开始触发，该伤害属于实际 TurnStart；同一回合开始的多个触发依卡面和上述控制者排序，不从本段推出“所有到期一律先于所有同刻规则”。规则指定 turn_start、turn_end 或其他依赖时，以该规则的边界为准。此段只确定跨轮界目标时序，不声称现有战斗推进已采用该路径。
+
 当前 SessionTime／TimeDriver 已实现显式倍率、start／pause／resume、余量与有界 Pending Time Work；真实 RE Round Delta 接入单轮 6 tick，Turn 不重复累加。机关、已审核的 Effects 到期、物品黎明恢复和长施法 Activity 接入世界时间。完整 Activity／Effects、天气、秒制 NPC／OB／Gate 及一般生产等待消费者仍需分别验收。默认倍率、菜单／断线／一般 LLM 等待宿主政策仍 `[OPEN]`。秒制 unsupported_time_consumer 与活跃 Combat 精确恢复限制继续有效；源码、测试与历史验收见 §1.6。
 
 #### C14 条件后果／Package 触发／机关
