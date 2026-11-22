@@ -1284,6 +1284,15 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 探索施法采用已验证的普通升环大步奔行和 Pact 余额支付黑暗术。带明确定价且在活动中声明消耗物的已审核法术可以点选一件可取得的实物实例。RE 验证规则与材料，World 只消费选中的实例，法术位、材料、效果和回执共同提交。等效大步奔行的重施具有独立到期事实，现有读取只采用一份有效步行加成。
 
+##### 2026-11-23 探索法术联调候选
+
+以下记录已确定的设计及本地候选范围。RE 合流候选 `ce040db5018c340f6ac4c245ceb9937aa913d881` 的定向检查通过 Engine 279 项和 SRD Data 75 项。SM 各开发路径分别取证，整套锁定组合的全量回归及发布验收待核对。
+
+- **次级复原术（RUO-40）。** 由施法者从其获准施法且符合绑定规则的目标条件中选择一项。公开选项只含条件名称和不透明 ID。提交时重验授权、目标和确切条件身份，并在施法事务内移除所选来源，保留另一份同名条件。此前只按名称提交的入口仍要求名称唯一。公开路径证据见 SM `tests/test_exploration_condition_choice.py`。[RUO-40](https://linear.app/agentictrpg/issue/RUO-40)
+- **侦测魔法（RUO-49）。** 生效期间在授权观察者的既有视图中，只披露自身 30 英尺内是否察觉到魔法存在。当前这次侦测魔法本身不触发线索。World 按距离、路径和实例关联读取局部事实，RE 按规则判断阻隔。缺少必要阻隔事实时，该条路径的结论未定，另一条独立路径仍可证实魔法存在。空间法术候选目前只按固定锚点判定，范围内部落入探测距离而锚点在外的情况待补（`LF1123-D49-02`）。静态墙体和成对门的门槛几何与材质尚缺明确关联（`LF1123-D49-01`）。魔法灵光（Aura）读取及侦测毒性与疾病留待后续。公开路径证据见 SM `tests/test_passive_detection.py`。[World 阻隔事实](WORLD_SUBSYSTEM_DESIGN.md#20a-共享空间与环境边界-decided) · [RUO-49](https://linear.app/agentictrpg/issue/RUO-49)
+- **强风驱散（RUO-51）。** 获准的一次性强风操作使用指定场景内的规范格子。RE 判断适用规则和范围是否相交，SM 通过既有结束路径实际移除仅受该强风影响的效果来源，并在同一提交中清理相关专注。公开候选以云雾术验证，证据见 SM `tests/test_world_magic_light.py`。[RUO-51](https://linear.app/agentictrpg/issue/RUO-51)
+- **沉默术（RUO-52）。** 固定区域依施法者当前位置为本次探索施法投影有效 `verbal_available`。普通施法和仪式沿用 RE 的言语成分检查，投影不写回角色事实。候选验证了无需施法成分的物品可沿原规则使用。声音产生／传播、Deafened 和雷鸣伤害免疫留待后续。公开路径证据见 SM `tests/test_world_silence.py`。[RUO-52](https://linear.app/agentictrpg/issue/RUO-52)
+
 #### C13 世界时间与调度
 
 沿用唯一 game_tick。main 已有 WorldTimeService 与固定 TimeBinding：显式 world-time/1 为 1 tick = 1 游戏秒，legacy game-clock/1 仍为抽象 tick，不能未经迁移改称秒。Package 可提供绑定，创建 Session 可整体覆盖并固定保存；换算、昼夜／有界边界查询与获准命令推进已实现（§1.3）。每种规则期限仍须声明 world_time、turn_start、turn_end 等时间域；固定单位不等于生命周期消费已接通。
