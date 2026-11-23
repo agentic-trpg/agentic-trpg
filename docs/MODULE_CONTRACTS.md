@@ -963,6 +963,15 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 范围仍按每个公开入口及其支持的事实核验。任意职业特质、通用穿戴与同调饰品、跨阶段事实准备、战斗和探索移动仍需各自的接入。检定、豁免及效果应用依照同一约定的规则绑定。
 
+**探索骰点与豁免 `/67` `[PARTIALLY IMPLEMENTED]`。** 当前绑定下增加以下公开路径证据。
+
+| 公开入口 | 接通范围 |
+| --- | --- |
+| `world.pick_lock` | 同时熟练于适用技能与盗贼工具的真实开锁 JSON 验证优势两颗 d20、RE 的取骰结果、锁具变化、授权回执和冷重开后的原结果重放。 |
+| `activity.short_rest` → `get_command_rolls` | 每个有序生命骰池保留原始骰面、体质修正和逐骰调整后治疗量，另外保留实际恢复的 HP。SM 提供授权数据，展示由界面按需要决定。既有只有调整量的记录允许省略裸骰和体质。 |
+| `world.equip_weapon` → `rules.save` → `world.unequip_weapon` | RE 识别绑定规则中定长、无需同调的单项固定豁免加值，依据确切持握实例取用。仅携带没有加值。采用的装备实例作为数值来源写入骰点，亦进入等待中的激励续算依赖。验收使用项目自定义短杖，不改变标准装备数据与战斗路径。 |
+| `world.set_light_enabled` → `mechanism/4` | 受信当前 PC 的直接启灯事件命中配置的机关触发器后，SM 固定确切触发者和当前候选事实，RE 复用普通豁免。失败执行配置的 World 后果，成功保持目标现状，激活及骰点均入同一回执。机关归属、声明和原子提交见 §6.6 C14。 |
+
 **豁免系统的流程与验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58) 以 [骰子系统 RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 为前置。
 
 | 流程 | 需要验收的能力 |

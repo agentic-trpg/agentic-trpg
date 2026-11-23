@@ -268,6 +268,12 @@ adapter_notes: "Synthetic example; not an assertion that this ID exists."
 
 候选 operation_kind=`rules.effect`，复用统一 RuleEvaluationRequest / RuleEvaluationResult、当前适用的 CombatSnapshot / NonCombatSnapshot、Session 固定 RulesetBinding 与显式 RNGContext。该操作及具体 Payload / Effect Schema 均 **[PROPOSED; NOT IMPLEMENTED]**，复杂字段与编排为 [OPEN]；必要机制无可验证支持时阻止 Package 批准，不能直接写 PC HP。
 
+**现有窄入口 `[PARTIALLY IMPLEMENTED]`。** `mechanism/4` 的命名操作可以声明 `save_gate`，
+并用现有对象操作表表达失败后果。当前支持已设置为真值的 `object.light_changed` 触发器，
+实际目标为获准操作的当前 PC。Package 在门槛中固定来源标识、属性、DC 和魔法标记，
+RE 以同一 RulesetBinding 求值，SM 采用结果、机关生命周期、骰点、RNG 和回执。
+定义形状和已验收边界见 [MC §4.2a](MODULE_CONTRACTS.md#42a-按规则声明补齐求值事实)。
+
 **AP-15 [DECIDED]**：TypedCommand / RuleEvaluationRequest 的 actor_id 是否必填由具体操作类型决定。Actor 行动必须有真实 actor_id；受信系统/世界事件发起的 combat.start、rules.effect 等可以没有行动 Actor，但必须验证可信 principal、机械来源和目标，不虚构 NPC，也不将全部操作无约束可空。按操作类型区分的强类型联合、source_ref / 来源权限与具体 Schema 字段仍 **[PROPOSED / OPEN; NOT IMPLEMENTED]**，以 MODULE_CONTRACTS.md §3.1 / §4.1 为准；本轮不实现。事务组合与可靠后续命令边界见 §7.3。
 
 Skill Challenge 由 SM 保存成功/失败计数与状态，每次检定经统一 Rule Evaluation 和 (session_id, command_id) 关联的已提交结果去重。剧情威胁不必伪造成可战斗怪物；其机械后果仍须受控规则求值，非机械世界效果仅使用允许列表。
