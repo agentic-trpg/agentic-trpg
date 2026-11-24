@@ -277,6 +277,16 @@ adapter_notes: "Synthetic example; not an assertion that this ID exists."
 骰点、RNG 和回执。机关伤害、条件与后续专注仍由 RUO-32 跟踪。
 定义形状和已验收边界见 [MC §4.2a](MODULE_CONTRACTS.md#42a-按规则声明补齐求值事实)。
 
+`enter_region` 可匹配当前 PC 通过 `world.step_actor` 从区域外实际进入配置格。World
+使用对象的触发配置和当时的布防、频次状态决定是否激活。进入后阶段的角色事实固定后，
+RE 才按绑定规则计算豁免。原地停留、已经在区域内移动及不符合布防条件的动作不触发该豁免。
+
+`save_gate.effect_reach` 是可选的具名机关效果配置。现支持 `{kind: direct}` 和
+`{kind: radial_pulse, radius_ft: N}`。它们都使用实际机关对象位置及敏捷豁免。
+直接效果适用方向性掩护，完全阻挡时效果不适用。脉冲是 Package 明确声明的按距离覆盖规则，
+仅作用到范围内的触发者，并忽略沿途掩护。这个脉冲规则只用于该声明，法术的一般区域传播沿各自绑定规则。
+效果不适用时保留激活记录、跳过豁免及失败后果，不推进 RNG。省略 `effect_reach` 时沿用普通豁免。
+
 **AP-15 [DECIDED]**：TypedCommand / RuleEvaluationRequest 的 actor_id 是否必填由具体操作类型决定。Actor 行动必须有真实 actor_id；受信系统/世界事件发起的 combat.start、rules.effect 等可以没有行动 Actor，但必须验证可信 principal、机械来源和目标，不虚构 NPC，也不将全部操作无约束可空。按操作类型区分的强类型联合、source_ref / 来源权限与具体 Schema 字段仍 **[PROPOSED / OPEN; NOT IMPLEMENTED]**，以 MODULE_CONTRACTS.md §3.1 / §4.1 为准；本轮不实现。事务组合与可靠后续命令边界见 §7.3。
 
 Skill Challenge 由 SM 保存成功/失败计数与状态，每次检定经统一 Rule Evaluation 和 (session_id, command_id) 关联的已提交结果去重。剧情威胁不必伪造成可战斗怪物；其机械后果仍须受控规则求值，非机械世界效果仅使用允许列表。
