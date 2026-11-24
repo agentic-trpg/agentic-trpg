@@ -1016,7 +1016,7 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 `source_id`、`source_kind`、`target_id` 和 `reason`。直达效果被阻挡时
 原因为 `total_cover`，脉冲未到达时原因为 `out_of_range`。获授权的调用者
 通过 `StateMachine.read_events(..., after_seq=...)` 读取会话事件，并按回执的
-`event_seqs` 关联本次结果。此分支的 `get_command_rolls()` 返回空列表。
+`event_seqs` 关联本次结果。此分支的 `get_command_rolls()` 返回的 `rolls` 字段为空列表。
 世界日志或战斗日志可用这些事件生成展示，必要事实缺失仍返回明确拒绝。
 
 **豁免系统的流程与验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58) 以 [骰子系统 RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 为前置。
