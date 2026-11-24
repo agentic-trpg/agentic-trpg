@@ -181,7 +181,7 @@ MVP 的**顶层核心模块仍只有 Agent DM、State Machine、Rule Engine，�
 
 **[DECIDED] 双路径 / Episode 产品边界：** 本场参战 NPC 接收 Turn 来源、外部接收 Round 来源；机械 Event 不逐条生成认知信号，不另建逐动作感知证据链，同 NPC／Episode 合批，按范围与接收能力过滤。非战斗仍独立阶段取证。即时 Reaction 使用已有参数与机械事实，不等待当前 Turn EVA；已提交认知参数影响后续决策。聚合／路由／迁移／恢复仍 NOT IMPLEMENTED／OPEN，旧观察与可靠进度保留，见 MC §7.5。
 
-**规则粒度与暂停边界：** RE 一次请求尽量连续结算已授权效果/触发；真正中途选择按 MODULE_CONTRACTS.md §8.3 的 Interrupt / Continuation 目标暂停、持久化、保持 RNG / 支付一致性并恢复，不占 SQLite 长事务。共同 ABI 和最小 MVP 支持路径 [OPEN]；这不扩大为任意活跃战斗崩溃精确续玩承诺。审计/重放保留，正常求值目标使用完整必要当前机械事实，不另建精简历史日志；完整 Combat Event Log 退出输入须先按 RE-HIST-01 审计真实读者并补齐状态；实现差距见 MODULE_CONTRACTS.md §1.1。
+**规则粒度与暂停边界：** RE 一次请求尽量连续结算已授权效果与触发。中途选择的暂停和恢复按 [MC §8.3](MODULE_CONTRACTS.md#83-interrupt--continuation-目标-decided-open-not-implemented)。单人 MVP 的探索动作内激励按[动作存档边界](MODULE_CONTRACTS.md#83a-单人-mvp-探索动作内激励的存档边界)处理。待答复时暂存骰点，整次动作完成后共同提交，重新读档时丢弃未完成尝试。已有独立检定和豁免的持久选择继续沿原入口恢复。等待不占用 SQLite 写事务。通用 Continuation ABI 仍 [OPEN]，活跃战斗精确续玩仍为 Post-MVP。审计与重放沿既有机制保留，RE 使用当前必要机械事实。完整 Combat Event Log 退出输入须先按 RE-HIST-01 核对真实读者并补齐状态，实现差距见 Module Contracts §1.1。
 
 ### 2.4 目标交互流程（逻辑模型，非固定网络拓扑）
 
