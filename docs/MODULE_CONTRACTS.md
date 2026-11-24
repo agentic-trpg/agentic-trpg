@@ -996,23 +996,28 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 | 直接机关豁免与方向掩护 | 已配置的机关可用确切对象位置作为来源。World 按声明提供实际端点及适用的沿途对象掩护。RE 依原效果类型决定能否触及目标，再结算敏捷豁免及适用掩护修正。完全遮断的直接效果或超出范围的脉冲记明确的不适用结果，保留 RNG。 |
 | `world.step_actor` → 区域机关豁免 | World 按对象配置、实际移动和当前布防状态决定是否触发。SM 在受限候选中固定进入后事实，丢弃写入候选后由 RE 求值。最终采用前重验真实触发者及输入，移动、机关分支、骰点、RNG 与回执共同提交。 |
 
-保留 `RUO-72-F1`。同一步触发多项机关时，若先前后果改变后续豁免所需事实，当前整次移动以冲突回滚。待接通按后续实际阶段重新固定事实和 RNG 的受限执行，再验证该合法路径。机关伤害、状态及受伤专注保持 RUO-32 的边界。
+`/69` 当时保留 `RUO-72-F1`。同一步触发多项机关且先前后果改变后续豁免需要的事实时，整次移动以冲突回滚。机关伤害、状态及受伤专注保持 RUO-32 的边界。
 
-**2026-11-24 探索豁免收口候选。** 下表记录 RUO-74 至 RUO-76 的公开验收范围。
+**2026-11-24 探索豁免收口 `/70` 候选。** 下表记录 RUO-74 至 RUO-76 的公开验收范围。
 
 | 公开入口 | 所需的角色、来源和阶段 |
 | --- | --- |
-| `world.step_actor` → 多个区域机关 | World 依次处理候选机关。每个机关按它开始时的候选状态检查资格；RE 以对应阶段的固定事实和 RNG 求值。较早的机关若消耗激励或改变后续资格，后续机关使用已经变化的事实。各机关后果随整次移动共同提交。 |
+| `world.step_actor` → 多个区域机关 | World 依次处理候选机关。每个机关按它开始时的候选状态检查资格；RE 以对应阶段的固定事实和 RNG 求值。较早的机关若消耗激励或改变后续资格，后续机关使用已经变化的事实。各机关后果随整次移动共同提交。这条路径覆盖 RUO-72-F1 的退出条件。 |
 | `world.pick_lock` → 锁所配置的机关 | Package 的锁实例引用配置决定是否关联机关。World 匹配实际撬锁动作、确切的锁和规则检定失败，RE 再根据绑定规则计算已触发机关的豁免。两个判定与机关后果进入同一回执。 |
 | `rules.save` → 可选角色或 World 来源 | DM 可以省略来源，也可以引用真实角色、物品或机关。RE 根据本次明确的效果到达方式声明其几何事实，SM 固定当前来源和目标位置。完全掩护挡住效果时提供可授权读取的原因，无掷骰或 RNG 推进。独立命令提交本次判定，World 动作负责机关激活和领域后果。 |
 
-已提交事件是世界和战斗日志可复用的来源。日志可按场景、战斗或回执中的事件身份展示结果。区分确实未触及目标的判定与必要事实缺失导致的拒绝。
+`rules.save` 用 `source_id` 引用实例。`source_kind` 默认为 `actor`，也可用
+`world_object`。World 来源或明确的 `effect_reach` 需要确切来源 ID。
+只提供来源时核验实例身份；求值需要几何时再固定位置。
+`effect_reach` 支持 `direct` 或带 `radius_ft` 的 `radial_pulse`。
+既有敏捷豁免可以用具名来源和 `requires_cover` 判定部分掩护。完全掩护需要明确的效果到达方式。
 
-`rules.save` 用 `source_id` 引用实例，`source_kind` 支持 `actor` 和
-`world_object`。明确的 `effect_reach` 使用 `direct` 或带 `radius_ft` 的
-`radial_pulse`；直达效果可以被完全掩护阻挡，声明的脉冲按范围判断。
-兼容的角色来源可以继续用 `requires_cover` 请求敏捷豁免的方向掩护。
-无骰结果保留 `rules.save_not_applicable` 事件，包含确切来源、受检者与原因。
+未触及的判定提交 `rules.save_not_applicable`，其中的 `engine_event` 含
+`source_id`、`source_kind`、`target_id` 和 `reason`。直达效果被阻挡时
+原因为 `total_cover`，脉冲未到达时原因为 `out_of_range`。获授权的调用者
+通过 `StateMachine.read_events(..., after_seq=...)` 读取会话事件，并按回执的
+`event_seqs` 关联本次结果。此分支的 `get_command_rolls()` 返回空列表。
+世界日志或战斗日志可用这些事件生成展示，必要事实缺失仍返回明确拒绝。
 
 **豁免系统的流程与验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58) 以 [骰子系统 RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 为前置。
 
