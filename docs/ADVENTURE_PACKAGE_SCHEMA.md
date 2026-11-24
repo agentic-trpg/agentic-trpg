@@ -285,13 +285,34 @@ RE 才按绑定规则计算豁免。原地停留、已经在区域内移动及�
 结算后的候选事实检查本件是否仍能触发；RE 需要的事实和随机流也固定在这个阶段。移动和
 机关分支与骰点共同提交。
 
-Package /10 中，使用 `srd_lock` 或 `scenario` 撬锁策略的锁可以填写
-`pick_failure_mechanism_id`，引用锁可操作场景里的 `mechanism/4` 对象。
-目标只有一个带 `save_gate` 的操作时可以省略 `pick_failure_operation_id`。
-目标有多个这样的操作时，该字段须指定其中一个，并和机关 ID 一起提供。
-Package 加载时验证引用，拒绝同一机关、场景及对象上重叠的检定失败声明，并从
-锁配置建立索引可用的检定结果触发。运行时匹配实际 `world.pick_lock` 命令、
-对象、锁和失败结果，再检查机关是否符合触发资格。
+Package /10 的机关在 `mechanism/4.triggers` 中声明确切的撬锁失败触发。选择器
+用 `target_object_id` 和 `lock_id` 指定目标对象上的一把锁，用 `succeeded: false`
+指定失败，用 `operation_id` 选择本机关已有的 `save_gate` 操作。
+
+```yaml
+triggers:
+  - kind: check_result
+    scene_id: scene.vault
+    operation_id: ward
+    cells: []
+    target_object_id: object.vault_door
+    event_type: null
+    succeeded: false
+    lock_id: lock.vault
+  - kind: enter_region
+    scene_id: scene.vault
+    operation_id: ward
+    cells: ["1,0"]
+    target_object_id: null
+    event_type: null
+    succeeded: null
+```
+
+Package 加载时核对锁的归属、撬锁策略和机关所在的可操作场景。每次撬锁失败至多
+进入一个确切的机关豁免，重叠的触发配置由加载器拒绝。World 从真实
+`world.pick_lock` 命令取得目标和锁，连同该次 RE 已返回的成败查场景索引，
+无需再次求值。同一个机关操作也可由踏板等独立条目触发，每条只匹配自己的事件。
+匹配后才检查机关当时的布防和使用次数。
 
 `save_gate.effect_reach` 是可选的具名机关效果配置。现支持 `{kind: direct}` 和
 `{kind: radial_pulse, radius_ft: N}`。它们都使用实际机关对象位置及敏捷豁免。

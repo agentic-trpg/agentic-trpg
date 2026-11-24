@@ -1019,6 +1019,13 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 `event_seqs` 关联本次结果。此分支的 `get_command_rolls()` 返回的 `rolls` 字段为空列表。
 世界日志或战斗日志可用这些事件生成展示，必要事实缺失仍返回明确拒绝。
 
+**2026-11-25 机关触发配置候选。** 启灯、直接改变对象状态和踩入区域的机关豁免共用按阶段
+准备输入的流程。前一个机关及其联动结算后，再从实际候选中取得后一个机关的
+触发资格、掩护、角色效果与随机流。整个源动作持续沿用同一个提交边界。
+撬锁失败的编写位置为机关的 `triggers`。World 核验实际撬锁来源，以对象、锁和已结算的
+RE 成败组成场景索引键。触发条件属于单个条目，同一个操作可由不同条目匹配。
+具体字段见 [Package Schema AP-14](ADVENTURE_PACKAGE_SCHEMA.md#63-机关环境危害非战斗技能挑战ap-14)。
+
 **豁免系统的流程与验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58) 以 [骰子系统 RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 为前置。
 
 | 流程 | 需要验收的能力 |
