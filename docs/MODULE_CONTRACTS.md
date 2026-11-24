@@ -998,7 +998,7 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 `/69` 当时保留 `RUO-72-F1`。同一步触发多项机关且先前后果改变后续豁免需要的事实时，整次移动以冲突回滚。机关伤害、状态及受伤专注保持 RUO-32 的边界。
 
-**2026-11-24 探索豁免收口 `/70` 候选。** 下表记录 RUO-74 至 RUO-76 的公开验收范围。
+**2026-11-24 探索豁免收口 `/70` [PARTIALLY IMPLEMENTED]。** 下表记录 RUO-74 至 RUO-76 已验收的公开路径。对应的 [RE 求值器](https://github.com/agentic-trpg/trpg-rules-engine/commit/795943e2baa374bdef7edf934f787732423aa8e2) 与 [SM 入口和回执](https://github.com/agentic-trpg/trpg-state-machine/commit/4cd24ba742b143029f4cd461618827a5705fdc43) 已完成全量回归。
 
 | 公开入口 | 所需的角色、来源和阶段 |
 | --- | --- |
