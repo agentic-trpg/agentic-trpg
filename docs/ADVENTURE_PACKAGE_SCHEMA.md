@@ -281,6 +281,15 @@ adapter_notes: "Synthetic example; not an assertion that this ID exists."
 使用对象的触发配置和当时的布防、频次状态决定是否激活。进入后阶段的角色事实固定后，
 RE 才按绑定规则计算豁免。原地停留、已经在区域内移动及不符合布防条件的动作不触发该豁免。
 
+同一步可能进入多个机关区域。World 按确定顺序逐件处理。每件机关开始时，使用上一件机关
+结算后的候选事实检查本件是否仍能触发；RE 需要的事实和随机流也固定在这个阶段。移动和
+机关分支与骰点共同提交。
+
+配置锁时，可以在该锁的定义中填写 `pick_failure_mechanism_id`，指向实际机关对象。
+机关有多个可选的豁免操作时，同时填写 `pick_failure_operation_id`。Package 加载时
+验证引用，并从锁配置建立索引可用的检定结果触发。触发匹配实际 `world.pick_lock` 命令、
+对象、锁和失败结果，World 继续检查机关是否仍具备触发资格。
+
 `save_gate.effect_reach` 是可选的具名机关效果配置。现支持 `{kind: direct}` 和
 `{kind: radial_pulse, radius_ft: N}`。它们都使用实际机关对象位置及敏捷豁免。
 直接效果适用方向性掩护，完全阻挡时效果不适用。脉冲是 Package 明确声明的按距离覆盖规则，
