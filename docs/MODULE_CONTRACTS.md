@@ -1456,6 +1456,10 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 每个完整 Round 只推进一次共享游戏时间，按绑定规则的轮时长和 TimeBinding 换算。D&D 2024 的一个 Round 约六个游戏秒，在 `world-time/1` 下采用六个 tick。[SRD 5.2.1，The Order of Combat，p.13](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf#page=13)。一个 Round 可包含多个 Actor 的 Turn。墙钟用于宿主超时与性能，世界时间用于活动、燃料和观察生命周期。C15 的 Turn／Round 区分指认知交付粒度。场外探索进入同步回合、战斗范围与撤离边界是项目设计。
 
+**Turn 的三个阶段与死亡豁免资格 [DECIDED]（2026-11-25）。** 开始阶段以角色刚进入本 Turn 时的 HP 与生命状态确定死亡豁免资格。按规则适用死亡豁免的角色须在入场时仍存活、未稳定且为 0 HP。结算适用的回合开始效果后，由绑定 RE 判定本 Turn 的主动行动资格。可行动角色在回合中按各项预算行动并显式 Pass。结束阶段结算适用的回合末效果，再处理交棒。
+
+以正 HP 进入 Turn 后在开始阶段受伤归零，按绑定规则即时结算伤害与生命状态。若未死亡且仍无法行动，完成适用的回合末效果后自动交棒。本 Turn 不因此补掷死亡豁免。遭遇已满足机械终结条件时走关闭流程。对于以 0 HP 进入 Turn 且符合资格的角色，死亡豁免与其他同时触发的开始效果的结算顺序仍 [OPEN]。验收见 [RUO-45](https://linear.app/agentictrpg/issue/RUO-45)。
+
 **跨 Round 期限与 TurnStart 候选 [PROPOSED; NOT IMPLEMENTED]。** D&D 2024 的[法术 Duration](https://www.dndbeyond.com/sources/dnd/br-2024/spells#Duration)按实际经过的时间结束，[Round](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#TheOrderofCombat)约六个游戏秒；[降至 0 HP 与死亡豁免](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#Droppingto0HitPoints)按生物类型及实际 Turn 开始处理，同一 Turn 上同时发生的多个效果由该 Turn 的玩家或 DM 依[同时效果规则](https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#SimultaneousEffects)决定顺序。**待确认的项目钟映射**：若期限确在下一 Round 边界 T 到达，可先采用不依赖 TurnStart 的真实到期，再由 RE 在更新的事实中选择下一 Turn、处理该角色的实际 TurnStart；规则指定 turn_start、turn_end 或其他依赖时仍按该规则。届时仍存活、未稳定且为 0 HP 的 PC 才进入适用死亡豁免，怪物按其适用生命规则处理。此映射延期讨论，未纳入本批实现；上文已决定的探索 Effects 与活动完成检查边界不受影响。
 
 **单个 TurnStart 的合并求值候选 [PROPOSED; NOT IMPLEMENTED]。** A：把当前角色在同一实际 TurnStart 触发的适用效果交 RE 以一份一致 Snapshot 连续求值，按卡面及获准控制者顺序处理，返回完整候选后再共同提交；求值中间态不对外发布。B：只对规则明确允许合并的同刻 HP 数值调整，考虑先求净变化、再判定是否归零；例如起始 HP 为 2，两项获准合并的调整为 −3 与 +4，则最终为 3，净变化为 +1。该数值组不因算术中间值暂落到 0 就生成瞬时昏迷事件或提前发布生命状态；若规则实际要求按顺序结算且中间归零会触发后果，则保留该真实中间事件和顺序，不能纳入净额组。普通伤害与治疗是否可合并、临时 HP、瞬死、专注及其他真实中间触发均须分别按官方规则核对和决定，不得由此示例一概抵销。D&D 同时效果规则允许该 Turn 的玩家或 DM 排序；跨已排序效果先求净额是额外项目裁定，适用范围、权限与验收仍待用户确认。两项延期战斗提案单列 [RUO-45](https://linear.app/agentictrpg/issue/RUO-45/战斗与-effects换轮到期回合开始效果与归零)，不纳入本批探索实现。
