@@ -1019,14 +1019,22 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 `event_seqs` 关联本次结果。此分支的 `get_command_rolls()` 返回的 `rolls` 字段为空列表。
 世界日志或战斗日志可用这些事件生成展示，必要事实缺失仍返回明确拒绝。
 
-**2026-11-25 机关触发配置候选。** 启灯、直接改变对象状态和踩入区域的机关豁免共用按阶段
+**2026-11-25 探索豁免本期验收 `[PARTIALLY IMPLEMENTED]`。** 启灯、直接改变对象状态和踩入区域的机关豁免共用按阶段
 准备输入的流程。前一个机关及其联动结算后，再从实际候选中取得后一个机关的
-触发资格、掩护、角色效果与随机流。整个源动作持续沿用同一个提交边界。
+触发资格、掩护、角色效果与随机流。正式 RE 求值在共享提交锁外，其他连接可读已提交版本。
+整个源动作沿用一次提交。进程在动作完成前退出时，未提交的动作候选和选择一起丢弃。
 撬锁失败的编写位置为机关的 `triggers`。World 核验实际撬锁来源，以对象、锁和已结算的
 RE 成败组成场景索引键。触发条件属于单个条目，同一个操作可由不同条目匹配。
 具体字段见 [Package Schema AP-14](ADVENTURE_PACKAGE_SCHEMA.md#63-机关环境危害非战斗技能挑战ap-14)。
 
-**豁免系统的流程与验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58) 以 [骰子系统 RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 为前置。
+以上范围复用已经验收的探索骰点、回执和重放。固定提交的 10 路全量回归 2,938 项通过。
+[SM 验收提交](https://github.com/agentic-trpg/trpg-state-machine/commit/25d27edffaf1039f7628f05e472f6131d4b77cf6)。
+SM 从 GitHub 干净安装的 Engine 和 SRD Data 均锁到已验收的
+[RE /70](https://github.com/agentic-trpg/trpg-rules-engine/commit/795943e2baa374bdef7edf934f787732423aa8e2)。
+通用骰子系统由 [RUO-57](https://linear.app/agentictrpg/issue/RUO-57) 单独跟踪。
+
+**豁免系统的原验收候选 `[PROPOSED]`。** [RUO-58](https://linear.app/agentictrpg/issue/RUO-58)
+的早期计划把通用骰子系统列为前置。下表保留更广的跨系统设计目标。
 
 | 流程 | 需要验收的能力 |
 | --- | --- |
