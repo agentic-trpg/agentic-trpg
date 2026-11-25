@@ -670,6 +670,7 @@ CombatPolicy 使用授权机械可知视图与已提交 Meta 的受限、带来�
 
 - 外部 PC/Agent 提议沿现有命令边界分派给 Handler；Handler 根据已提交流程等待玩家或调用非 LLM Combat Policy。内部自动推进可直接用受控类型接口和共享事务，不把每步伪装成外部 Agent。控制权、目标可知范围、版本/前提仍重验，NPC Agent 保留宏观策略与后续认知。
 - **敌方回合的首个公开切片。** 授权宿主可针对固定的遭遇和 Turn 调用 `run_enemy_turn`。当前实现从已提交的 NPC Goal 取得受支持的进攻或留守选择，在可见事实下提出有界移动、攻击和显式 Pass。每步调用现有 `combat.intent`，按当前授权、绑定规则和回执处理。首批范围为一个 PC 和一个敌人。模型自主发起与更多数据块的行动覆盖分别验收。[RUO-84](https://linear.app/agentictrpg/issue/RUO-84)。
+- **移动反应的首个公开切片。** 在 NPC 的 Turn 内，当前 PC 控制者可用 `combat.opportunity` 为该 NPC 的走位声明使用或放弃自身的借机攻击。声明只在本 Turn 内有效。随后 NPC 提交普通步行，绑定 RE 判断是否实际离开可触发的攻击范围，按规则结算反应并给出实际走过的路段。SM 在同一命令事务内采用实际位移、伤害、反应预算、RNG、事件和回执。Dash、Dodge、Disengage 沿同一主动命令入口。首批采用公开的预先选择，固定战区撤离尚沿已有反应准入限制。[RUO-85](https://linear.app/agentictrpg/issue/RUO-85)。
 - Handler 持久管理遭遇、参战关系、当前回合/等待决定、已提交行动关联及继续推进所需信息；角色 HP/位置/背包和效果读取负责领域，不另建可独立写的副本。RE 无隐藏跨请求权威；其调用内候选状态和临时缓冲允许存在。
 - 绑定 RE 判定当前 Turn 的主动行动资格、预算和合法 Reaction。普通主动动作完成后保留当前 Turn，各项预算按绑定规则分别结算。即使主动行动预算用尽，可行动角色仍通过显式 Pass 结束 Turn。遭遇已满足机械终结条件时允许直接进入关闭流程。RE 根据出手队列和当前机械事实计算下一位或换轮，并刷新规则预算。SM 采用结果并协调一次 Round 边界和共享时钟推进。自动推进须有界，无进展时退出。调度预算与 Continuation Schema 仍 [OPEN]。[RUO-80](https://linear.app/agentictrpg/issue/RUO-80) · [RUO-83](https://linear.app/agentictrpg/issue/RUO-83)。
 - 每个 Turn 包含开始、回合中和结束三个阶段。回合开始时固定死亡豁免的资格，开始效果结算后判定能否主动行动。适用的回合末效果在交棒前结算，无法行动时的自动交棒也经过结束阶段。阶段与世界时钟的具体边界见 [MC C13](MODULE_CONTRACTS.md#c13-世界时间与调度)。
