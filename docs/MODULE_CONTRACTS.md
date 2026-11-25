@@ -1054,6 +1054,14 @@ RulesetBinding 的 Required 字段为 `ruleset_id`、`data_revision`、`evaluato
 
 `data_revision` 必须区分**实际生效的规则内容**，包括适用的 Homebrew / 数据覆盖及组合；不能只用基础 SRD 名称代替生效内容修订。数据包发布版本、素材内容摘要、ruleset_id 和 evaluator_version 分别标识发布、有效内容、规则集合及求值实现，不能混为一谈。具体跨模块摘要／组合编码仍 [OPEN]，不虚构冻结 API；固定 RNG seed 不能替代绑定。
 
+**Ruleset Overlay（规则覆盖包）[DECIDED]（2026-11-25）。** Overlay 是独立版本化的可选规则配置。创建 Session 时可选择基础规则集，或选择基础规则集与兼容 Overlay 组成的生效规则集。Overlay 可替换，并可按版本扩充其他规则覆盖。选定的组合随生效 `RulesetBinding` 固定，`data_revision` 区分被覆盖后实际生效的规则内容。
+
+RE 加载并解释绑定的 Overlay，负责适用范围、默认规则、显式例外和单位换算，再按生效规则求值。SM 按 [§4.2a](#42a-按规则声明补齐求值事实) 固定世界时间、战斗回合或角色完成长休等事实，并采用求值结果。更换 RE 时，使用该 Overlay 的引擎须支持其配置语义。
+
+**首个用途。** 在项目版 D&D 规则中，持续一小时及以上的法术效果默认在受益角色完成长休时结束。原时长恰为一小时的法术按本项目明确采用的 BG3 改编清单调整。例如，指定为 10 整轮的效果随共用时钟经过 10 整轮的游戏时间结束。专注沿用自身的时长上限和解除条件。剧本专属效果可覆盖默认政策，按自己的游戏世界期限、剧本事件或主动解除结算，也可无固定期限。[RUO-45](https://linear.app/agentictrpg/issue/RUO-45) 用援助术、大步奔行对照原版和项目版期限，并用独立 Overlay 配置验收显式期限例外。
+
+**首版实现 [PARTIALLY IMPLEMENTED]（本地候选）。** RE 的 `examples/project-duration-overlay.json` 使用 `ruleset-overlay/1`，覆盖已审阅的援助术和大步奔行。通过 `RulesetOverlay.model_validate_json()` 读取配置，再用 `freeze_ruleset(base_loader, overlay=...)` 生成生效规则集。SM 装配这个固定 Loader 并沿用 `RulesetBinding`。当前配置支持门槛、保留原版期限和按指定整轮数换算的固定期限例外。项目采用的完整 BG3 例外清单及其他规则覆盖类型继续逐项接入。
+
 **加载层要求 `[DECIDED]`；固定素材复用 `[IMPLEMENTED]`（§1.6）：** RE 的 FrozenAssetLoader 捕获最终有效的十一类素材，FrozenRuleset 在冻结时校验身份、typed accessor 和非空 spell UUID 冲突，并由 `_compute_binding()` 对脱离来源的数据计算一次绑定。`freeze_ruleset()`／`get_default_ruleset()` 返回正式固定对象，`ruleset_binding()`／`verify_ruleset()` 对精确 FrozenRuleset 类型比较可信三字段，不重复枚举或摘要。公开 getter 返回防御性深拷贝，不能承诺同一对象或零分配。可变／自定义原始 Loader 仍走完整摘要兼容路径；自定义来源在冻结期间须稳定，修改后必须重新冻结。SM 在 Runtime 装配时选定同一个固定 Loader，供初始化、求值、Availability 与绑定校验复用；不按请求冻结，不静默重绑既有 Session。§1.4 的全量校验描述只适用于其历史 pin。
 
 SM 保存 Session 固定绑定并核对 RE 身份，不另建一套规则素材管理系统。运行中 Session 不静默切换规则、基础素材或引擎版本，升级走显式迁移流程，具体流程仍 [OPEN]。物品实例属性、角色状态等游戏事实由所属领域更新，不等于修改基础模板版本；读取／重载模板默认值不得覆盖实例当前有效属性。只读素材和候选副本遵循 §2.3。
