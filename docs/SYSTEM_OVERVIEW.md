@@ -28,7 +28,7 @@ Bridge/Demo 的存在不能代替这些目标组件。范围由 MVP Scope 决定
 | [Module Contracts](MODULE_CONTRACTS.md) | 最高跨模块状态、接口与一致性约束 | 目标示例和当前接口分开核对；§1 的旧版本索引不能代替源码 |
 | [MVP Scope](MVP_SCOPE.md) | 产品目标、验收范围及明确排除项 | 决定本批是否扩展范围；不从现有代码反推产品上限 |
 | [SM Architecture](STATE_MACHINE_ARCHITECTURE.md) | 领域所有权、Session 编排、提交及恢复设计 | 在 MC 内细化；对应实现还须查 SM 源码与本地验收 |
-| [战斗生命周期](STATE_MACHINE_ARCHITECTURE.md#7-战斗有状态-combat-handler-与跨领域提交) | 统一开战、行动与交棒、固定区域撤离 | [MC C13](MODULE_CONTRACTS.md#c13-世界时间与调度) 定义战斗内外的同步回合与实时探索切换 |
+| [战斗生命周期](STATE_MACHINE_ARCHITECTURE.md#7-战斗有状态-combat-handler-与跨领域提交) | 统一开战、行动与交棒、固定防守及距离追击的撤离 | [MC C13](MODULE_CONTRACTS.md#c13-世界时间与调度) 定义战斗内外的同步回合与实时探索切换 |
 | [World Design](WORLD_SUBSYSTEM_DESIGN.md) | World、Scene、对象能力、空间与环境分责 | 细化 MC 的实例读取、关联和局部准入原则 |
 | [Agent Architecture](AGENT_ARCHITECTURE.md) | Host、NPC 认知、感知与叙事目标 | 不把计划中的执行器、接口或闭环写成已有运行服务 |
 | [Package Schema](ADVENTURE_PACKAGE_SCHEMA.md) | 创建参照、绑定、素材与实例化边界 | Package 提供创建输入，不补写已存在实例的缺失当前字段 |

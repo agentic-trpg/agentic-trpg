@@ -935,7 +935,7 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 **从动作选择规则和计算步骤。** SM 提供已准入的类型化动作及其参数。RE 按动作类型定位处理入口，再按动作中的法术、物品等规则标识读取固定素材。RE 按受支持的活动类型和配置选择已实现的计算函数及参数。实际触发的判定及分支仍由当前事实和前一步结果决定。未支持的规则活动须明确拒绝。
 
-**战斗规则与会话策略 [DECIDED]（2026-11-25）。** SM 按会话绑定调用 RE，负责授权、从事实所有者取齐并固定输入，以及验证、采用结果。RE 负责先攻、主动行动资格及费用、回合与轮次的机械推进、预算刷新、反应及规则结局。既定的规则算法可由 RE 代码实现。已知事实足够时直接求值，缺少事实时沿本节的类型化请求补齐，沿用版本化请求／结果契约。战斗范围、会话模式、跨界撤离及其提交是 SM 的项目策略。完整的规则适配隔离另见 [RUO-79](https://linear.app/agentictrpg/issue/RUO-79)，验收目标是新 Session 能绑定另一套已接入的规则；当前绑定和现有 D&D 适配仍以源码为准。
+**战斗规则与会话策略 [DECIDED]（2026-11-25）。** SM 按会话绑定调用 RE，负责授权、从事实所有者取齐并固定输入，以及验证、采用结果。RE 负责先攻、主动行动资格及费用、回合与轮次的机械推进、预算刷新、反应及规则结局。既定的规则算法可由 RE 代码实现。已知事实足够时直接求值，缺少事实时沿本节的类型化请求补齐，沿用版本化请求／结果契约。会话模式、遭遇范围、撤离策略及其提交归 SM，见 [SM Architecture §7](STATE_MACHINE_ARCHITECTURE.md#7-战斗有状态-combat-handler-与跨领域提交)。完整的规则适配隔离另见 [RUO-79](https://linear.app/agentictrpg/issue/RUO-79)，验收目标是新 Session 能绑定另一套已接入的规则。当前绑定和现有 D&D 适配仍以源码为准。
 
 例如 `world.cast_spell` 携带 `faerie-fire` 和施法点。World 确定区域内有哪些生物和物体。RE 根据妖火的区域豁免活动声明需要施法者和区域内生物的角色事实。正式求值按活动指定的敏捷和施法 DC 类型配置共用豁免计算，一次计算 DC，再为每个生物用各自的角色事实求值。各目标豁免的结果进入妖火效果规则，然后由 SM 沿 §6 采用。
 
@@ -1942,7 +1942,7 @@ Session、世界、Character / Cognition 等负责接口在共享短事务核验
 
 | 场景 | 候选 operation_kind / 输入 | 处理边界 |
 |---|---|---|
-| Combat Handler 组织启动 Encounter | 统一的 SM 开战命令接收已确定的参战名单、顺序和开战位置或指定区域。规则触发的先攻及机械初始化沿类型化规则求值，使用固定 RulesetBinding 和适用的机械事实与 RNG | Handler／相关领域共同建立遭遇、流程和必要状态。规则求值可返回未提交的 Delta／事件／RNG 后继。候选机械操作及 `combat.create` Delta 的具体字段 [OPEN]，见 [SM Architecture §7.1](STATE_MACHINE_ARCHITECTURE.md#71-启动-encounter) |
+| Combat Handler 组织启动 Encounter | 统一的 SM 开战命令接收已确定的参战名单、顺序及所选模式的配置。规则触发的先攻及机械初始化沿类型化规则求值，使用固定 RulesetBinding 和适用的机械事实与 RNG | Handler／相关领域共同建立遭遇、流程和必要状态。规则求值可返回未提交的 Delta／事件／RNG 后继。候选机械操作及 `combat.create` Delta 的具体字段 [OPEN]，见 [SM Architecture §7.1](STATE_MACHINE_ARCHITECTURE.md#71-启动-encounter) |
 | 世界/效果领域判定 Trap / Hazard 触发 | rules.effect；适用 Snapshot、同一规则绑定/RNG 输入、强类型效果 payload | Engine 算豁免/伤害/Condition，负责领域共同提交；按 AP-15 的具体类型校验 Actor；无行动 Actor 的受信系统/世界事件来源允许受控分支，source_ref / 权限编码仍 [PROPOSED / OPEN]，见 §3.1 / §4.1 |
 
 上述操作/类型 **[PROPOSED; NOT IMPLEMENTED]**。同命令世界效果与机械结果可在提交前完整求值时统一原子提交；若来源 WorldEvent 已提交，再触发效果则可靠交接独立稳定命令，去重/恢复，不承诺跨两个已提交事务原子性，不重复已提交骰点/伤害/奖励。详细编排与复杂 Effect Schema 为 [OPEN]。
