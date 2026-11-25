@@ -935,6 +935,8 @@ StateSnapshot 是 **CombatSnapshot / NonCombatSnapshot 两种情境**的判别�
 
 **从动作选择规则和计算步骤。** SM 提供已准入的类型化动作及其参数。RE 按动作类型定位处理入口，再按动作中的法术、物品等规则标识读取固定素材。RE 按受支持的活动类型和配置选择已实现的计算函数及参数。实际触发的判定及分支仍由当前事实和前一步结果决定。未支持的规则活动须明确拒绝。
 
+**战斗规则与会话策略 [DECIDED]（2026-11-25）。** SM 按会话绑定调用 RE，负责授权、从事实所有者取齐并固定输入，以及验证、采用结果。RE 负责先攻、主动行动资格及费用、回合与轮次的机械推进、预算刷新、反应及规则结局。既定的规则算法可由 RE 代码实现。已知事实足够时直接求值，缺少事实时沿本节的类型化请求补齐，沿用版本化请求／结果契约。战斗范围、会话模式、跨界撤离及其提交是 SM 的项目策略。完整的规则适配隔离另见 [RUO-79](https://linear.app/agentictrpg/issue/RUO-79)，验收目标是新 Session 能绑定另一套已接入的规则；当前绑定和现有 D&D 适配仍以源码为准。
+
 例如 `world.cast_spell` 携带 `faerie-fire` 和施法点。World 确定区域内有哪些生物和物体。RE 根据妖火的区域豁免活动声明需要施法者和区域内生物的角色事实。正式求值按活动指定的敏捷和施法 DC 类型配置共用豁免计算，一次计算 DC，再为每个生物用各自的角色事实求值。各目标豁免的结果进入妖火效果规则，然后由 SM 沿 §6 采用。
 
 **原型证据。** 在同进程的 RE `/64` 候选上，妖火事实查询原型和直接组装逐对得到相同的骰点、效果、支付与 RNG。另一次单独的对照中，从已解析的妖火活动选函数平均约 1.25 微秒，双目标完整 RE 求值的平均时间为 5.701 和 5.736 毫秒。公开提交也逐对核对结果。两组对照分别验证事实准备和计算选择的切片，通用实现和额外事实补读取仍须单独验收。
@@ -1450,7 +1452,9 @@ Condition 多来源、专注结束、效果取消和区域移除需共同维护�
 
 探索的已审核组合包括无需额外规则求值的角色效果终止、机关重置和物品黎明恢复。候选逐项重查到期事实，并对实际可能改变先后的 Package 触发保留裁定路径。
 
-战斗内外共享世界时间：一整个 Round 约六个游戏秒，包含各 Actor 的 Turn；实际执行可能耗费几十秒或更久的墙钟时间。只有 TimeBinding 明确 `1 game_tick = 1 秒` 时，一轮才约为六个 tick。不能每个 Actor 的 Turn 都重复增加一整轮时长；同一生命周期边界只处理一次。Host 墙钟用于超时与性能，世界时间用于活动、燃料和观察生命周期。C15 的 Turn／Round 区分是认知交付粒度，不创建不同流速的世界时钟。
+**战斗与探索共用回合调度 [DECIDED]（2026-11-25）。** 开战时，Session 内所有角色一起从实时探索切换到同步的 Round 调度，包括战斗区域外及其他 Scene 的角色。参战者按先攻顺序取得各自的 Turn，主动战斗行动须符合当前 Turn 和绑定规则，获准的 Reaction 依其触发规则结算。非参战者也进入回合制，沿同一个 Round 继续进行探索，仍适用探索行动规则，也不占战斗先攻位置。场外活动从同一时钟取得实际经过时间。战斗结束后，全员从已经提交的时间恢复实时探索。会话始终只有一条权威时间线。多人场外行动的提交顺序、等待、迟到加入和最后未满轮的时间处理仍 [OPEN]。多人场外调度 [NOT IMPLEMENTED]，首批验收为单玩家 Session。生命周期见 [SM Architecture §7](STATE_MACHINE_ARCHITECTURE.md#7-战斗有状态-combat-handler-与跨领域提交)。
+
+每个完整 Round 只推进一次共享游戏时间，按绑定规则的轮时长和 TimeBinding 换算。D&D 2024 的一个 Round 约六个游戏秒，在 `world-time/1` 下采用六个 tick。[SRD 5.2.1，The Order of Combat，p.13](https://media.dndbeyond.com/compendium-images/srd/5.2/SRD_CC_v5.2.1.pdf#page=13)。一个 Round 可包含多个 Actor 的 Turn。墙钟用于宿主超时与性能，世界时间用于活动、燃料和观察生命周期。C15 的 Turn／Round 区分指认知交付粒度。场外探索进入同步回合、战斗范围与撤离边界是项目设计。
 
 **跨 Round 期限与 TurnStart 候选 [PROPOSED; NOT IMPLEMENTED]。** D&D 2024 的[法术 Duration](https://www.dndbeyond.com/sources/dnd/br-2024/spells#Duration)按实际经过的时间结束，[Round](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#TheOrderofCombat)约六个游戏秒；[降至 0 HP 与死亡豁免](https://www.dndbeyond.com/sources/dnd/br-2024/playing-the-game#Droppingto0HitPoints)按生物类型及实际 Turn 开始处理，同一 Turn 上同时发生的多个效果由该 Turn 的玩家或 DM 依[同时效果规则](https://www.dndbeyond.com/sources/dnd/br-2024/rules-glossary#SimultaneousEffects)决定顺序。**待确认的项目钟映射**：若期限确在下一 Round 边界 T 到达，可先采用不依赖 TurnStart 的真实到期，再由 RE 在更新的事实中选择下一 Turn、处理该角色的实际 TurnStart；规则指定 turn_start、turn_end 或其他依赖时仍按该规则。届时仍存活、未稳定且为 0 HP 的 PC 才进入适用死亡豁免，怪物按其适用生命规则处理。此映射延期讨论，未纳入本批实现；上文已决定的探索 Effects 与活动完成检查边界不受影响。
 
@@ -1938,7 +1942,7 @@ Session、世界、Character / Cognition 等负责接口在共享短事务核验
 
 | 场景 | 候选 operation_kind / 输入 | 处理边界 |
 |---|---|---|
-| Combat Handler 组织启动 Encounter | combat.start；当前相关 NonCombatSnapshot、固定 RulesetBinding、显式 RNGContext、强类型启动 payload | Engine 在 accepted 时返回 Typed Delta / ProposedEvents / RNGTransition，Handler / 相关领域共同建立遭遇/流程与必要状态；候选 combat.create 的具体字段 [OPEN] |
+| Combat Handler 组织启动 Encounter | 统一的 SM 开战命令接收已确定的参战名单、顺序和开战位置或指定区域。规则触发的先攻及机械初始化沿类型化规则求值，使用固定 RulesetBinding 和适用的机械事实与 RNG | Handler／相关领域共同建立遭遇、流程和必要状态。规则求值可返回未提交的 Delta／事件／RNG 后继。候选机械操作及 `combat.create` Delta 的具体字段 [OPEN]，见 [SM Architecture §7.1](STATE_MACHINE_ARCHITECTURE.md#71-启动-encounter) |
 | 世界/效果领域判定 Trap / Hazard 触发 | rules.effect；适用 Snapshot、同一规则绑定/RNG 输入、强类型效果 payload | Engine 算豁免/伤害/Condition，负责领域共同提交；按 AP-15 的具体类型校验 Actor；无行动 Actor 的受信系统/世界事件来源允许受控分支，source_ref / 权限编码仍 [PROPOSED / OPEN]，见 §3.1 / §4.1 |
 
 上述操作/类型 **[PROPOSED; NOT IMPLEMENTED]**。同命令世界效果与机械结果可在提交前完整求值时统一原子提交；若来源 WorldEvent 已提交，再触发效果则可靠交接独立稳定命令，去重/恢复，不承诺跨两个已提交事务原子性，不重复已提交骰点/伤害/奖励。详细编排与复杂 Effect Schema 为 [OPEN]。

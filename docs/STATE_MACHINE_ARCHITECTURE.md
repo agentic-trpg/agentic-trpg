@@ -651,13 +651,13 @@ Interactive → Inactive 同样原子撤销旧有效任务、保留认知与未�
 
 ### 7.1 启动 Encounter
 
-**[DECIDED]** 当前 CombatHandler / CombatRecords 已有受限 Package 遭遇、检定/攻击/结束编排，见 MC §1.3；下述完整生命周期及通用动态组建仍为目标。可引用可选 EncounterDefinition，也可在获准能力范围内基于权威状态组建 Encounter；动态参与者须具可信、规则验证的机械数据。Package 不执行启动，不因进入 Scene 新建或重置 NPC。新增 Handler API / 完整持久推进模型 [OPEN; NOT IMPLEMENTED]。
+**统一开战与固定区域 [DECIDED]（2026-11-25）。** 受信发起方通过同一 SM 命令提交参战名单、已确定的出手顺序，以及开战位置或主持人指定的完整区域。传入开战位置时，Handler 以该位置为中心生成默认区域并裁切到当前 Scene。传入完整区域时，Handler 验证该区域及参战者位置。本场遭遇固定使用已采用的区域。同场景的旁观者保留原位置和探索身份。
 
-1. Handler 经授权边界核验 principal / 适用 Actor 或系统来源，从 Session、实体/效果负责人读取完整必要事实、规则绑定与既有 RNG，准备 NonCombatSnapshot。
-2. 复用 RuleEvaluationRequest / RuleEvaluationResult，候选 operation_kind=combat.start，强类型 payload 描述启动参数。Engine 计算先攻与机械初始化，在 accepted 时返回未提交 Typed StateDelta、ProposedEvents、RNGTransition；不注册独立权威战斗对象。
-3. Handler 与 Session / Character / World / Effect 接口在同一短事务重验并建立遭遇、参战关系、流程进度及 phase=combat，共同提交全部必要状态、RNG、正式事件、Receipt / Outbox，保留合法战前安全点。
+1. Handler 核验发起方权限、当前会话阶段、区域、名单和顺序，从 Character、World、Effects 等事实所有者读取参战者的实际机械事实。一个 Session 同时仅有一场活跃遭遇。可选 Package EncounterDefinition 是发起方的资料来源，进入 Scene 不创建战斗或重置已有角色。
+2. 需要规则计算时，SM 按 [MC §4.2a](MODULE_CONTRACTS.md#42a-按规则声明补齐求值事实) 组织类型化求值。统一入口可以接受可信主持人已确定的顺序。后续触发系统识别名单和开战位置，通过绑定 RE 处理先攻、突袭等规则，再复用同一开战入口。[RUO-77](https://linear.app/agentictrpg/issue/RUO-77)。
+3. Handler 和事实所有者在同一短事务重验并提交遭遇、参战关系、流程、时间模式、适用的 RNG、正式事件与 Receipt／Outbox，保留合法战前安全点。失败时不建立部分遭遇或推进权威 RNG。重试按 `(session_id, command_id)` 读取原回执。
 
-combat.start / 候选 Typed Delta combat.create 均 **[PROPOSED; NOT IMPLEMENTED]**；完整字段/初始化映射 [OPEN]，不以整份权威 Snapshot 覆盖代替受限类型化操作。失败不留下部分有效 CombatState，不推进权威 RNG；重试遵守 (session_id, command_id)。
+基础公开路径的交付见 [RUO-78](https://linear.app/agentictrpg/issue/RUO-78)。默认区域的精确几何参数、规则触发的机械初始化输入及候选 `combat.create` Delta 映射仍 [OPEN]。此前已验收的受限 Package 遭遇路径见 MC §1.3。
 
 ### 7.2 战斗期间
 
@@ -665,7 +665,8 @@ CombatPolicy 使用授权机械可知视图与已提交 Meta 的受限、带来�
 
 - 外部 PC/Agent 提议沿现有命令边界分派给 Handler；Handler 根据已提交流程等待玩家或调用非 LLM Combat Policy。内部自动推进可直接用受控类型接口和共享事务，不把每步伪装成外部 Agent。控制权、目标可知范围、版本/前提仍重验，NPC Agent 保留宏观策略与后续认知。
 - Handler 持久管理遭遇、参战关系、当前回合/等待决定、已提交行动关联及继续推进所需信息；角色 HP/位置/背包和效果读取负责领域，不另建可独立写的副本。RE 无隐藏跨请求权威；其调用内候选状态和临时缓冲允许存在。
-- Handler 组织一次行动 RE 求值与共同提交，然后继续至下一决策边界、合法暂停或结束。回合索引、资源恢复、效果到期等由 RE 计算；Handler 应用结果，不能再次加回合或扣资源，一次攻击不默认结束整回合。自动推进有有界重试、无进展退出；调度预算 / Continuation Schema OPEN。
+- 绑定 RE 判定当前 Turn 的主动行动资格、预算和合法 Reaction。普通移动或攻击完成后保留当前 Turn 及余下可用预算，遭遇结束等规则结果照常采用。显式结束 Turn 时，RE 根据出手队列和当前机械事实计算下一位或换轮，并刷新规则预算。SM 采用结果并协调一次 Round 边界和共享时钟推进。自动推进须有界，无进展时退出。调度预算与 Continuation Schema 仍 [OPEN]。[RUO-80](https://linear.app/agentictrpg/issue/RUO-80)。
+- 开战后全 Session 同步进入回合制。场外角色按同一 Round 执行探索行动，不占战斗先攻位置。战斗结束后全员恢复实时探索。时间调度契约、当前实现与多人边界见 [MC C13](MODULE_CONTRACTS.md#c13-世界时间与调度)。
 - 战斗中打开门、拾取物品、喝药、触发机关等，若世界/机械效果能够在同一命令提交前完整求值，则同事务提交完整副作用，Engine 不提前扣费；已提交事件才触发的后续机械效果使用可靠、幂等的独立命令，不声称跨已提交事务原子（§5.5）。
 - 机械审计保留以便追溯／重放；战斗来源在 Turn／Round 关闭后聚合，按 Episode 级范围／接收能力过滤，不逐机械 Event 取证／投影。Narrator 只叙述玩家获准事实；审计全集或未提交结果不自动进入 NPC Context。
 - 即时动作、Reaction、自动效果和战斗触发不依赖 Planner / JEV LLM / Cognition Gate / EVA。需要机械察觉时用可信确定性/RE 判定，未知不是已察觉；一次求值尽量连续结算，真实中途选择按 §5.4 的目标暂停。具体 Continuation ABI 仍 OPEN，不将复杂路径描述为现有支持。
@@ -673,6 +674,7 @@ CombatPolicy 使用授权机械可知视图与已提交 Meta 的受限、带来�
 ### 7.3 战斗结束
 
 - RE 计算适用机械结束条件与 Delta/Rewards；Handler 组织负责领域共同提交状态/任务/战利品/事件/Receipt 并结束流程、切换 Session phase。不存在从第二份 HP/位置/背包回写世界的阶段。
+- **主动跨界撤离 [DECIDED]（2026-11-25）。** 走到区域内的边界格仍在战斗。主动合法地从区域内跨到同 Scene 的区域外，或从区域覆盖的合法 Scene 出口离开时，跨界的这一步按战斗移动结算。Handler 根据实际到达位置采用撤离。唯一 PC 撤离时，位置、离场、撤离结局和恢复实时探索在同一命令内提交，与胜负、奖励等规则结局分别处理。角色和世界事实继续沿用实际提交值，同一 Session 可再次开战。强制位移、追击及复杂移动反应另行验收。[RUO-81](https://linear.app/agentictrpg/issue/RUO-81)。
 - 资源始终按原 Actor 的实际支付者归属记录；既有 `CombatOutcome.expended_resources` 的已知缺陷必须通过独立正确性用例检验，不能照搬旧有错误聚合。
 - Handler 可靠关闭本场尚未结束的 Turn／Round Episode，包含最后未满轮的外部汇总；Perception 基于固定 Episode 过滤依据形成授权观察，不要求战斗逐阶段感知证据。历史来源与已察觉记录不可被当前变化改写；聚合恢复、跨图范围、参战切换和通用中断仍 OPEN。
 

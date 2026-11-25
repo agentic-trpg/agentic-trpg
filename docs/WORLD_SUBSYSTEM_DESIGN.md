@@ -236,6 +236,8 @@ MC §1.5 核对版本已具事务双版本及正式 SQLite owner 提供方的版
 
 **战斗移动目标：** `StateMachine → CombatHandler → RE → CharacterFacts + CombatRecords + 相关领域共同提交`。从实际世界位置组装战斗空间投影，RE 计算移动资格/成本、触发与反应，结果落回唯一实际角色位置及相关记录。当前 `_current_cells` 使用同场景网格坐标；未来子地图原点/尺度/zone、跨场景与动态障碍映射保持 OPEN。无法表达的范围/障碍显式不支持；战后冻结记录只供审计，不能反向覆盖角色位置。
 
+**撤离目标：** World 提供实际网格、通路、门和落点事实。合法出口可用于结束当前遭遇并移至相邻 Scene。撤离边界、规则移动成本和共同提交按 [SM Architecture §7.3](STATE_MACHINE_ARCHITECTURE.md#73-战斗结束) 处理。跨场景持续作战仍 [OPEN]。
+
 **共享互动目标：** 开门、解锁、取放、破坏障碍按能力调用共同领域操作。探索入口执行适用授权、可达性、凭据/活动约束及需要的 RE 检定；战斗入口额外经 RE 协调行动资格、行动资源、时序、触发与反应。Handler 组织顺序、适用记录通道和共同提交（非战斗阶段取证，战斗审计／Episode 来源），不能自定规则公式。门/箱/容器共享开合和锁具能力，不复制对象事实或取放权威。
 
 **当前限制是实施边界：** `_world_operation_capability` 拒绝活跃战斗的非战斗命令；`_spatial_combat_guard` 拒绝部分动态障碍/关闭通路门；物品/锁具还有公开性、凭据、装备、效果/活动等限制。复用须先设计受控战斗执行上下文及 Delta 适配，并逐项证明原有限制仍正确或已有明确替代；不得删除 guard 或直接调用内部 `_operate*` 作为“支持战斗互动”。main 已支持非战斗撬锁、显式方法强行开启／解除卡住和容器取放；仍须遵守公开对象、角色状态、工具、祖先访问与空间保护。战斗费用、魔法生命周期和真实物体攻击继续是缺口，不能通过直接内部调用绕过。
@@ -264,6 +266,8 @@ main 已有 WorldTimeService：显式 world-time/1 固定 1 tick = 1 游戏秒�
 秒制 Session 创建拒绝带配置型 NPC State 的 Package；未配置 Runtime 的物理 Actor 可存在，但 NPC observation access／宿主聚合感知投影受 unsupported_time_consumer 限制。旧日程／OB TTL／Gate 周期不能按秒解释；完整限制见 MC §1.3。
 
 当前 `[PARTIALLY IMPLEMENTED]`：SessionTime／TimeDriver 已提供显式倍率、暂停／恢复、有界 Pending Time Work 和真实 RE Round 单轮 6 tick；Turn 不重复增加整轮。生产期限提供方是机关，完整 Activity／Effects、NPC Schedule／OB／Gate／燃料天气和生产等待回复仍待接入；默认倍率和宿主等待政策 OPEN。秒制 NPC 保护保留，legacy 不转秒；详见 MC §1.6／§6.6 C13。
+
+开战后，非参战角色也按相同 Round 进行探索的调度目标，以及全员恢复实时探索的时点，统一由 [MC C13](MODULE_CONTRACTS.md#c13-世界时间与调度) 定义。
 
 Effects 管完整身份（现有 RE 为 target_id／id／origin）、Condition 多来源、专注及期限；World 管空间锚点，Character 读有效投影。取消单一来源不清其他来源，结束战斗／切场景不默认删除效果。Activity 每步重验事实，领域变化与游标共同提交，取消不撤销已发生步骤。完整接口仍待实现，未支持生命周期保持 unsupported，见 MC §6.6。
 
