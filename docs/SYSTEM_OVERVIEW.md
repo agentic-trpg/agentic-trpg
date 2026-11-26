@@ -107,6 +107,7 @@ SM 安装的 RE 由它的 `pyproject.toml`／`uv.lock` 固定，不自动等于�
 | 门变更影响哪些场景的光照 | [World 门与通路的光照依赖](WORLD_SUBSYSTEM_DESIGN.md#20d-门与通路的光照依赖) | [局部查询与整场景输出](WORLD_SUBSYSTEM_DESIGN.md#20b-grid-运行时输入复用-decided) |
 | 探索施法的活动、效果与同刻到期 | [MC §6.6 C10–C13](MODULE_CONTRACTS.md#66-内部领域协作与持久化细则-decided-open-not-implemented)、[World 观察者视图](WORLD_SUBSYSTEM_DESIGN.md#20e-探索角色视图与光照失效) | 对照 SM／RE 候选提交及聚焦回归；文档中的候选验收不等于已发布依赖或全量回归 |
 | 按规则准备事实、独立豁免与失败后加骰 | [MC §4.2a](MODULE_CONTRACTS.md#42a-按规则声明补齐求值事实) · [MC §8.3](MODULE_CONTRACTS.md#83-interrupt--continuation-目标-decided-open-not-implemented) | 对照妖火、授权骰点、神导术和真实激励授予与续算 |
+| GUI 和 DM 读取普通攻击预览 | [MC §4.4](MODULE_CONTRACTS.md#44-action-availability-query-decided-partially-implemented) | RE 共用正式攻击的规则判定，SM 按可信调用权限披露结构化命中率、骰式和原因 |
 | 动作内激励、存档和主动读档 | [MC §8.3a](MODULE_CONTRACTS.md#83a-单人-mvp-探索动作内激励的存档边界) | SM `service.py`、`session_checkpoints.py`、`action_pending.py`；对照真实机关、妖火、灾祸术和读档回归 |
 | 机关触发与来源掩护 | [AP-14](ADVENTURE_PACKAGE_SCHEMA.md#63-机关环境危害非战斗技能挑战ap-14)、[MC §4.2a](MODULE_CONTRACTS.md#42a-按规则声明补齐求值事实) | 对照按顺序结算的机关、按对象和锁匹配的撬锁失败，以及独立豁免的 World 来源事件 |
 | RE 返回结果后谁负责采用和提交 | [MC §6.1 执行时序](MODULE_CONTRACTS.md#61-执行时序-decided-partially-implemented) | [SM 规则采用](https://github.com/agentic-trpg/trpg-state-machine/blob/main/src/trpg_state_machine/rule_execution.py)；[真实检定与回执回归](https://github.com/agentic-trpg/trpg-state-machine/blob/main/tests/test_session_memory_rng_failures.py) |
